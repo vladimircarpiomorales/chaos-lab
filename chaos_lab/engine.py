@@ -42,6 +42,10 @@ IMAGE_CANDIDATES: dict[str, list[str]] = {
         "localhost/chaos-lpic-debian:1",
         "docker.io/library/debian:trixie",
     ],
+    "lpic-fedora": [
+        "localhost/chaos-lpic-fedora:1",
+        "docker.io/library/fedora:44",
+    ],
     "rocky": [
         "localhost/chaos-rocky:1",
         "docker.io/rockylinux/rockylinux:9",

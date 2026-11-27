@@ -1,0 +1,590 @@
+[
+  {
+    "id": "lpic1-ficheros",
+    "reto": "r101-ficheros",
+    "title": "Ordenar una carpeta de descargas",
+    "briefing": "La carpeta `descargas/` tiene ficheros mezclados. Déjala así:\n1. Crea las carpetas `descargas/logs` y `descargas/fotos`.\n2. Mueve todos los `*.log` a `logs/` y todos los `*.jpg` a `fotos/` (no debe quedar ninguno fuera).\n3. Borra todos los `*.tmp`.\n4. Copia `informe.txt` como `informe.txt.bak` en la misma carpeta.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-ficheros`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Se trata de crear, mover, borrar y copiar usando comodines para no ir fichero a fichero.",
+      "`mkdir -p` crea directorios, `mv *.log logs/` mueve por patrón, `rm *.tmp` borra por patrón y `cp origen destino` copia. Trabaja dentro de `descargas/`.",
+      "`cd descargas`; `mkdir -p logs fotos`; `mv *.log logs/`; `mv *.jpg fotos/`; `rm *.tmp`; `cp informe.txt informe.txt.bak`."
+    ],
+    "solution_summary": "`mkdir`, `mv`, `rm` y `cp` con comodines (`*.log`, `*.jpg`, `*.tmp`) reorganizan los ficheros en bloque; `cp informe.txt informe.txt.bak` deja una copia idéntica junto al original.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "mkdir",
+      "mv",
+      "cp",
+      "rm",
+      "comodines"
+    ],
+    "objetivos_lpi": [
+      "103.3"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ORDEN] · Hay que reorganizar una carpeta de descargas por tipos de fichero y limpiar los temporales.",
+    "preparar": "mkdir descargas && cd descargas\ntouch a.log b.log sistema.log foto1.jpg foto2.jpg basura1.tmp basura2.tmp\necho \"Informe trimestral\" > informe.txt",
+    "comprobar": "cd descargas\ncomprueba \"existen logs/ y fotos/\" test -d logs -a -d fotos\ncomprueba \"los 3 .log están en logs/\" test -f logs/a.log -a -f logs/b.log -a -f logs/sistema.log\ncomprueba \"no queda ningún .log fuera\" bash -c '! ls *.log'\ncomprueba \"las 2 fotos están en fotos/\" test -f fotos/foto1.jpg -a -f fotos/foto2.jpg\ncomprueba \"no queda ningún .tmp\" bash -c '! ls *.tmp'\ncomprueba \"informe.txt.bak es una copia de informe.txt\" cmp informe.txt informe.txt.bak\ncomprueba \"no queda ninguna foto fuera\" bash -c '! ls *.jpg'\ncomprueba \"informe.txt conserva su contenido\" grep -qx \"Informe trimestral\" informe.txt"
+  },
+  {
+    "id": "lpic1-filtros",
+    "reto": "r101-filtros",
+    "title": "Sacar datos de un CSV con filtros",
+    "briefing": "`ventas.csv` tiene líneas `ciudad,producto,unidades` (sin cabecera). Genera:\n1. `ciudades.txt`, con las ciudades distintas ordenadas alfabéticamente, una por línea.\n2. `madrid.txt`, con solo las líneas de Madrid, tal cual están en el original.\n3. `cuantas.txt`, con el número de líneas de `ventas.csv` (solo el número, sin el nombre del fichero).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-filtros`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Cada resultado se obtiene encadenando filtros de texto: cortar un campo, ordenar sin repetidos, seleccionar líneas y contarlas.",
+      "`cut -d, -f1` saca el primer campo y `sort -u` ordena sin repetidos; `grep '^Madrid,'` filtra por inicio de línea; `wc -l < fichero` cuenta sin imprimir el nombre.",
+      "`cut -d, -f1 ventas.csv | sort -u > ciudades.txt`; `grep '^Madrid,' ventas.csv > madrid.txt`; `wc -l < ventas.csv > cuantas.txt`."
+    ],
+    "solution_summary": "`cut -d, -f1 | sort -u` extrae y ordena los valores distintos de una columna, `grep '^Madrid,'` selecciona por patrón de inicio de línea y `wc -l < fichero` cuenta líneas sin mostrar el nombre.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "cut",
+      "sort",
+      "grep",
+      "wc"
+    ],
+    "objetivos_lpi": [
+      "103.2"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [INFORMES] · Hay que extraer tres resúmenes de un fichero de ventas en formato CSV.",
+    "preparar": "cat > ventas.csv <<'F'\nSevilla,pan,3\nMadrid,leche,2\nBilbao,pan,5\nMadrid,pan,1\nSevilla,queso,4\nValencia,leche,2\nMadrid,queso,7\nF",
+    "comprobar": "comprueba \"ciudades.txt: las ciudades distintas, ordenadas, una por línea\" bash -c 'diff <(printf \"Bilbao\\nMadrid\\nSevilla\\nValencia\\n\") ciudades.txt'\ncomprueba \"madrid.txt: solo las líneas de Madrid\" bash -c 'diff <(grep \"^Madrid,\" ventas.csv) madrid.txt'\ncomprueba \"cuantas.txt: el número de líneas de ventas.csv\" bash -c '[ \"$(tr -d \" \\n\" < cuantas.txt)\" = 7 ]' "
+  },
+  {
+    "id": "lpic1-redirecciones",
+    "reto": "r101-redirecciones",
+    "title": "Separar la salida normal de los errores",
+    "briefing": "El script `./genera.sh` escribe líneas normales (stdout) y líneas de error (stderr). Se pide:\n1. Ejecútalo, en una sola orden, guardando la salida normal en `salida.txt` y los errores en `errores.txt`.\n2. Añade al final de `salida.txt`, sin borrar lo que ya hay, la fecha actual dada por `date`.\n3. Crea `mayus.txt` con el contenido de `salida.txt` en mayúsculas, usando una tubería y `tr`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-redirecciones`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Hay dos flujos de salida, cada uno con su propio número de descriptor, y se pueden redirigir a la vez en la misma orden. Añadir sin sobrescribir exige un operador distinto.",
+      "`>` para stdout, `2>` para stderr, `>>` para añadir; la tubería `|` conecta la salida de `cat` con `tr a-z A-Z`.",
+      "`./genera.sh > salida.txt 2> errores.txt`; `date >> salida.txt`; `cat salida.txt | tr a-z A-Z > mayus.txt`."
+    ],
+    "solution_summary": "`> fichero` redirige stdout y `2> fichero` stderr; `>>` añade sin truncar; con `cat salida.txt | tr a-z A-Z` la tubería pasa el texto a `tr`, que lo convierte a mayúsculas.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "redirección",
+      "stderr",
+      "tubería",
+      "tr",
+      "date"
+    ],
+    "objetivos_lpi": [
+      "103.4"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [PROCESADO] · Hay que separar los errores de un script de su salida normal y generar una copia en mayúsculas.",
+    "preparar": "cat > genera.sh <<'F'\n#!/bin/bash\necho \"linea buena 1\"\necho \"ERROR: disco lleno\" >&2\necho \"linea buena 2\"\necho \"ERROR: sin red\" >&2\nF\nchmod +x genera.sh",
+    "comprobar": "comprueba \"salida.txt: la salida normal del script\" bash -c 'diff <(printf \"linea buena 1\\nlinea buena 2\\n\") <(head -2 salida.txt)'\ncomprueba \"salida.txt no tiene errores dentro\" bash -c '! grep -q ERROR salida.txt'\ncomprueba \"salida.txt: lleva una línea añadida al final\" bash -c '[ \"$(wc -l < salida.txt)\" -eq 3 ] && [ -n \"$(sed -n 3p salida.txt)\" ]'\ncomprueba \"errores.txt: solo los errores del script\" bash -c 'diff <(printf \"ERROR: disco lleno\\nERROR: sin red\\n\") errores.txt'\ncomprueba \"mayus.txt es salida.txt en mayúsculas\" bash -c 'diff <(tr a-z A-Z < salida.txt) mayus.txt' "
+  },
+  {
+    "id": "lpic1-grep",
+    "reto": "r101-grep",
+    "title": "Buscar en un log con expresiones regulares",
+    "briefing": "`acceso.log` es el registro de un servidor web (cada línea: IP, método, ruta y código de respuesta como último campo). Genera:\n1. `internas.txt`, con las líneas cuya IP empieza por `192.168.` (cuidado con direcciones que se le parecen pero no empiezan así).\n2. `fallos.txt`, con las líneas cuyo código de respuesta es 404 o 500.\n3. `n-post.txt`, con el número de líneas que contienen `POST` (solo el número).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-grep`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Aquí importan las anclas de inicio y fin de línea, escapar el punto (que en una expresión regular significa «cualquier carácter») y la diferencia entre mostrar líneas y contarlas.",
+      "`grep '^192\\.168\\.'` ancla al inicio y escapa los puntos; `grep -E ' (404|500)$'` usa alternancia en el final de línea; `grep -c` cuenta las líneas que coinciden.",
+      "`grep '^192\\.168\\.' acceso.log > internas.txt`; `grep -E ' (404|500)$' acceso.log > fallos.txt`; `grep -c POST acceso.log > n-post.txt`."
+    ],
+    "solution_summary": "`^` ancla al inicio de línea y `\\.` representa un punto literal, así se descarta la IP parecida; `-E` activa la alternancia `(404|500)` y `$` fija el final; `grep -c` devuelve cuántas líneas coinciden en lugar de mostrarlas.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "grep",
+      "regex",
+      "anclas",
+      "-E",
+      "-c"
+    ],
+    "objetivos_lpi": [
+      "103.7"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [BÚSQUEDA] · Hay que extraer del registro de un servidor web las peticiones internas, los errores y el recuento de envíos.",
+    "preparar": "cat > acceso.log <<'F'\n192.168.1.10 GET /index.html 200\n10.0.0.5 GET /admin 404\n192.168.1.22 POST /login 200\n8.8.8.8 GET /api 500\n192.168.10.3 GET /foto.jpg 404\n1921.68.0.1 GET /raro 200\n172.16.0.9 POST /subir 200\nF",
+    "comprobar": "comprueba \"internas.txt: las líneas cuya IP empieza por 192.168. (y solo esas)\" bash -c 'diff <(printf \"192.168.1.10 GET /index.html 200\\n192.168.1.22 POST /login 200\\n192.168.10.3 GET /foto.jpg 404\\n\") internas.txt'\ncomprueba \"fallos.txt: las líneas con código 404 o 500\" bash -c 'diff <(printf \"10.0.0.5 GET /admin 404\\n8.8.8.8 GET /api 500\\n192.168.10.3 GET /foto.jpg 404\\n\") fallos.txt'\ncomprueba \"n-post.txt: el número de líneas con POST\" bash -c '[ \"$(tr -d \" \\n\" < n-post.txt)\" = 2 ]' "
+  },
+  {
+    "id": "lpic1-permisos",
+    "reto": "r101-permisos",
+    "title": "Permisos numéricos, SGID y sticky bit",
+    "briefing": "Te piden dejar estos permisos (para el grupo necesitas `sudo`):\n1. `secreto.txt` con permisos 600 (solo el dueño lee y escribe).\n2. `script.sh` con 744: `rwx` para el dueño y solo lectura para grupo y otros.\n3. Crea el grupo `proyecto`, haz que la carpeta `compartida/` pertenezca a ese grupo y dale 2775 (SGID: lo que se cree dentro hereda el grupo).\n4. La carpeta `publica/` debe tener el sticky bit con permisos 1777, como `/tmp`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-permisos`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Los permisos se escriben en octal; los bits especiales (SGID, sticky) van en un cuarto dígito delante. Crear un grupo y cambiar la pertenencia de una carpeta requiere privilegios.",
+      "`chmod 600`, `chmod 744`; `groupadd`, `chgrp GRUPO carpeta` y `chmod 2775`; `chmod 1777` (o `chmod +t`).",
+      "`chmod 600 secreto.txt`; `chmod 744 script.sh`; `sudo groupadd proyecto`; `sudo chgrp proyecto compartida`; `chmod 2775 compartida`; `chmod 1777 publica`."
+    ],
+    "solution_summary": "`chmod` en octal fija 600 y 744; `2775` añade SGID (los ficheros nuevos heredan el grupo de la carpeta) y `1777` el sticky bit (solo el dueño borra lo suyo). El grupo se crea con `groupadd` y se asigna con `chgrp`, ambos con privilegios.",
+    "difficulty": "Intermedio",
+    "points": 160,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "chmod",
+      "SGID",
+      "sticky bit",
+      "groupadd",
+      "chgrp"
+    ],
+    "objetivos_lpi": [
+      "104.5"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [PERMISOS] · Hay que dejar un secreto, un script y dos carpetas compartidas con los permisos especiales correctos.",
+    "preparar": "groupdel proyecto 2>/dev/null || true\necho \"clave\" > secreto.txt; chmod 666 secreto.txt\nprintf '#!/bin/sh\\necho hola\\n' > script.sh; chmod 644 script.sh\nmkdir compartida publica; chmod 755 compartida publica",
+    "comprobar": "comprueba \"secreto.txt tiene 600\" bash -c '[ \"$(stat -c %a secreto.txt)\" = 600 ]'\ncomprueba \"script.sh tiene 744\" bash -c '[ \"$(stat -c %a script.sh)\" = 744 ]'\ncomprueba \"existe el grupo proyecto\" getent group proyecto\ncomprueba \"compartida/ es del grupo proyecto\" bash -c '[ \"$(stat -c %G compartida)\" = proyecto ]'\ncomprueba \"compartida/ tiene 2775 (SGID)\" bash -c '[ \"$(stat -c %a compartida)\" = 2775 ]'\ncomprueba \"publica/ tiene 1777 (sticky)\" bash -c '[ \"$(stat -c %a publica)\" = 1777 ]' "
+  },
+  {
+    "id": "lpic1-enlaces",
+    "reto": "r101-enlaces",
+    "title": "Enlaces duros y simbólicos",
+    "briefing": "Te piden crear tres enlaces:\n1. `duro.txt`, como enlace duro de `original.txt`.\n2. `blando.txt`, como enlace simbólico a `original.txt` (el destino es el nombre relativo `original.txt`).\n3. Dentro de la carpeta `atajos/`, un enlace simbólico llamado `conf` que apunte a `/etc/hostname`.\nPara verlos: `ls -li` muestra el inodo y el contador de enlaces.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-enlaces`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un enlace duro es otro nombre para el mismo inodo; uno simbólico es un fichero pequeño que guarda una ruta. El mismo comando crea ambos, con una opción que los distingue.",
+      "`ln origen destino` hace el duro; `ln -s origen destino` el simbólico. En un simbólico el primer argumento es el texto de la ruta destino tal cual.",
+      "`ln original.txt duro.txt`; `ln -s original.txt blando.txt`; `ln -s /etc/hostname atajos/conf`."
+    ],
+    "solution_summary": "`ln` sin opciones crea un enlace duro (mismo inodo que el original); `ln -s` crea un enlace simbólico que almacena la ruta destino, que puede ser relativa (`original.txt`) o absoluta (`/etc/hostname`).",
+    "difficulty": "Básico",
+    "points": 120,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "ln",
+      "enlace duro",
+      "enlace simbólico",
+      "inodo"
+    ],
+    "objetivos_lpi": [
+      "104.6"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ENLACES] · Hay que dejar un fichero accesible con un segundo nombre y dos accesos directos.",
+    "preparar": "echo \"datos importantes\" > original.txt\nmkdir atajos",
+    "comprobar": "comprueba \"duro.txt existe y no es un enlace simbólico\" bash -c '[ -f duro.txt ] && [ ! -L duro.txt ]'\ncomprueba \"duro.txt comparte inodo con original.txt\" bash -c '[ \"$(stat -c %i duro.txt)\" = \"$(stat -c %i original.txt)\" ]'\ncomprueba \"blando.txt es simbólico y apunta a original.txt\" bash -c '[ -L blando.txt ] && [ \"$(readlink blando.txt)\" = original.txt ]'\ncomprueba \"atajos/conf apunta a /etc/hostname\" bash -c '[ \"$(readlink atajos/conf)\" = /etc/hostname ]' "
+  },
+  {
+    "id": "lpic1-sistema-archivos",
+    "reto": "r101-sistema-archivos",
+    "title": "Un sistema de archivos ext4 dentro de un fichero",
+    "briefing": "En un contenedor no hay discos reales, así que usarás un fichero como disco (`mkfs.ext4`, `tune2fs` y `blkid` están en `/usr/sbin`: usa `sudo`):\n1. Crea `disco.img` de exactamente 64 MiB (67108864 bytes).\n2. Formátalo como ext4 con la etiqueta `DATOS`.\n3. Con `tune2fs`, fija en 30 el número máximo de montajes antes de forzar una revisión.\n4. Guarda en `info.txt` la salida de `blkid` aplicada a `disco.img`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-sistema-archivos`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un fichero sirve de dispositivo de bloques para `mkfs`, `tune2fs` y `blkid`. La etiqueta se fija al formatear y el contador de montajes se ajusta después.",
+      "`truncate -s 64M` crea el fichero; `sudo mkfs.ext4 -L ETIQUETA fichero` formatea; `sudo tune2fs -c N` fija el máximo de montajes; `sudo blkid fichero` imprime el tipo y la etiqueta.",
+      "`truncate -s 64M disco.img`; `sudo mkfs.ext4 -L DATOS disco.img`; `sudo tune2fs -c 30 disco.img`; `sudo blkid disco.img > info.txt`."
+    ],
+    "solution_summary": "`truncate -s 64M` crea el fichero de 64 MiB; `mkfs.ext4 -L DATOS` lo formatea con etiqueta; `tune2fs -c 30` establece el máximo de montajes y `blkid` muestra TYPE y LABEL, que se guardan en `info.txt`.",
+    "difficulty": "Intermedio",
+    "points": 180,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "mkfs.ext4",
+      "tune2fs",
+      "blkid",
+      "ext4",
+      "truncate"
+    ],
+    "objetivos_lpi": [
+      "104.1",
+      "104.2"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ALMACENAMIENTO] · Hay que preparar un volumen ext4 etiquetado, ajustar su revisión periódica y documentarlo.",
+    "preparar": "echo \"listo: tienes mkfs.ext4, tune2fs y blkid\"",
+    "comprobar": "comprueba \"disco.img mide 64 MB\" bash -c '[ \"$(stat -c %s disco.img)\" = 67108864 ]'\ncomprueba \"disco.img tiene un ext4\" bash -c 'blkid -o value -s TYPE disco.img | grep -qx ext4'\ncomprueba \"la etiqueta es DATOS\" bash -c 'blkid -o value -s LABEL disco.img | grep -qx DATOS'\ncomprueba \"máximo de montajes = 30\" bash -c 'tune2fs -l disco.img | grep -Eq \"^Maximum mount count: +30$\"'\ncomprueba \"info.txt tiene la salida de blkid\" bash -c 'grep -Eq \"^(\\./)?disco\\.img:.*LABEL=\\\"DATOS\\\".*TYPE=\\\"ext4\\\"\" info.txt' "
+  },
+  {
+    "id": "lpic1-dpkg",
+    "reto": "r101-dpkg",
+    "title": "Paquetes Debian: instalar, listar ficheros y buscar el dueño",
+    "briefing": "El paquete `tree` está desinstalado. Te piden (necesitas `sudo` y salida a internet; la imagen no trae el índice de paquetes, así que actualízalo antes de instalar):\n1. Instala `tree` con `apt`.\n2. Guarda en `archivos-tree.txt` la lista de ficheros que instaló ese paquete, obtenida con `dpkg`.\n3. Guarda en `duenno.txt` la salida de `dpkg -S /usr/bin/ls`, que indica a qué paquete pertenece ese fichero.\nOjo: en Debian 13 `/bin` es un enlace a `/usr/bin` y `dpkg -S /bin/ls` no encuentra nada, porque dpkg solo conoce la ruta con la que se instaló cada fichero.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-dpkg`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`apt` instala (con `sudo` y con su índice al día); `dpkg` consulta la base de datos de paquetes instalados, tanto «qué ficheros trae» como «de quién es este fichero».",
+      "`sudo apt-get update` y `sudo apt install -y tree`; `dpkg -L paquete` lista ficheros; `dpkg -S ruta` busca el paquete dueño (con la ruta exacta bajo `/usr`).",
+      "`sudo apt-get update && sudo apt install -y tree`; `dpkg -L tree > archivos-tree.txt`; `dpkg -S /usr/bin/ls > duenno.txt`."
+    ],
+    "solution_summary": "`apt install` instala el paquete tras `apt-get update`; `dpkg -L tree` lista sus ficheros (incluye `/usr/bin/tree`) y `dpkg -S /usr/bin/ls` revela que el dueño es `coreutils`. Con el /usr unificado hay que usar la ruta bajo `/usr`.",
+    "difficulty": "Intermedio",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "apt",
+      "dpkg",
+      "dpkg -L",
+      "dpkg -S"
+    ],
+    "objetivos_lpi": [
+      "102.4"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [PAQUETES] · Hay que instalar una utilidad y documentar los ficheros que trae y a qué paquete pertenece un comando del sistema.",
+    "preparar": "dpkg -r tree >/dev/null 2>&1 || true\necho \"tree desinstalado: empieza\"",
+    "comprobar": "comprueba \"tree está instalado\" bash -c 'dpkg -s tree | grep -q \"Status: install ok installed\"'\ncomprueba \"archivos-tree.txt: la lista de ficheros del paquete tree\" bash -c 'grep -qx /usr/bin/tree archivos-tree.txt && [ \"$(wc -l < archivos-tree.txt)\" -gt 3 ]'\ncomprueba \"duenno.txt: el paquete dueño de /usr/bin/ls\" grep -q \"^coreutils\" duenno.txt"
+  },
+  {
+    "id": "lpic1-rpm",
+    "reto": "r101-rpm",
+    "distro": "lpic-fedora",
+    "title": "Paquetes RPM con dnf y rpm (en Fedora)",
+    "briefing": "Este reto se hace en una máquina Fedora (la terminal ya lo es). El paquete `tree` no está instalado. Necesitas `sudo` y salida a internet:\n1. Instala `tree` con `dnf`.\n2. Guarda en `duenno.txt` el paquete al que pertenece `/usr/bin/bash`, consultado con `rpm`.\n3. Guarda en `archivos-tree.txt` la lista de ficheros del paquete `tree`, obtenida con `rpm`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-rpm`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`dnf` gestiona repositorios e instalaciones; `rpm` consulta la base de datos local de paquetes con opciones de consulta (`-q`).",
+      "`sudo dnf install -y tree`; `rpm -qf RUTA` dice de qué paquete es un fichero; `rpm -ql PAQUETE` lista sus ficheros.",
+      "`sudo dnf install -y tree`; `rpm -qf /usr/bin/bash > duenno.txt`; `rpm -ql tree > archivos-tree.txt`."
+    ],
+    "solution_summary": "`dnf install` instala desde los repositorios; `rpm -qf /usr/bin/bash` devuelve el paquete dueño (`bash-…`) y `rpm -ql tree` lista los ficheros que trae el paquete, entre ellos `/usr/bin/tree`.",
+    "difficulty": "Intermedio",
+    "points": 160,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "dnf",
+      "rpm",
+      "rpm -qf",
+      "rpm -ql"
+    ],
+    "objetivos_lpi": [
+      "102.5"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [PAQUETES] · Hay que instalar una utilidad en una Fedora y documentar su contenido y el paquete de un comando base.",
+    "preparar": "dnf remove -y -q tree >/dev/null 2>&1 || true\necho \"tree desinstalado: empieza\"",
+    "comprobar": "comprueba \"tree está instalado\" rpm -q tree\ncomprueba \"duenno.txt: el paquete dueño de /usr/bin/bash\" grep -q \"^bash-\" duenno.txt\ncomprueba \"archivos-tree.txt: la lista de ficheros del paquete tree\" bash -c 'grep -qx /usr/bin/tree archivos-tree.txt && [ \"$(wc -l < archivos-tree.txt)\" -gt 3 ]'"
+  },
+  {
+    "id": "lpic1-procesos",
+    "reto": "r101-procesos",
+    "title": "Localizar, reprogramar y matar procesos",
+    "briefing": "En el sistema corren dos procesos que no has lanzado tú, `copianocturna` y `minerocripto`, y hay un tercer programa, `informe`, sin arrancar. Los dos primeros pertenecen a `root` (usa `sudo` donde haga falta):\n1. Averigua el PID de `copianocturna` y guárdalo en `pid.txt` (solo el número).\n2. Cámbiale el valor de nice a 15 sin pararlo.\n3. Termina `minerocripto` con `kill` y su señal por defecto (SIGTERM).\n4. Lanza `informe 3600` en segundo plano con valor de nice 10, de modo que siga vivo aunque se cierre la terminal.\nPara ver el estado: `ps -o pid,ni,comm -C copianocturna,minerocripto,informe`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-procesos`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Hay herramientas distintas para buscar por nombre, para cambiar la prioridad de un proceso que ya corre y para lanzar uno nuevo con otra prioridad; los procesos de `root` exigen privilegios.",
+      "`pgrep -x NOMBRE` da el PID; `renice -n VALOR -p PID` cambia la prioridad de uno en marcha; `kill PID` envía SIGTERM; `nohup nice -n VALOR comando &` lo lanza en segundo plano inmune al cierre de la terminal.",
+      "`pgrep -x copianocturna > pid.txt`; `sudo renice -n 15 -p \"$(cat pid.txt)\"`; `sudo kill \"$(pgrep -x minerocripto)\"`; `nohup nice -n 10 informe 3600 >/dev/null 2>&1 &`."
+    ],
+    "solution_summary": "`pgrep -x` localiza el PID por nombre exacto, `renice -n 15 -p PID` reprioriza un proceso vivo y `kill PID` lo termina con SIGTERM. Para lanzar uno nuevo con otra prioridad y que sobreviva al cierre de la terminal se combina `nohup nice -n 10 comando &`.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 9,
+    "tipo": "averia",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "pgrep",
+      "renice",
+      "kill",
+      "nohup",
+      "nice"
+    ],
+    "objetivos_lpi": [
+      "103.5",
+      "103.6"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "INCIDENCIA [PROCESOS] · Un proceso sospechoso consume recursos y otro de copias necesita menos prioridad; además hay un informe pesado que lanzar con cuidado.",
+    "preparar": "for n in copianocturna minerocripto informe; do\n  pkill -x \"$n\" 2>/dev/null\n  cp /usr/bin/sleep /usr/local/bin/$n\ndone\n# los dos cuelgan de una bash que los recoge al morir (así no quedan zombis)\nsetsid -f bash -c 'copianocturna 86400 & minerocripto 86400 & wait' </dev/null >/dev/null 2>&1\nfor n in copianocturna minerocripto; do\n  for i in $(seq 50); do pgrep -x \"$n\" >/dev/null && break; sleep 0.1; done\n  pgrep -x \"$n\" >/dev/null || { echo \"no se pudo lanzar $n\"; exit 1; }\ndone\necho \"en marcha: copianocturna y minerocripto (nice 0); informe está en /usr/local/bin sin lanzar\"",
+    "comprobar": "vivos() { ps -C \"$1\" -o pid=,ni=,stat= 2>/dev/null | awk '$3 !~ /^Z/ {print $1, $2}'; }\ncn=$(vivos copianocturna | awk '{print $1}' | head -1)\ncomprueba \"pid.txt tiene el PID de copianocturna\" bash -c '[ -n \"$1\" ] && [ \"$(tr -d \" \\n\" < pid.txt)\" = \"$1\" ]' x \"$cn\"\ncomprueba \"copianocturna sigue en marcha con nice 15\" bash -c '[ \"$(echo \"$1\" | wc -l)\" = 1 ] && [ \"$(echo \"$1\" | awk \"{print \\$2}\")\" = 15 ]' x \"$(vivos copianocturna)\"\ncomprueba \"minerocripto ya no está en marcha\" bash -c '[ -z \"$1\" ]' x \"$(vivos minerocripto)\"\ncomprueba \"informe está en marcha con nice 10\" bash -c '[ -n \"$1\" ] && echo \"$1\" | awk \"\\$2 != 10 {m=1} END {exit m}\"' x \"$(vivos informe)\""
+  },
+  {
+    "id": "lpic1-find",
+    "reto": "r101-find",
+    "title": "Limpieza de un almacén con find",
+    "briefing": "En la carpeta `almacen` hay ficheros y directorios de todo tipo. Trabaja desde el directorio del reto y usa `find` con `almacen` como punto de partida (las rutas deben empezar por `almacen/`):\n1. Guarda en `grandes.txt` las rutas de los ficheros normales de más de 2 MiB (una por línea).\n2. Guarda en `viejos.txt` las rutas de los ficheros normales modificados hace más de 365 días.\n3. Quita el permiso de escritura para «otros» a todos los ficheros que lo tengan, usando `find` con `-exec chmod`, sin cambiar ningún otro permiso.\n4. Borra con `find` todos los directorios vacíos de `almacen`; los que tengan algo dentro se conservan.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-find`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`find` filtra por tipo, tamaño, antigüedad, permisos y vacío, y puede actuar sobre lo que encuentra. Ojo con las unidades de `-size` y con que 2 MiB exactos no son «más de 2 MiB».",
+      "`-type f -size +2M`; `-type f -mtime +365`; `-type f -perm -o+w -exec chmod o-w {} \\;`; `-type d -empty -delete`. Los dos primeros se redirigen a un fichero.",
+      "`find almacen -type f -size +2M > grandes.txt`; `find almacen -type f -mtime +365 > viejos.txt`; `find almacen -type f -perm -o+w -exec chmod o-w {} \\;`; `find almacen -type d -empty -delete`."
+    ],
+    "solution_summary": "`-size +2M` y `-mtime +365` seleccionan por tamaño y antigüedad; `-perm -o+w` encuentra lo escribible por «otros» y `-exec chmod o-w {} \\;` lo corrige sin tocar nada más; `-type d -empty -delete` borra directorios vacíos (los anidados vacíos se eliminan de dentro hacia fuera).",
+    "difficulty": "Avanzado",
+    "points": 230,
+    "estimated_min": 10,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "find",
+      "-exec",
+      "-mtime",
+      "-size",
+      "-perm"
+    ],
+    "objetivos_lpi": [
+      "104.7"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ALMACÉN] · Hay que inventariar ficheros pesados y antiguos de una carpeta, cerrar permisos de escritura abiertos y quitar directorios vacíos.",
+    "preparar": "mkdir -p almacen/fotos/2019 almacen/fotos/2025 almacen/copias almacen/tmp/vacio1 almacen/tmp/vacio2/dentro almacen/docs almacen/basura\ntruncate -s 3M almacen/copias/semana1.tar\ntruncate -s 5M almacen/fotos/2025/video.mp4\ntruncate -s 2M almacen/copias/justo2M.tar\ntruncate -s 1M almacen/fotos/2025/foto.jpg\necho hola > almacen/docs/leeme.txt\necho acta > almacen/docs/acta-2019.txt\necho foto > almacen/fotos/2019/playa.jpg\necho viejo > almacen/copias/antigua.tar\ntruncate -s 4M almacen/fotos/2019/boda.mov\ntouch -d '2019-06-01 10:00' almacen/docs/acta-2019.txt almacen/fotos/2019/playa.jpg almacen/fotos/2019/boda.mov\ntouch -d '2020-03-15 08:30' almacen/copias/antigua.tar\ntouch -d '2019-01-01' almacen/fotos/2019\necho x > almacen/docs/compartido.txt; chmod 666 almacen/docs/compartido.txt\necho x > almacen/basura/script.sh; chmod 777 almacen/basura/script.sh\nchmod 644 almacen/docs/leeme.txt; chmod 640 almacen/docs/acta-2019.txt\nln -s ../copias/semana1.tar almacen/docs/enlace-grande\necho \"almacen preparado:\"; find almacen | sort",
+    "comprobar": "norm() { sed \"s|^$RETO/||; s|^\\./||\" \"$1\" 2>/dev/null | sed '/^$/d' | sort -u; }\ncomprueba \"grandes.txt: los ficheros de más de 2 MiB (y nada más)\" bash -c '[ \"$1\" = \"$2\" ]' x \"$(norm grandes.txt)\" \"$(printf '%s\\n' almacen/copias/semana1.tar almacen/fotos/2019/boda.mov almacen/fotos/2025/video.mp4)\"\ncomprueba \"viejos.txt: los ficheros de más de un año (y nada más)\" bash -c '[ \"$1\" = \"$2\" ]' x \"$(norm viejos.txt)\" \"$(printf '%s\\n' almacen/copias/antigua.tar almacen/docs/acta-2019.txt almacen/fotos/2019/boda.mov almacen/fotos/2019/playa.jpg)\"\ncomprueba \"ningún fichero es escribible por «otros» y el resto de permisos sigue igual\" bash -c '[ -z \"$(find almacen -type f -perm -o+w)\" ] && [ \"$(stat -c %a almacen/docs/compartido.txt)\" = 664 ] && [ \"$(stat -c %a almacen/basura/script.sh)\" = 775 ] && [ \"$(stat -c %a almacen/docs/acta-2019.txt)\" = 640 ]'\ncomprueba \"no quedan directorios vacíos y los que tenían algo siguen\" bash -c '[ -z \"$(find almacen -type d -empty)\" ] && [ ! -e almacen/tmp ] && [ -d almacen/fotos/2019 ] && [ -d almacen/basura ] && [ -L almacen/docs/enlace-grande ]' "
+  },
+  {
+    "id": "lpic1-vi",
+    "reto": "r101-vi",
+    "title": "Editar un fichero de configuración con vi",
+    "briefing": "Abre `tienda.conf` con `vi` y déjalo así, sin tocar nada más:\n1. Borra la línea `depurar=si`.\n2. Sustituye en todo el fichero (comentarios incluidos) la palabra `tienda` por `almacen`.\n3. Duplica la línea `puerto=8080` justo debajo de ella y, en la copia, cambia `puerto` por `puerto_admin` (queda `puerto_admin=8080`; la original sigue igual).\n4. Añade como primera línea del fichero `# editado con vi` y como última `activo=si`.\nGuarda y sal del editor.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-vi`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`vi` tiene modo normal (movimiento, borrar, copiar, pegar) y modo de inserción; las órdenes con `:` (línea de comandos) sirven para sustituir, guardar y salir.",
+      "En modo normal: `dd` borra una línea, `yy` y `p` copian y pegan, `cw` cambia una palabra, `gg` y `G` saltan al principio y al final, `O` y `o` abren línea encima y debajo. Con `:%s/viejo/nuevo/g` sustituyes en todo el fichero; `:wq` guarda y sale.",
+      "`vi tienda.conf`; `/depurar` Intro `dd`; `:%s/tienda/almacen/g`; sobre `puerto=8080`: `yyp` y cambia la palabra de la copia a `puerto_admin`; `ggO# editado con vi` Esc; `Goactivo=si` Esc; `:wq`."
+    ],
+    "solution_summary": "En modo normal `dd` borra la línea y `yy`+`p` la duplica; `:%s/tienda/almacen/g` sustituye en todo el fichero; `gg O` y `G o` añaden líneas al principio y al final; `:wq` guarda y sale. El resultado debe ser exactamente el fichero esperado, sin otros cambios.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 9,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "vi",
+      "vim",
+      ":%s",
+      "dd",
+      "yy"
+    ],
+    "objetivos_lpi": [
+      "103.8"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [EDICIÓN] · Hay que retocar un fichero de configuración desde la terminal con el editor vi.",
+    "preparar": "cat > tienda.conf <<'FIN'\n# configuración de la tienda\nnombre=tienda\npuerto=8080\ndepurar=si\nlog=/var/log/tienda.log\nusuario=prueba\nFIN\necho \"tienda.conf:\"; cat -n tienda.conf",
+    "comprobar": "comprueba \"ya no está la línea depurar=si\" bash -c '! grep -q \"^depurar=\" tienda.conf'\ncomprueba \"no queda «tienda» y todas las apariciones son ahora «almacen»\" bash -c '! grep -q tienda tienda.conf && [ \"$(grep -o almacen tienda.conf | wc -l)\" = 3 ]'\ncomprueba \"puerto_admin=8080 está justo debajo de puerto=8080\" bash -c 'grep -A1 -x \"puerto=8080\" tienda.conf | tail -1 | grep -qx \"puerto_admin=8080\"'\ncomprueba \"empieza por # editado con vi, termina en activo=si y lo demás queda igual\" bash -c '[ \"$(cat tienda.conf)\" = \"$(printf \"%s\\n\" \"# editado con vi\" \"# configuración de la almacen\" \"nombre=almacen\" \"puerto=8080\" \"puerto_admin=8080\" \"log=/var/log/almacen.log\" \"usuario=prueba\" \"activo=si\")\" ]' "
+  },
+  {
+    "id": "lpic1-entorno-shell",
+    "reto": "r101-entorno-shell",
+    "title": "Una variable exportada y un fichero con espacios en el nombre",
+    "briefing": "Te piden dos comprobaciones básicas de la shell:\n1. Define la variable `CURSO` con el texto `LPIC 101` (con el espacio) y expórtala.\n2. Lanza un `bash` hijo que escriba el valor de `CURSO` en `hijo.txt`; ese fichero debe contener solo `LPIC 101`.\n3. Crea un fichero vacío cuyo nombre sea `notas de clase.txt`, con los espacios dentro del nombre (un único fichero).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-entorno-shell`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un valor con espacios necesita comillas al asignarlo, y un nombre de fichero con espacios también al usarlo, o la shell lo parte en varias palabras.",
+      "`export` para que el hijo la reciba; `bash -c 'printf \"%s\\n\" \"$CURSO\"'` la imprime desde el hijo (con comillas simples, para que la expanda el hijo). `touch` crea el fichero vacío.",
+      "`CURSO=\"LPIC 101\"; export CURSO`; `bash -c 'printf \"%s\\n\" \"$CURSO\"' > hijo.txt`; `touch \"notas de clase.txt\"`."
+    ],
+    "solution_summary": "Las comillas evitan que la shell separe palabras tanto en el valor (`CURSO=\"LPIC 101\"`) como en el nombre del fichero. Solo las variables exportadas llegan a los procesos hijos, que por eso pueden imprimirla.",
+    "difficulty": "Básico",
+    "points": 120,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "bash",
+      "export",
+      "comillas",
+      "touch"
+    ],
+    "objetivos_lpi": [
+      "103.1"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ENTORNO] · Hay que pasar un valor con espacios a un subproceso y crear un fichero cuyo nombre lleva espacios.",
+    "preparar": "rm -f hijo.txt 'notas de clase.txt'",
+    "comprobar": "comprueba \"el proceso hijo recibió la variable\" bash -c 'test \"$(cat hijo.txt)\" = \"LPIC 101\"'\ncomprueba \"se creó el nombre con espacios\" test -f 'notas de clase.txt'"
+  },
+  {
+    "id": "lpic1-esquema-particionado",
+    "reto": "r101-esquema-particionado",
+    "title": "Esquema de particionado MBR en una imagen y su fstab",
+    "briefing": "Te piden diseñar el particionado de un disco de 1 GiB sobre una imagen y dejar escrito su `fstab` (nada de esto toca discos reales; `sfdisk` está en `/usr/sbin`, usa `sudo sfdisk`):\n1. Crea una imagen de disco cruda de 1 GiB exactos llamada `disco.img`.\n2. Particiónala con `sfdisk` usando tabla MBR (`dos`) y 4 particiones primarias: la 1 de 200M tipo `83` (Linux, para `/boot`); la 2 de 256M tipo `82` (swap); la 3 de 300M tipo `83` (para `/`); y la 4 con el resto del espacio, tipo `83` (para `/var`).\n3. Crea `fstab.nuevo` con una línea de seis columnas por cada partición, como si fueran `/dev/sdb1` a `/dev/sdb4`: `/boot`, swap (punto `none`), `/` y `/var`, con sistema de ficheros `ext4` (y `swap` para la 2), opciones `defaults` (y `sw` para el swap), dump `0` en todas y orden de `fsck` 1 para `/`, 2 para `/boot` y `/var`, y 0 para el swap. El fichero debe pasar `findmnt --verify --tab-file fstab.nuevo` sin errores.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-esquema-particionado`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Una imagen es un fichero con el tamaño de un disco; `sfdisk` lee su descripción de particiones por la entrada estándar. Un `fstab` son seis columnas: dispositivo, punto de montaje, tipo, opciones, dump y pass.",
+      "`truncate -s 1G disco.img`; a `sudo sfdisk disco.img` le pasas `label: dos` y una línea `size=…, type=…` por partición (la última sin `size` ocupa lo que queda). Para validar el `fstab`, `findmnt --verify --tab-file`.",
+      "`truncate -s 1G disco.img`; `sudo sfdisk disco.img` con `label: dos`, `size=200M, type=83`, `size=256M, type=82`, `size=300M, type=83`, `type=83`; en `fstab.nuevo`: `/dev/sdb1 /boot ext4 defaults 0 2`, `/dev/sdb2 none swap sw 0 0`, `/dev/sdb3 / ext4 defaults 0 1`, `/dev/sdb4 /var ext4 defaults 0 2`."
+    ],
+    "solution_summary": "`truncate -s 1G` crea la imagen; `sfdisk` recibe la tabla como texto (`label: dos` y una línea `size=, type=` por partición, la última sin tamaño). El `fstab` lleva seis columnas: la raíz con pass 1, `/boot` y `/var` con pass 2 y el swap con `none swap sw 0 0`; `findmnt --verify` lo valida.",
+    "difficulty": "Avanzado",
+    "points": 230,
+    "estimated_min": 10,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "sfdisk",
+      "MBR",
+      "fstab",
+      "truncate",
+      "findmnt"
+    ],
+    "objetivos_lpi": [
+      "102.1"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ALMACENAMIENTO] · Hay que diseñar el reparto de un disco nuevo y dejar redactada su tabla de montaje antes de instalar.",
+    "preparar": "rm -f disco.img fstab.nuevo",
+    "comprobar": "comprueba \"disco.img existe y tiene un tamaño de 1 GiB\" bash -c 'test -f disco.img && [ $(stat -c %s disco.img) -eq 1073741824 ]'\ncomprueba \"disco.img tiene tabla MBR con 4 particiones (/boot, swap, /, /var)\" bash -c 'sfdisk -d disco.img 2>/dev/null | grep -q \"label: dos\" && sfdisk -d disco.img 2>/dev/null | grep -E -q \"disco.img1.*type=83\" && sfdisk -d disco.img 2>/dev/null | grep -E -q \"disco.img2.*type=82\" && sfdisk -d disco.img 2>/dev/null | grep -E -q \"disco.img3.*type=83\" && sfdisk -d disco.img 2>/dev/null | grep -E -q \"disco.img4.*type=83\"'\ncomprueba \"fstab.nuevo es sintácticamente válido según findmnt\" bash -c 'findmnt --verify --tab-file fstab.nuevo 2>&1 | grep -q \"0 parse errors, 0 errors\"'\ncomprueba \"fstab.nuevo define /boot, swap, / (pass 1) y /var\" bash -c 'grep -E -q \"^[[:space:]]*/dev/sdb1[[:space:]]+/boot[[:space:]]+ext4\" fstab.nuevo && grep -E -q \"^[[:space:]]*/dev/sdb2[[:space:]]+(none|swap)[[:space:]]+swap\" fstab.nuevo && grep -E -q \"^[[:space:]]*/dev/sdb3[[:space:]]+/[[:space:]]+ext4[[:space:]]+defaults[[:space:]]+0[[:space:]]+1\" fstab.nuevo && grep -E -q \"^[[:space:]]*/dev/sdb4[[:space:]]+/var[[:space:]]+ext4[[:space:]]+defaults[[:space:]]+0[[:space:]]+2\" fstab.nuevo'"
+  },
+  {
+    "id": "lpic1-hardware",
+    "reto": "r101-hardware",
+    "title": "Módulos del kernel, lista negra y datos del procesador",
+    "briefing": "Te piden cuatro ajustes de hardware (los ficheros de `/etc` exigen privilegios: usa `sudo` para escribirlos):\n1. Guarda en `modulos.txt` la lista de módulos cargados en el kernel tal como la muestra `lsmod`.\n2. Crea `/etc/modprobe.d/blacklist-audio.conf` con la directiva que impide la carga automática del módulo `snd_hda_intel`.\n3. Extrae de `/proc/cpuinfo` el valor del modelo del procesador (lo que va tras `model name :`, sin el prefijo) y guárdalo en `cpu-modelo.txt`, en una sola línea.\n4. Crea `/etc/modules-load.d/red-virtual.conf` para que el módulo `dummy` se cargue al arrancar el sistema.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-hardware`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Los módulos cargados salen de `/proc/modules`, el modelo del procesador de `/proc/cpuinfo`, y los ficheros de `/etc/modprobe.d/` y `/etc/modules-load.d/` son listas de texto con una directiva o un módulo por línea.",
+      "`lsmod > modulos.txt`; `grep -m1 'model name' /proc/cpuinfo` y `sed` para quitar el prefijo; en `modprobe.d` la palabra clave es la de lista negra; en `modules-load.d` basta con el nombre del módulo. Escribe en `/etc` con `sudo tee`.",
+      "`lsmod > modulos.txt`; `echo 'blacklist snd_hda_intel' | sudo tee /etc/modprobe.d/blacklist-audio.conf`; `grep -m1 'model name' /proc/cpuinfo | sed 's/.*: //' > cpu-modelo.txt`; `echo dummy | sudo tee /etc/modules-load.d/red-virtual.conf`."
+    ],
+    "solution_summary": "`lsmod` muestra los módulos cargados (cabecera `Module`); `blacklist NOMBRE` en un fichero de `/etc/modprobe.d/` evita su carga automática; los módulos de `/etc/modules-load.d/*.conf` se cargan en el arranque; el modelo de CPU está en `model name` de `/proc/cpuinfo`.",
+    "difficulty": "Intermedio",
+    "points": 170,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "lsmod",
+      "modprobe.d",
+      "modules-load.d",
+      "/proc/cpuinfo"
+    ],
+    "objetivos_lpi": [
+      "101.1"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [HARDWARE] · Hay que dejar anotado el estado de los módulos, vetar un controlador de audio, cargar uno de red virtual al arrancar y documentar la CPU.",
+    "preparar": "rm -f /etc/modprobe.d/blacklist-audio.conf /etc/modules-load.d/red-virtual.conf\nmkdir -p /etc/modprobe.d /etc/modules-load.d\nrm -f modulos.txt cpu-modelo.txt\necho \"entorno de hardware listo\"",
+    "comprobar": "comprueba \"modulos.txt contiene la lista de lsmod\" bash -c 'test -s modulos.txt && grep -q \"^Module\" modulos.txt'\ncomprueba \"blacklist-audio.conf: impide la carga automática de snd_hda_intel\" bash -c 'grep -E \"^blacklist[[:space:]]+snd_hda_intel\" /etc/modprobe.d/blacklist-audio.conf'\ncomprueba \"cpu-modelo.txt contiene el modelo de procesador\" bash -c '[ \"$(wc -l < cpu-modelo.txt)\" -eq 1 ] && [ \"$(cat cpu-modelo.txt)\" = \"$(grep -m1 \"^model name\" /proc/cpuinfo | sed \"s/^model name[[:space:]]*: //\")\" ]'\ncomprueba \"red-virtual.conf contiene el módulo dummy\" bash -c 'grep -qx \"dummy\" /etc/modules-load.d/red-virtual.conf'"
+  },
+  {
+    "id": "lpic1-variables-entorno",
+    "reto": "r101-variables-entorno",
+    "title": "Variables locales y exportadas, y el $ sin expandir",
+    "briefing": "Te piden demostrar la diferencia entre una variable de shell y una variable de entorno:\n1. Crea la variable `VAR_LOCAL` con el valor `solo aqui` sin exportarla, y `VAR_EXPORTADA` con el valor `hola desde el padre`, esta sí exportada.\n2. Lanza un `bash` hijo que escriba, cada una en su línea y entre corchetes, el valor de `VAR_LOCAL` y el de `VAR_EXPORTADA`, y guarda su salida en `hijos.txt`. Debe quedar exactamente `[]` y, debajo, `[hola desde el padre]`.\n3. Guarda en `env.txt` solo las líneas de la salida de `env` que empiezan por `VAR_`, y en `printenv.txt` el valor de `VAR_EXPORTADA` obtenido con `printenv` (solo el valor).\n4. Elimina `VAR_EXPORTADA` de la shell y guarda en `unset.txt` el intento de imprimirla entre corchetes: debe quedar `[]`.\n5. Crea `comillas.txt` con dos líneas que contengan el texto literal `$HOME` (sin expandir): la primera escrita con comillas simples y la segunda con comillas dobles escapando el `$`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-variables-entorno`); los ficheros que se piden sin ruta van ahí. Haz los pasos 1 a 4 en la misma shell, porque las variables viven en ella.",
+    "hints": [
+      "Una variable sin exportar solo existe en la shell que la creó; los procesos hijos únicamente heredan las exportadas. Entre `$` y comillas la diferencia es quién expande qué.",
+      "`export` marca la variable para los hijos; `bash -c '…'` crea el hijo (con comillas simples el `$` lo expande el hijo, no tu shell). `unset` borra una variable y `${VAR-}` se expande a vacío si no existe. Entre comillas simples el `$` es literal; entre dobles, escápalo con una barra invertida.",
+      "`VAR_LOCAL=\"solo aqui\"; export VAR_EXPORTADA=\"hola desde el padre\"`; `bash -c 'echo \"[$VAR_LOCAL]\"; echo \"[$VAR_EXPORTADA]\"' > hijos.txt`; `env | grep '^VAR_' > env.txt`; `printenv VAR_EXPORTADA > printenv.txt`; `unset VAR_EXPORTADA; echo \"[${VAR_EXPORTADA-}]\" > unset.txt`; `printf '%s\\n' '$HOME' \"\\$HOME\" > comillas.txt`."
+    ],
+    "solution_summary": "La shell hija solo hereda las variables exportadas con `export`, por eso ve `VAR_EXPORTADA` y no `VAR_LOCAL`; `env` y `printenv` muestran solo el entorno exportado. `unset` elimina la variable y `${VAR-}` evita el error al expandirla vacía. Con comillas simples el `$` es literal y con comillas dobles hay que escaparlo (`\\$HOME`).",
+    "difficulty": "Intermedio",
+    "points": 180,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "bash",
+      "variables de entorno",
+      "export",
+      "comillas"
+    ],
+    "objetivos_lpi": [
+      "103.1"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [ENTORNO] · Hay que demostrar qué variables de la shell heredan los procesos hijos y cómo se escribe un `$` literal.",
+    "preparar": "true",
+    "comprobar": "comprueba \"hijos.txt: la hija no ve VAR_LOCAL y sí ve VAR_EXPORTADA\" bash -c 'diff <(printf \"[]\\n[hola desde el padre]\\n\") hijos.txt'\ncomprueba \"env.txt: solo VAR_EXPORTADA, con su valor\" bash -c 'diff <(printf \"VAR_EXPORTADA=hola desde el padre\\n\") env.txt'\ncomprueba \"printenv.txt: el valor de VAR_EXPORTADA\" bash -c 'diff <(printf \"hola desde el padre\\n\") printenv.txt'\ncomprueba \"unset.txt: VAR_EXPORTADA ya no existe\" bash -c 'diff <(printf \"[]\\n\") unset.txt'\ncomprueba 'comillas.txt: dos veces $HOME sin expandir' bash -c 'diff <(printf \"%s\\n\" \"\\$HOME\" \"\\$HOME\") comillas.txt'"
+  },
+  {
+    "id": "lpic1-multiplexor-tmux",
+    "reto": "r101-multiplexor-tmux",
+    "title": "Una sesión de tmux dirigida desde fuera",
+    "briefing": "Te piden manejar una sesión de `tmux` sin entrar en ella:\n1. Crea una sesión en segundo plano llamada `lpi101` que ejecute `bash` y cuyo directorio de inicio sea el del reto.\n2. Guarda en `sesiones.txt` la lista de sesiones de `tmux`.\n3. Envía a la sesión `lpi101` la orden `echo \"hola desde tmux\"` seguida de Intro.\n4. Espera un segundo y guarda en `pantalla.txt` el texto que se ve en esa sesión (solo texto, sin entrar en ella).\n5. Cierra la sesión `lpi101`; no debe quedar viva al terminar.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-multiplexor-tmux`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`tmux` puede crear, escribir y leer una sesión sin que tú estés dentro; cada acción es un subcomando con la opción de sesión de destino.",
+      "`new-session` con las opciones para segundo plano, nombre y directorio; `ls` para listar; `send-keys -t NOMBRE 'texto' Enter`; `capture-pane` con la opción que imprime por la salida estándar; `kill-session -t NOMBRE`. Pausa con `sleep 1` antes de capturar.",
+      "`tmux new-session -d -s lpi101 -c \"$PWD\" bash`; `tmux ls > sesiones.txt`; `tmux send-keys -t lpi101 'echo \"hola desde tmux\"' Enter`; `sleep 1; tmux capture-pane -p -t lpi101 > pantalla.txt`; `tmux kill-session -t lpi101`."
+    ],
+    "solution_summary": "`new-session -d -s NOMBRE -c DIR` crea la sesión desacoplada, `send-keys` teclea en ella y `capture-pane -p` vuelca la pantalla por la salida estándar; hay que esperar un instante para que la orden se ejecute. `kill-session -t NOMBRE` la cierra al final.",
+    "difficulty": "Intermedio",
+    "points": 170,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "tmux",
+      "send-keys",
+      "capture-pane",
+      "sesiones"
+    ],
+    "objetivos_lpi": [
+      "103.5"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [TERMINAL] · Hay que lanzar una sesión de terminal persistente, teclear en ella a distancia y recoger lo que muestra.",
+    "preparar": "runuser -u alumno -- tmux kill-session -t lpi101 2>/dev/null || true",
+    "comprobar": "comprueba \"sesiones.txt: aparece la sesión lpi101\" bash -c 'grep -Eq \"^lpi101: [0-9]+ windows?\" sesiones.txt'\ncomprueba \"pantalla.txt: la salida de echo dentro de la sesión\" bash -c 'grep -qx \"hola desde tmux\" pantalla.txt'\ncomprueba \"la sesión lpi101 ya no existe\" bash -c '! runuser -u alumno -- tmux has-session -t lpi101 2>/dev/null'"
+  },
+  {
+    "id": "lpic1-dependencias",
+    "reto": "r101-dependencias",
+    "title": "Bibliotecas compartidas de Bash",
+    "briefing": "Te piden documentar las bibliotecas de `/bin/bash` (`ldconfig` está en `/usr/sbin`, que no está en tu PATH: usa `sudo ldconfig` o `/usr/sbin/ldconfig`):\n1. Guarda en `bash-dependencias.txt` las bibliotecas compartidas que necesita `/bin/bash`.\n2. Extrae de ese fichero solo la línea de `libc.so.6` y guárdala en `glibc.txt`.\n3. Busca en la caché del enlazador dinámico (`ldconfig`) la entrada de `libc.so.6` y guárdala en `cache-glibc.txt`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r101-dependencias`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Hay un comando que enseña de qué bibliotecas depende un ejecutable y otro que muestra la caché de bibliotecas del sistema; el resto es filtrar con `grep`.",
+      "`ldd RUTA` lista las dependencias; `sudo ldconfig -p` imprime la caché; cada resultado se filtra con `grep libc.so.6` y se redirige al fichero pedido.",
+      "`ldd /bin/bash > bash-dependencias.txt`; `grep 'libc.so.6 =>' bash-dependencias.txt > glibc.txt`; `sudo ldconfig -p | grep 'libc.so.6' > cache-glibc.txt`."
+    ],
+    "solution_summary": "`ldd` resuelve las dependencias dinámicas de un binario y `ldconfig -p` imprime la caché de bibliotecas que usa el enlazador; con `grep` se aísla la entrada de `libc.so.6` en ambos casos.",
+    "difficulty": "Básico",
+    "points": 120,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "ldd",
+      "ldconfig",
+      "libc",
+      "grep"
+    ],
+    "objetivos_lpi": [
+      "102.3"
+    ],
+    "category": "LPIC-1 · 101-500",
+    "blind_alert": "PETICIÓN [BIBLIOTECAS] · Hay que documentar de qué bibliotecas compartidas depende Bash y dónde las localiza el sistema.",
+    "preparar": "ldconfig -p >/dev/null",
+    "comprobar": "comprueba \"se guardaron las dependencias de Bash\" test -s bash-dependencias.txt\ncomprueba \"la salida incluye libc.so.6\" grep -q 'libc\\.so\\.6 =>' bash-dependencias.txt\ncomprueba \"glibc.txt contiene la dependencia correcta\" bash -c '[ \"$(wc -l < glibc.txt)\" -eq 1 ] && grep -q \"libc\\.so\\.6 =>\" glibc.txt'\ncomprueba \"la caché incluye libc.so.6\" grep -q 'libc\\.so\\.6 (' cache-glibc.txt"
+  }
+]

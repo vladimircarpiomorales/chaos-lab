@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Prueba en seco de un reto del pack LPIC-1 102-500, SIN el servidor de Chaos Lab.
+# Prueba en seco de un reto de los packs LPIC-1 (101-500, 102-500), SIN el servidor de Chaos Lab.
 # Arranca un contenedor propio (lpicseco-<x>, nunca chaoslab-*) con la imagen del pack, ejecuta el setup_sh y el
 # check_script tal como los construye el motor, comprueba que el corrector empieza con algún ✘, aplica la
 # solución (tests/e2e/soluciones/<id>.sh) y comprueba que acaba todo en ✔. Borra el contenedor al terminar.

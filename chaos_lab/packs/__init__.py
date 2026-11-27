@@ -7,7 +7,7 @@ preparación y un corrector por script (`comprueba "etiqueta" comando…`).
 
 Campos de cada objeto: id, reto (id original, es el nombre del directorio), title, briefing, hints (3),
 solution_summary, difficulty, points, estimated_min, tipo, certs, tags, objetivos_lpi, category, blind_alert,
-preparar, comprobar.
+preparar, comprobar; opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
 """
 
 from __future__ import annotations
@@ -20,6 +20,8 @@ from typing import Any, Callable
 PACKS_DIR = Path(__file__).parent
 RETOS_BASE = "/home/alumno/retos"
 ROLE = "lpic"
+DEFAULT_DISTRO = "lpic-debian"
+DISTRO_NOMBRE = {"lpic-debian": "Debian", "lpic-fedora": "Fedora"}
 
 
 def _setup_sh(reto: str, preparar: str) -> str:
@@ -33,6 +35,7 @@ def _setup_sh(reto: str, preparar: str) -> str:
 
 def _builder(item: dict[str, Any]) -> Callable[[random.Random], dict[str, Any]]:
     reto = item["reto"]
+    distro = item.get("distro", DEFAULT_DISTRO)
     workdir = f"{RETOS_BASE}/{reto}"
 
     def build(rng: random.Random) -> dict[str, Any]:
@@ -41,7 +44,7 @@ def _builder(item: dict[str, Any]) -> Callable[[random.Random], dict[str, Any]]:
             "nodes": [
                 {
                     "role": ROLE,
-                    "distro": "lpic-debian",
+                    "distro": distro,
                     "shell": "/bin/bash",
                     "default_user": "alumno",
                     "workdir": workdir,
@@ -59,7 +62,7 @@ def _builder(item: dict[str, Any]) -> Callable[[random.Random], dict[str, Any]]:
             "hints": list(item["hints"]),
             "topology": {
                 "entry": None,
-                "nodes": {ROLE: {"runs": "Debian · tu puesto de trabajo", "look": ["el directorio del reto", "el manual del comando (man)"]}},
+                "nodes": {ROLE: {"runs": f"{DISTRO_NOMBRE.get(distro, distro)} · tu puesto de trabajo", "look": ["el directorio del reto", "el manual del comando (man)"]}},
                 "links": [],
                 "checks": {},
             },

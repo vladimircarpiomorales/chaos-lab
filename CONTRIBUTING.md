@@ -50,7 +50,7 @@ El jugador ve, **antes de resolver**, el briefing, las etiquetas de las sondas y
 | Avanzado | Varias capas (red + servicio) o un dato oculto que hay que deducir (ruta, IP atacante, MTU). |
 | Experto | 3 nodos y 3+ fallos encadenados en capas distintas: arreglar uno descubre el siguiente. |
 
-`category` es una de: Redes y routing · DNS · Servicios web y TLS · Sistema y permisos · Seguridad (Blue Team) · Incidente mayor · LPIC-1 · 102-500 · Linux Essentials · 010-160 (packs de retos, ver abajo).
+`category` es una de: Redes y routing · DNS · Servicios web y TLS · Sistema y permisos · Seguridad (Blue Team) · Incidente mayor · LPIC-1 · 102-500 · LPIC-1 · 101-500 · Linux Essentials · 010-160 (packs de retos, ver abajo).
 
 ## Probar antes del pull request
 
@@ -69,7 +69,7 @@ Debe salir **todo ✗ antes** (salvo sondas de «no romper lo que funciona») y 
 
 ## Packs de escenarios como datos
 
-Los escenarios repetitivos (retos de práctica con el mismo molde) no se escriben como funciones: viven en `chaos_lab/packs/<pack>.json` y `chaos_lab/packs/__init__.py` los convierte en entradas de `SCENARIO_CATALOG` (se registran en `scenarios.py` con `load_pack`). El pack `lpic1_102.json` trae los 27 retos de «LPIC-1 · 102-500»: un nodo `lpic` (imagen `lpic-debian`, usuario `alumno`, terminal en `/home/alumno/retos/<reto>`), `preparar` (script de montaje, sin `apt`: la imagen trae todo) y `comprobar` (líneas `comprueba "etiqueta" comando…`). Las mismas reglas de pistas, briefing sin spoilers y dificultad se aplican; la imagen se construye con `images/construir.sh lpic-debian`. Soluciones: `tests/e2e/soluciones/lpic1-<x>.sh`; prueba sin servidor: `tests/e2e/lpic_seco.sh <id>` (contenedor propio `lpicseco-*`). El pack `essentials_010.json` añade los 14 retos de «Linux Essentials · 010-160» (ids `lpie-*`, `certs: ["Linux Essentials"]`, soluciones `lpie-<x>.sh`).
+Los escenarios repetitivos (retos de práctica con el mismo molde) no se escriben como funciones: viven en `chaos_lab/packs/<pack>.json` y `chaos_lab/packs/__init__.py` los convierte en entradas de `SCENARIO_CATALOG` (se registran en `scenarios.py` con `load_pack`). El pack `lpic1_102.json` trae los 27 retos de «LPIC-1 · 102-500»: un nodo `lpic` (imagen `lpic-debian`, usuario `alumno`, terminal en `/home/alumno/retos/<reto>`), `preparar` (script de montaje, sin `apt`: la imagen trae todo) y `comprobar` (líneas `comprueba "etiqueta" comando…`). Las mismas reglas de pistas, briefing sin spoilers y dificultad se aplican; la imagen se construye con `images/construir.sh lpic-debian`. Soluciones: `tests/e2e/soluciones/lpic1-<x>.sh`; prueba sin servidor: `tests/e2e/lpic_seco.sh <id>` (contenedor propio `lpicseco-*`). El pack `essentials_010.json` añade los 14 retos de «Linux Essentials · 010-160» (ids `lpie-*`, `certs: ["Linux Essentials"]`, soluciones `lpie-<x>.sh`). El pack `lpic1_101.json` añade 18 retos de «LPIC-1 · 101-500» (ids `lpic1-<x>`, directorio `r101-<x>`); cada reto admite un campo opcional `distro` (por defecto `lpic-debian`; `r101-rpm` usa `lpic-fedora`, imagen `images/lpic-fedora`, también con `construir.sh lpic-fedora`). Quedan fuera los 5 retos de VM de la 101-500 (`ubuntu.json`), que necesitarán un nodo QEMU.
 
 ## Estilo
 

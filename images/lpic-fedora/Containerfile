@@ -1,0 +1,17 @@
+# Imagen Fedora del pack «LPIC-1 · 101-500» de Chaos Lab (reto de paquetes RPM con dnf y rpm).
+# Misma convención que lpic-debian: se arranca como root, el jugador trabaja como alumno (sudo, contraseña «alumno»).
+# `tree` NO se instala a propósito: el reto consiste en instalarlo con dnf (hace falta red en esa práctica).
+FROM docker.io/library/fedora:44
+RUN dnf install -y \
+      acl bash-completion bind-utils coreutils cronie curl file findutils \
+      gzip iproute iputils less man-db man-pages nano net-tools openssh-clients \
+      passwd procps-ng psmisc sudo tar util-linux vim-enhanced vim-minimal wget which \
+ && useradd --create-home --shell /bin/bash alumno \
+ && printf 'alumno:alumno\n' | chpasswd \
+ && printf 'Defaults:alumno !targetpw\nalumno ALL=(ALL) ALL\n' > /etc/sudoers.d/alumno \
+ && chmod 0440 /etc/sudoers.d/alumno \
+ && install -d -o alumno -g alumno /home/alumno/retos \
+ && dnf clean all
+LABEL org.opencontainers.image.title="chaos-lpic-fedora" \
+      org.opencontainers.image.description="fedora con las herramientas de los retos RPM de LPIC-1 101-500 de Chaos Lab"
+CMD ["bash"]

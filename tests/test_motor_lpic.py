@@ -2,6 +2,7 @@
 import json
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -14,6 +15,9 @@ except ImportError:  # entorno sin FastAPI: basta un sustituto, solo probamos bu
 
 from chaos_lab import engine, pty_bridge
 from chaos_lab.engine import ChaosEngine
+
+
+REPO = Path(__file__).resolve().parent.parent
 
 
 class FakeRun:
@@ -201,8 +205,8 @@ def test_workdir_en_el_exec_del_pty():
 
 def test_pack_lpic1_carga_27_escenarios():
     from chaos_lab.scenarios import SCENARIO_CATALOG, instantiate_scenario
-    pack = [s for s in SCENARIO_CATALOG if s["id"].startswith("lpic1-")]
-    assert len(pack) == 27
+    pack = [s for s in SCENARIO_CATALOG if s["category"] == "LPIC-1 · 102-500"]
+    assert len(pack) == 27 and all(s["id"].startswith("lpic1-") for s in pack)
     assert len({s["id"] for s in SCENARIO_CATALOG}) == len(SCENARIO_CATALOG), "ids únicos en todo el catálogo"
     for s in pack:
         assert s["tipo"] in ("averia", "tarea") and s["category"] == "LPIC-1 · 102-500" and s["certs"] == ["LPIC-1"]
@@ -233,3 +237,36 @@ def test_pack_essentials_010_carga_14_escenarios():
         assert n["workdir"] == f"/home/alumno/retos/{reto}" and n["distro"] == "lpic-debian" and n["default_user"] == "alumno"
         assert inst["check_script"]["cwd"] == n["workdir"] and "comprueba" in inst["check_script"]["script"]
         assert "apt-get" not in n["setup_sh"]
+
+
+# ---------- pack LPIC-1 101-500 ----------
+
+def test_pack_lpic1_101_carga_18_escenarios():
+    from chaos_lab.scenarios import SCENARIO_CATALOG, instantiate_scenario
+    pack = [s for s in SCENARIO_CATALOG if s["category"] == "LPIC-1 · 101-500"]
+    assert len(pack) == 18 and all(s["id"].startswith("lpic1-") for s in pack)
+    assert len({s["id"] for s in SCENARIO_CATALOG}) == len(SCENARIO_CATALOG), "ids únicos en todo el catálogo"
+    distros = set()
+    for s in pack:
+        assert s["tipo"] in ("averia", "tarea") and s["certs"] == ["LPIC-1"]
+        assert s["difficulty"] in ("Básico", "Intermedio", "Avanzado")
+        inst = instantiate_scenario(s["id"], 1)
+        assert len(inst["hints"]) == 3 and all(inst["hints"])
+        n = inst["nodes"][0]
+        reto = n["workdir"].rsplit("/", 1)[1]
+        assert reto.startswith("r101-") and n["workdir"] == f"/home/alumno/retos/{reto}" and n["default_user"] == "alumno"
+        assert n["distro"] in engine.IMAGE_CANDIDATES
+        distros.add(n["distro"])
+        assert inst["check_script"]["cwd"] == n["workdir"] and "comprueba" in inst["check_script"]["script"]
+        assert "apt-get install" not in n["setup_sh"] and "dnf install" not in n["setup_sh"]
+        assert f"/home/alumno/retos/{reto}" in inst["briefing"]
+        assert (REPO / "tests/e2e/soluciones" / f"{s['id']}.sh").exists()
+    assert distros == {"lpic-debian", "lpic-fedora"}
+
+
+def test_pack_lpic1_101_rpm_en_fedora_y_resto_en_debian():
+    from chaos_lab.scenarios import instantiate_scenario
+    assert instantiate_scenario("lpic1-rpm", 1)["nodes"][0]["distro"] == "lpic-fedora"
+    assert "Fedora" in instantiate_scenario("lpic1-rpm", 1)["topology"]["nodes"]["lpic"]["runs"]
+    assert instantiate_scenario("lpic1-dpkg", 1)["nodes"][0]["distro"] == "lpic-debian"
+    assert engine.IMAGE_CANDIDATES["lpic-fedora"][0] == "localhost/chaos-lpic-fedora:1"

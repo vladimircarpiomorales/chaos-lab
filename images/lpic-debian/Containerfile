@@ -1,5 +1,5 @@
-# Imagen del pack «LPIC-1 · 102-500» de Chaos Lab: lo de chaos-debian + las herramientas de los retos de práctica
-# (at, gnupg, Xvfb, ipcalc, chrony, rsyslog, logrotate, journalctl, postfix…), para no descargar nada al desplegar.
+# Imagen de los packs LPIC-1 (101-500 y 102-500) y Linux Essentials de Chaos Lab: lo de chaos-debian + las herramientas de los retos de práctica
+# (at, gnupg, Xvfb, ipcalc, chrony, rsyslog, logrotate, journalctl, postfix, tmux…), para no descargar nada al desplegar.
 FROM docker.io/library/debian:trixie
 ENV DEBIAN_FRONTEND=noninteractive
 # Postfix sin preguntas: «Local only»
@@ -15,7 +15,7 @@ RUN apt-get update \
       python3 sudo tar tcpdump tree usbutils vim wget xz-utils \
       sysstat iftop iptraf-ng \
       zip unzip at gnupg xvfb x11-utils xauth ipcalc netbase wpasupplicant socat tzdata chrony rsyslog logrotate \
-      systemd-journal-remote postfix \
+      systemd-journal-remote postfix tmux \
  && rm -rf /var/lib/apt/lists/*
 # Usuario de prácticas (el jugador trabaja como alumno, con sudo y contraseña «alumno»)
 RUN useradd -m -s /bin/bash alumno \
@@ -24,5 +24,5 @@ RUN useradd -m -s /bin/bash alumno \
  && chmod 0440 /etc/sudoers.d/alumno \
  && install -d -o alumno -g alumno /home/alumno/retos
 LABEL org.opencontainers.image.title="chaos-lpic-debian" \
-      org.opencontainers.image.description="debian:trixie con las herramientas de los retos LPIC-1 102-500 de Chaos Lab"
+      org.opencontainers.image.description="debian:trixie con las herramientas de los retos LPIC-1 (101-500, 102-500) de Chaos Lab"
 CMD ["bash"]
