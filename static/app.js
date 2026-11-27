@@ -6,6 +6,8 @@ const state = {
   active: null,
   filter: "all",
   search: "",
+  category: "",
+  cert: "",
   activeNodeRole: null,
   sessions: {}, // role -> { term, fitAddon, ws, slotEl }
   timerInterval: null,
@@ -116,7 +118,22 @@ function escapeHtml(str) {
 
 /* -------------------- Catálogo Lateral -------------------- */
 
+function fillFilterSelects() {
+  // Rellena los desplegables con lo que hay en el catálogo (una vez)
+  const fill = (id, values) => {
+    const sel = $(id);
+    if (!sel || sel.options.length > 1) return;
+    [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).forEach((v) => {
+      const o = document.createElement("option");
+      o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+  };
+  fill("filter-category", state.scenarios.map((s) => s.category));
+  fill("filter-cert", state.scenarios.flatMap((s) => s.certs || []));
+}
+
 function renderScenarioList() {
+  fillFilterSelects();
   const listEl = $("scenario-list");
   const q = state.search.trim().toLowerCase();
 
@@ -126,9 +143,11 @@ function renderScenarioList() {
     if (state.filter === "Intermedio" && sc.difficulty !== "Intermedio") return false;
     if (state.filter === "Avanzado" && !["Avanzado", "Experto"].includes(sc.difficulty)) return false;
     if (state.filter === "pending" && sc.solved) return false;
+    if (state.category && sc.category !== state.category) return false;
+    if (state.cert && !(sc.certs || []).includes(state.cert)) return false;
 
     if (q) {
-      const hay = [sc.title, sc.category, sc.difficulty, ...(sc.tags || []), ...(sc.nodes || [])]
+      const hay = [sc.title, sc.category, sc.difficulty, ...(sc.tags || []), ...(sc.certs || []), ...(sc.nodes || [])]
         .join(" ")
         .toLowerCase();
       if (!hay.includes(q)) return false;
@@ -164,7 +183,10 @@ function renderScenarioList() {
           <span>~${sc.estimated_min}m</span>
         </div>
         <div class="sc-tags">
-          ${(sc.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}
+          ${(sc.certs || []).length ? `<span class="sc-certs">${sc.certs.map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}</span>` : ""}
+          ${sc.solved
+            ? (sc.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")
+            : `<span class="tags-locked" title="Los temas del escenario delatan la causa: se muestran al resolverlo">🔒 temas al resolver</span>`}
         </div>
         <div class="sc-actions">
           <span class="sc-cat" title="${escapeHtml(sc.category)}">${escapeHtml(sc.category)}</span>
@@ -680,6 +702,9 @@ function bindEvents() {
     state.search = e.target.value;
     renderScenarioList();
   });
+
+  $("filter-category")?.addEventListener("change", (e) => { state.category = e.target.value; renderScenarioList(); });
+  $("filter-cert")?.addEventListener("change", (e) => { state.cert = e.target.value; renderScenarioList(); });
 
   $("filter-chips").querySelectorAll(".chip").forEach((chip) => {
     chip.addEventListener("click", () => {

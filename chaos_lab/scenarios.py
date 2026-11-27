@@ -1725,11 +1725,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "net-nginx-bad-gateway",
         "title": "502 Bad Gateway en Pasarela de Pagos",
-        "category": "Redes & Reverse Proxy",
+        "category": "Servicios web y TLS",
         "difficulty": "Intermedio",
         "points": 180,
         "estimated_min": 7,
-        "tags": ["Multi-Nodo", "Nginx", "Sockets", "LPIC-2"],
+        "tags": ["Nginx", "Sockets"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "PAGERDUTY [SEV-1] · El balanceador `edge-proxy` devuelve errores 502 en `http://127.0.0.1:8080/health`. "
             "Tienes terminales abiertas en `edge-proxy` y `payments-api`. Restablece el tráfico sin perder el servicio."
@@ -1743,11 +1744,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "net-firewall-drop",
         "title": "Bloqueo Silencioso de Telemetría",
-        "category": "Redes & Firewall",
+        "category": "Redes y routing",
         "difficulty": "Intermedio",
         "points": 170,
         "estimated_min": 6,
-        "tags": ["Multi-Nodo", "iptables", "Networking", "CCNP/LPIC-2"],
+        "tags": ["iptables"],
+        "certs": ["LPIC-2", "CCNP"],
         "blind_alert": (
             "ALERTMANAGER [CRIT] · El recolector `client-probe` dejó de recibir métricas HTTP desde el nodo `metrics-srv`. "
             "El equipo de plataforma jura que el proceso exporter sigue arrancado. Averigua qué ocurre en la red."
@@ -1761,11 +1763,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sec-acl-shared-vault",
         "title": "Permisos Fantasma en Cierre Contable",
-        "category": "Linux Permisos & ACLs",
+        "category": "Sistema y permisos",
         "difficulty": "Básico",
         "points": 130,
         "estimated_min": 5,
-        "tags": ["Debian", "ACLs", "Permisos", "LPIC-1"],
+        "tags": ["ACLs", "Permisos"],
+        "certs": ["LPIC-1"],
         "blind_alert": (
             "TICKET OPS-409 · El usuario `alumno` (miembro de `auditores`) recibe `Permission denied` al lanzar "
             "`/srv/vault/close_month.sh`, a pesar de que `ls -l` aparenta tener permisos de grupo suficientes."
@@ -1779,11 +1782,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sys-rocky-crlf-env",
         "title": "Demonio de Facturación Roto tras Migración",
-        "category": "Servicios & Shell",
+        "category": "Sistema y permisos",
         "difficulty": "Básico",
         "points": 140,
         "estimated_min": 6,
-        "tags": ["Rocky Linux 9", "Bash", "Entorno", "LPIC-1"],
+        "tags": ["Rocky Linux 9", "Bash", "Entorno"],
+        "certs": ["LPIC-1"],
         "blind_alert": (
             "PAGERDUTY [SEV-2] · Tras un despliegue manual en `rocky-billing`, el demonio `/opt/billing/billingd.sh` "
             "no levanta el puerto local de facturación. Restaura el arranque limpio del servicio."
@@ -1797,11 +1801,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sto-zombie-log-cron",
         "title": "Fuga Desbocada en /var/log con Persistencia",
-        "category": "Storage & Procesos",
+        "category": "Sistema y permisos",
         "difficulty": "Intermedio",
         "points": 190,
         "estimated_min": 7,
-        "tags": ["Debian", "Procesos", "Cron", "LPIC-2"],
+        "tags": ["Procesos", "Cron"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "ALERTMANAGER [DISK-URGENT] · `/var/log/ingest/overflow.log` crece decenas de KB por segundo y si matas el proceso "
             "a ciegas reaparece al minuto siguiente. ¡PROHIBIDO reiniciar o matar el proceso crítico `core-dispatcher`!"
@@ -1815,11 +1820,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "net-dns-redis-split",
         "title": "Secuestro de Resolución y Caché Desincronizada",
-        "category": "Redes, DNS & Caché",
+        "category": "DNS",
         "difficulty": "Intermedio",
         "points": 190,
         "estimated_min": 8,
-        "tags": ["Multi-Nodo", "DNS", "Redis", "LPIC-2"],
+        "tags": ["DNS", "Redis"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "PAGERDUTY [SEV-2] · `/opt/app/healthcheck.sh` falla en `app-node` al intentar leer el estado de sesión en `cache.internal`. "
             "Tienes acceso tanto a `app-node` como al nodo `redis-cache`."
@@ -1833,11 +1839,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sec-sudoers-lockout",
         "title": "Bloqueo Total de Sudoers y Cuenta Operativa",
-        "category": "Seguridad & PAM/Sudo",
+        "category": "Sistema y permisos",
         "difficulty": "Intermedio",
         "points": 160,
         "estimated_min": 6,
-        "tags": ["Debian", "Sudoers", "Usuarios", "LPIC-2"],
+        "tags": ["sudo", "Usuarios"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "CONSOLA SERIE DE RESCATE · Un cambio mal aplicado dejó inoperativo `sudo` en todo el servidor y bloqueó "
             "el acceso del operador `alumno`, rompiendo el pipeline `/usr/local/bin/deploy-check`."
@@ -1851,11 +1858,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "net-routing-blackhole",
         "title": "Agujero Negro de Enrutamiento hacia Subred Remota",
-        "category": "Routing & IPv4",
+        "category": "Redes y routing",
         "difficulty": "Avanzado",
         "points": 240,
         "estimated_min": 9,
-        "tags": ["Multi-Nodo", "iproute2", "Routing", "CCNP/LPIC-2"],
+        "tags": ["iproute2", "Routing"],
+        "certs": ["LPIC-2", "CCNP"],
         "blind_alert": (
             "NOC TICKET [NET-88] · Desde `gateway-rtr` es imposible conectar con el servicio interno en el puerto `8090` de la VIP "
             "anunciada en la interfaz `lo` de `branch-srv` (`RTNETLINK` / paquetes descartados). Restablece la ruta IPv4."
@@ -1869,11 +1877,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "web-nginx-vhost-collision",
         "title": "VirtualHost Fantasma y 403/503 Encadenados",
-        "category": "Servidores Web",
+        "category": "Servicios web y TLS",
         "difficulty": "Intermedio",
         "points": 175,
         "estimated_min": 7,
-        "tags": ["Nginx", "VirtualHosts", "Permisos", "LPIC-2"],
+        "tags": ["Nginx", "VirtualHosts", "Permisos"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "PAGERDUTY [WEB-04] · Las peticiones a `http://portal.corp.local/` devuelven una página fantasma de mantenimiento "
             "o errores HTTP 503/403 en lugar del portal productivo."
@@ -1887,11 +1896,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "chaos-boss-cascade",
         "title": "Guardia 3:00 AM: Cascada Triple en Microservicios",
-        "category": "SRE Full-Stack Chaos",
+        "category": "Incidente mayor",
         "difficulty": "Experto",
         "points": 350,
         "estimated_min": 12,
-        "tags": ["3 Nodos", "Nginx", "Firewall", "Redis", "Boss"],
+        "tags": ["Nginx", "Firewall", "Redis"],
+        "certs": [],
         "blind_alert": (
             "INCIDENTE MAYOR [SEV-0 · 03:14 AM] · Caída total de transacciones en `/api/tx` a través de `edge-lb:8080`. "
             "Topología de 3 nodos (`edge-lb` -> `core-api` -> `vault-db`). Hay múltiples fallos simultáneos en distintas capas."
@@ -1905,11 +1915,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "vpn-wireguard-overlay",
         "title": "Túnel WireGuard S2S Caído y Bloqueo por MTU",
-        "category": "VPN & Redes WAN",
+        "category": "Redes y routing",
         "difficulty": "Avanzado",
         "points": 250,
         "estimated_min": 9,
-        "tags": ["Multi-Nodo", "WireGuard", "MTU", "CCNP/LPIC-2"],
+        "tags": ["WireGuard", "MTU"],
+        "certs": ["LPIC-2", "CCNP"],
         "blind_alert": (
             "NOC [VPN-S2S] · El túnel entre `hq-vpn-gw` y `branch-vpn-gw` no levanta tráfico hacia la intranet remota "
             "y las respuestas HTTP grandes se cortan en seco. Restablece `/etc/wireguard/wg0.conf`."
@@ -1923,11 +1934,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sec-tls-expired-san",
         "title": "Fallo X.509 de SAN en Pasarela Corporativa HTTPS",
-        "category": "Seguridad & PKI/TLS",
+        "category": "Servicios web y TLS",
         "difficulty": "Intermedio",
         "points": 210,
         "estimated_min": 8,
-        "tags": ["Multi-Nodo", "OpenSSL", "TLS/PKI", "LPIC-2/AZ-104"],
+        "tags": ["OpenSSL", "TLS/PKI"],
+        "certs": ["LPIC-2", "AZ-104"],
         "blind_alert": (
             "SECOPS [TLS-ERR] · Los clientes estrictos en `api-client` rechazan la conexión HTTPS contra `vault.corp.internal` "
             "pese a confiar en la CA raíz `/etc/ssl/corp/ca.crt`. Prohibido desactivar la verificación TLS en el cliente."
@@ -1941,11 +1953,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "net-dns-soa-serial",
         "title": "Zona DNS Autoritativa: Serial SOA y CNAME Roto",
-        "category": "DNS & Servicios Core",
+        "category": "DNS",
         "difficulty": "Intermedio",
         "points": 200,
         "estimated_min": 8,
-        "tags": ["Multi-Nodo", "DNS/BIND", "SOA", "LPIC-2"],
+        "tags": ["DNS/BIND", "SOA"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "PAGERDUTY [DNS-53] · Los clientes en `app-client` no logran resolver `portal.corp.lan` contra `ns1-master` "
             "tras una edición manual fallida en `/etc/bind/zones/db.corp.lan`."
@@ -1959,11 +1972,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "cloud-az-nsg-udr",
         "title": "Cloud Networking: UDR, NVA Forwarding y NSG",
-        "category": "Cloud & Redes (AZ-104)",
+        "category": "Redes y routing",
         "difficulty": "Experto",
         "points": 310,
         "estimated_min": 11,
-        "tags": ["3 Nodos", "AZ-104", "UDR/NVA", "NSG/Firewall"],
+        "tags": ["UDR/NVA", "NSG"],
+        "certs": ["AZ-104"],
         "blind_alert": (
             "AZURE MONITOR [VNET-CRIT] · `vnet-web` no alcanza la VIP del backend en `vnet-db` a través del Virtual Appliance `nva-fw`. "
             "Revisa tablas de rutas UDR, IP Forwarding del NVA y reglas de prioridad en `NSG_INBOUND`."
@@ -1977,11 +1991,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sec-ssh-bruteforce",
         "title": "Fuerza Bruta SSH: Detectar y Bloquear con nftables",
-        "category": "Seguridad & SecOps (Blue Team)",
+        "category": "Seguridad (Blue Team)",
         "difficulty": "Intermedio",
         "points": 230,
         "estimated_min": 9,
-        "tags": ["3 Nodos", "SecOps", "sshd/auth.log", "nftables", "LPIC-2"],
+        "tags": ["sshd", "auth.log", "nftables"],
+        "certs": ["LPIC-2"],
         "blind_alert": (
             "SIEM [SSH-BRUTE] · `ssh-victim` acumula una ráfaga de `Failed password` y usuarios inexistentes en `/var/log/auth.log`. "
             "El equipo de operaciones sigue necesitando entrar por SSH desde `ops-client`. Contén el ataque sin cortar el acceso legítimo."
@@ -1995,11 +2010,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sec-portscan-detect",
         "title": "Escaneo de Puertos: Detección y Mitigación con nftables",
-        "category": "Seguridad & SecOps (Blue Team)",
+        "category": "Seguridad (Blue Team)",
         "difficulty": "Intermedio",
         "points": 220,
         "estimated_min": 8,
-        "tags": ["3 Nodos", "SecOps", "nftables", "Detección", "CCNA/LPIC-2"],
+        "tags": ["nftables", "Detección"],
+        "certs": ["LPIC-2", "CCNA"],
         "blind_alert": (
             "IDS [RECON-SCAN] · `edge-srv` registra un pico de conexiones nuevas hacia cientos de puertos distintos. "
             "El servicio de inventario debe seguir accesible para `app-client`. Localiza el origen y mitígalo."
@@ -2013,11 +2029,12 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     {
         "id": "sec-dns-exfil",
         "title": "Exfiltración por DNS: Cazar el Proceso y Cortar la Salida",
-        "category": "Seguridad & SecOps (Blue Team)",
+        "category": "Seguridad (Blue Team)",
         "difficulty": "Avanzado",
         "points": 280,
         "estimated_min": 11,
-        "tags": ["3 Nodos", "SecOps", "DNS", "cron", "nftables"],
+        "tags": ["DNS", "cron", "nftables"],
+        "certs": [],
         "blind_alert": (
             "EDR [DNS-TUNNEL] · `infected-host` emite consultas DNS anómalas de gran longitud hacia el exterior. "
             "Hay datos de clientes en `/srv/finance`. Corta la fuga sin romper la resolución interna."

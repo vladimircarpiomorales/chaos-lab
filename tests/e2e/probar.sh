@@ -11,7 +11,7 @@ RT="${CHAOS_RUNTIME:-}"
 export RT
 api() { curl -s -X POST -H 'Content-Type: application/json' -H "Origin: $URL" --max-time 400 "$URL$1" ${2:+-d "$2"}; }
 estado() { api /api/lab/verify | python3 -c "import json,sys; a=json.load(sys.stdin); a=a.get('active',a); print(a.get('scenario_id'), ' '.join(('✓' if c['passed'] else '✗')+c['id'] for c in a.get('checks',[])))"; }
-res=$(api /api/lab/launch "{\"scenario_id\":\"$SID\"}")
+res=$(api /api/lab/launch "{\"scenario_id\":\"$SID\",\"record\":false}")  # record=false: no ensucia el progreso del jugador
 echo "$res" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d.get('ok'), d.get('error'); [print('  nodo', n['role'], n['image']) for n in d['active']['nodes']]" || exit 1
 eval "$(echo "$res" | python3 -c "
 import json,sys

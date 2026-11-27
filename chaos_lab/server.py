@@ -31,6 +31,7 @@ class LaunchRequest(BaseModel):
     blind_mode: bool = False
     difficulty: str | None = None
     seed: int | None = None
+    record: bool = True  # False = lanzamiento de prueba: no suma XP ni historial
 
 
 class MentorRequest(BaseModel):
@@ -64,6 +65,7 @@ async def api_launch(req: LaunchRequest) -> JSONResponse:
         blind_mode=req.blind_mode,
         difficulty_filter=req.difficulty,
         seed=req.seed,
+        record=req.record,
     )
     if not res.get("ok"):
         return JSONResponse(res, status_code=400)

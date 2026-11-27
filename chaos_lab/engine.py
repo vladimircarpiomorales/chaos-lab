@@ -193,6 +193,7 @@ class ChaosEngine:
                         "points": item["points"],
                         "estimated_min": item["estimated_min"],
                         "tags": item["tags"],
+                        "certs": item.get("certs", []),
                         "briefing": item["briefing"],
                         "node_count": len(sample["nodes"]),
                         "nodes": [n["role"] for n in sample["nodes"]],
@@ -281,6 +282,7 @@ class ChaosEngine:
         blind_mode: bool = False,
         difficulty_filter: str | None = None,
         seed: int | None = None,
+        record: bool = True,
     ) -> dict[str, Any]:
         with self._lock:
             if blind_mode and not scenario_id:
@@ -425,6 +427,7 @@ class ChaosEngine:
                 "instance": inst,
                 "nodes_runtime": nodes_runtime,
                 "blind_mode": blind_mode,
+                "record": record,
                 "started_at": time.time(),
                 "solved": False,
                 "solved_elapsed_s": 0,
@@ -541,35 +544,36 @@ class ChaosEngine:
                 act["rank"] = rank
                 act["earned_xp"] = earned_xp
 
-                # Persistir progreso
-                state = self._load_state()
-                prev = state["solved"].get(inst["id"]) or {}
-                best_t = min(elapsed, prev.get("best_time_s", elapsed))
-                rank_order = {"S+": 5, "S": 4, "A": 3, "B": 2, "C": 1}
-                prev_rank = prev.get("best_rank", "C")
-                best_rank = rank if rank_order.get(rank, 0) >= rank_order.get(prev_rank, 0) else prev_rank
+                # Persistir progreso (salvo lanzamientos de prueba: record=False, p. ej. tests/e2e)
+                if act.get("record", True):
+                    state = self._load_state()
+                    prev = state["solved"].get(inst["id"]) or {}
+                    best_t = min(elapsed, prev.get("best_time_s", elapsed))
+                    rank_order = {"S+": 5, "S": 4, "A": 3, "B": 2, "C": 1}
+                    prev_rank = prev.get("best_rank", "C")
+                    best_rank = rank if rank_order.get(rank, 0) >= rank_order.get(prev_rank, 0) else prev_rank
 
-                state["solved"][inst["id"]] = {
-                    "best_time_s": best_t,
-                    "best_rank": best_rank,
-                    "count": int(prev.get("count", 0)) + 1,
-                    "last_solved": datetime.datetime.now().isoformat(timespec="seconds"),
-                }
-                state["total_xp"] = int(state.get("total_xp", 0)) + earned_xp
-                state["history"].append(
-                    {
-                        "id": inst["id"],
-                        "title": inst["title"],
-                        "blind_mode": act["blind_mode"],
-                        "elapsed_s": elapsed,
-                        "rank": rank,
-                        "xp": earned_xp,
-                        "hints_used": act["hints_used"],
-                        "at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    state["solved"][inst["id"]] = {
+                        "best_time_s": best_t,
+                        "best_rank": best_rank,
+                        "count": int(prev.get("count", 0)) + 1,
+                        "last_solved": datetime.datetime.now().isoformat(timespec="seconds"),
                     }
-                )
-                state["history"] = state["history"][-100:]
-                self._save_state(state)
+                    state["total_xp"] = int(state.get("total_xp", 0)) + earned_xp
+                    state["history"].append(
+                        {
+                            "id": inst["id"],
+                            "title": inst["title"],
+                            "blind_mode": act["blind_mode"],
+                            "elapsed_s": elapsed,
+                            "rank": rank,
+                            "xp": earned_xp,
+                            "hints_used": act["hints_used"],
+                            "at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+                        }
+                    )
+                    state["history"] = state["history"][-100:]
+                    self._save_state(state)
 
             return {
                 "ok": True,
