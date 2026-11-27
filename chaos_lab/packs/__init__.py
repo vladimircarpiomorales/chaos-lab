@@ -12,6 +12,12 @@ son las flechas del esquema {from, to, via}. `comprobar` es una lista de bloques
 cada uno con líneas `comprueba "etiqueta" comando…` (las sondas se unen en el orden de la lista). Los nodos
 comparten red y se resuelven por nombre de rol.
 
+Redes «manuales» (pack `redes.json`, estilo containerlab): el objeto añade `redes` (lista de nombres cortos, p. ej.
+["lan", "transito"]; se crean como `chaoslab-<nombre>`) y `red_modo: "manual"` (redes sin IPAM: el motor no pone IPs ni
+rutas, las pone el `preparar` de cada nodo). Cada nodo declara `redes` (sus redes; la i-ésima es siempre `eth{i}`),
+`ips` ({red: ip} «de diseño», para el esquema y /etc/chaos_nodes.env; nunca una avería) y opcionalmente `sysctl_rw: true`
+(`--security-opt systempaths=unconfined`, para `sysctl -w net.ipv4.ip_forward=1`). En `caps` van NET_ADMIN y NET_RAW.
+
 Campos de cada objeto: id, reto (id original, es el nombre del directorio), title, briefing, hints (3),
 solution_summary, difficulty, points, estimated_min, tipo, certs, tags, objetivos_lpi, category, blind_alert,
 preparar, comprobar; opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
@@ -97,6 +103,12 @@ def _builder_multi(item: dict[str, Any]) -> Callable[[random.Random], dict[str, 
                 node["workdir"] = nd["workdir"]
             if nd.get("caps"):
                 node["caps"] = list(nd["caps"])
+            if nd.get("redes"):
+                node["networks"] = list(nd["redes"])
+            if nd.get("ips"):
+                node["design_ips"] = dict(nd["ips"])
+            if nd.get("sysctl_rw"):
+                node["sysctl_rw"] = True
             nodes.append(node)
             topo_nodes[nd["role"]] = {"runs": nd.get("runs", ""), "look": list(nd.get("look", []))}
         blocks = []
@@ -105,7 +117,13 @@ def _builder_multi(item: dict[str, Any]) -> Callable[[random.Random], dict[str, 
             if blk.get("cwd"):
                 b["cwd"] = blk["cwd"]
             blocks.append(b)
+        extra: dict[str, Any] = {}
+        if item.get("redes"):
+            extra["networks"] = list(item["redes"])
+        if item.get("red_modo"):
+            extra["network_mode"] = item["red_modo"]
         return {
+            **extra,
             "vars": {},
             "nodes": nodes,
             "checks": [],
