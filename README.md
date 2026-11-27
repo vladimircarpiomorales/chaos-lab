@@ -49,6 +49,7 @@ Elige un escenario, pulsa **▶ Desplegar**, investiga en las terminales y pulsa
 | Linux Essentials (010-160) | 14 | Debian | ficheros y permisos, usuarios, búsquedas, empaquetado, scripts |
 | LPIC-1 · 101-500 | 18 | Debian y Fedora | filtros y expresiones regulares, permisos y enlaces, ext4 y MBR en una imagen, paquetes deb/rpm, procesos, vi, módulos, tmux |
 | LPIC-1 · 102-500 | 27 | Debian | entorno y scripts, cron y at, sudo y SSH, X con xauth, red e IPv6, chrony, rsyslog y logrotate, journalctl, alias de correo, GnuPG |
+| LPIC-2 · Redes (201-450) | 1 (plantilla) | 4 nodos: pc, 2 routers y servidor, en redes manuales sin IPAM | rutas y puertas de enlace, rutas de vuelta, nftables, /etc/hosts, tcpdump salto a salto |
 | LPIC-2 · LDAP (202-450) | 10 | 2 nodos: servidor y cliente | ldapsearch/ldapadd/ldapmodify, índices en cn=config, slapcat, ACL, StartTLS y ldaps, PAM en el cliente con SSSD |
 
 Las tareas marcan sus objetivos del temario LPI y el corrector enseña cada paso como ✔/✘ al pulsar **Verificar**.
@@ -93,6 +94,7 @@ Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`, `chao
 
 - El servidor escucha **solo en `127.0.0.1`**. No lo expongas a la red: da una shell root dentro de los contenedores a quien abra la página.
 - Los contenedores corren como **root dentro del contenedor** (rootless desde fuera con Podman; con Docker, según tu instalación) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red.
+- Los nodos con `sysctl_rw` (routers de los labs de redes) llevan `--security-opt systempaths=unconfined` para poder hacer `sysctl -w net.ipv4.ip_forward=1`: dejan `/proc/sys` escribible en ese contenedor (sin `--privileged`; `kernel.*` sigue denegado).
 - Todo ocurre en redes aisladas `chaoslab-*`; `--parar` borra contenedores y redes.
 - El usuario de prácticas `alumno` tiene la contraseña `alumno`: solo existe dentro de los contenedores.
 

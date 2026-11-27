@@ -71,6 +71,32 @@ Debe salir **todo ✗ antes** (salvo sondas de «no romper lo que funciona») y 
 
 Los escenarios repetitivos (retos de práctica con el mismo molde) no se escriben como funciones: viven en `chaos_lab/packs/<pack>.json` y `chaos_lab/packs/__init__.py` los convierte en entradas de `SCENARIO_CATALOG` (se registran en `scenarios.py` con `load_pack`). El pack `lpic1_102.json` trae los 27 retos de «LPIC-1 · 102-500»: un nodo `lpic` (imagen `lpic-debian`, usuario `alumno`, terminal en `/home/alumno/retos/<reto>`), `preparar` (script de montaje, sin `apt`: la imagen trae todo) y `comprobar` (líneas `comprueba "etiqueta" comando…`). Las mismas reglas de pistas, briefing sin spoilers y dificultad se aplican; la imagen se construye con `images/construir.sh lpic-debian`. Soluciones: `tests/e2e/soluciones/lpic1-<x>.sh`; prueba sin servidor: `tests/e2e/lpic_seco.sh <id>` (contenedor propio `lpicseco-*`). El pack `essentials_010.json` añade los 14 retos de «Linux Essentials · 010-160» (ids `lpie-*`, `certs: ["Linux Essentials"]`, soluciones `lpie-<x>.sh`). El pack `lpic1_101.json` añade 18 retos de «LPIC-1 · 101-500» (ids `lpic1-<x>`, directorio `r101-<x>`); cada reto admite un campo opcional `distro` (por defecto `lpic-debian`; `r101-rpm` usa `lpic-fedora`, imagen `images/lpic-fedora`, también con `construir.sh lpic-fedora`). Quedan fuera los 5 retos de VM de la 101-500 (`ubuntu.json`), que necesitarán un nodo QEMU.
 
+## Redes «manuales» (pack de redes, estilo containerlab)
+
+El pack `chaos_lab/packs/redes.json` (imagen `images/redes` → `localhost/chaos-redes:1`, `images/construir.sh redes`; trae iproute2, nftables, tcpdump, nmap, nginx y FRR parado) monta la red **a mano**: el motor no reparte IPs ni rutas, las pone el `preparar` de cada nodo con `ip addr add` / `ip route add`, como en containerlab. Formato del escenario (pack multinodo, ver `chaos_lab/packs/__init__.py`):
+
+```json
+{
+  "id": "red-averias-4saltos", "tipo": "averia", "certs": ["LPIC-2"], "objetivos_lpi": ["205.3", "109.3"],
+  "redes": ["lan", "transito", "dmz"], "red_modo": "manual",
+  "nodos": [
+    {"role": "r1", "distro": "redes", "caps": ["NET_ADMIN", "NET_RAW"], "sysctl_rw": true,
+     "redes": ["lan", "transito"], "ips": {"lan": "10.5.1.1", "transito": "10.5.12.1"},
+     "preparar": "ip addr add 10.5.1.1/24 dev eth0\nip addr add 10.5.12.1/24 dev eth1\n…",
+     "runs": "Router · une lan y tránsito", "look": ["…"]}
+  ],
+  "enlaces": [{"from": "pc1", "to": "r1", "via": "ethernet lan"}],
+  "comprobar": [{"node": "pc1", "script": "comprueba \"etiqueta\" comando…"}]
+}
+```
+
+- `red_modo: "manual"` (en el escenario) crea las redes sin IPAM: Podman `network create --internal --ipam-driver none` (sin IP, sin ruta por defecto, solo link-local); Docker no tiene `ipam none`, así que se crean `--internal` con una subred de relleno (`10.213.<i>.0/24`) y el motor vacía direcciones y rutas de `eth0..ethN-1` al arrancar el nodo (**camino Docker sin probar en Docker real**, cubierto por pruebas unitarias del comando). Sin `red_modo` todo sigue como antes (IPAM normal). En el escenario clásico en código, el equivalente es `network_mode: "manual"` junto a `networks`.
+- **Interfaces deterministas**: la red i-ésima de la lista `redes` de un nodo es siempre `eth{i}` (arranca en la 1ª y se conecta a las demás en orden). Un nodo sin `redes` va a la 1ª red del escenario.
+- `ips` (`design_ips` en el motor) son las IPs «de diseño» por red, solo para el esquema, `/etc/chaos_nodes.env` (`IP_<ROL>`, `IP_<ROL>_<RED>`) y el panel: con redes manuales `inspect` no da IPs. Muestra siempre el diseño correcto, nunca la avería (la IP equivocada va en el `preparar`). En una tarea, las IPs del enunciado se pueden enseñar; en una avería, nunca la que arregla el fallo (ni en briefing ni en etiquetas).
+- `sysctl_rw: true` añade `--security-opt systempaths=unconfined` (necesario para `sysctl -w net.ipv4.ip_forward=1` en un router; deja `/proc/sys` escribible en ese contenedor). Los nodos con `ip addr` necesitan `caps` `NET_ADMIN` y `NET_RAW`.
+- Sin ruta por defecto: lo que no tiene ruta falla con «Network is unreachable», no se escapa por ninguna puerta trasera.
+- Prueba sin servidor: `tests/e2e/redes_seco.sh [id]` (redes y contenedores `redseco-*`; despliega, comprueba ✘ antes y ✔ después de `tests/e2e/soluciones/<id>.sh`). Ids con prefijo `red-`.
+
 ## Estilo
 
 - Textos en español, frases cortas; comandos, ficheros y términos TI sin traducir (namespace, host, proxy_pass…).
