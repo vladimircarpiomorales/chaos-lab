@@ -1,8 +1,7 @@
 __pycache__/
 *.py[cod]
 *.tmp
-data/state.json
-data/server.log
+data/
 
 # Notas internas de desarrollo (no se publican)
 NOTAS.md
