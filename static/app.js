@@ -618,6 +618,13 @@ function topoLayout(topo, dims) {
 }
 
 function drawTopology(container, topo, opts = {}) {
+  // compact: "auto" = dibujo normal; si no cabe sin encogerse (letra < ~10 px), se rehace en compacto
+  if (opts.compact === "auto") {
+    const h = drawTopology(container, topo, { ...opts, compact: false });
+    if (!h || container.clientWidth === 0 || h.cy.zoom() >= 0.95) return h;
+    h.destroy();
+    return drawTopology(container, topo, { ...opts, compact: true });
+  }
   if (container._topo) container._topo.destroy();
   container.innerHTML = "";
   if (typeof cytoscape === "undefined" || !topo || !topo.nodes || !Object.keys(topo.nodes).length) return null;
@@ -778,7 +785,7 @@ function renderTopology(active) {
   const sig = JSON.stringify([active.session_id, topo.entry, topo.nodes, topo.links, topo.networks, ipOf]);
   if (body._topo && body._sig === sig) { body._topo.update(st); return; }
   body._sig = sig;
-  drawTopology(body, topo, { ipOf, ...st, onNodeClick: (role) => selectNodeTab(role) });
+  drawTopology(body, topo, { ipOf, ...st, compact: "auto", onNodeClick: (role) => selectNodeTab(role) });
 }
 
 function renderHowtoLook(active) {

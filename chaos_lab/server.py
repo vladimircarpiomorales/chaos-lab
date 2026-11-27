@@ -40,7 +40,8 @@ class MentorRequest(BaseModel):
 
 @app.get("/")
 async def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    # Sin caché: si no, el navegador puede quedarse con un index.html viejo que pide un app.js?v= antiguo
+    return FileResponse(STATIC_DIR / "index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/health")
