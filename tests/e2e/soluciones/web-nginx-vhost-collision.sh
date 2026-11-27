@@ -1,0 +1,1 @@
+podman exec "$C_NGINX_VHOST" sh -c 'sed -i "s/server_name portal.corp.local _;/server_name _;/" /etc/nginx/conf.d/00-trap.conf && sed -i "s/return 503;/try_files \$uri \$uri\/ =404;/" /etc/nginx/conf.d/10-portal.conf && chmod 755 /var/www/portal && chmod 644 /var/www/portal/index.html && nginx -s reload'
