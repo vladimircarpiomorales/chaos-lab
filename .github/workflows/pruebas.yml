@@ -1,0 +1,22 @@
+name: Pruebas
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependencias
+        run: pip install -r requirements.txt pytest
+      - name: Coherencia de escenarios, esquemas y reglas sin spoilers
+        run: python -m pytest -q tests
+      - name: Sintaxis de scripts y JS
+        run: |
+          for f in arrancar.sh images/construir.sh tests/e2e/*.sh tests/e2e/soluciones/*.sh; do bash -n "$f"; done
+          node --check static/app.js

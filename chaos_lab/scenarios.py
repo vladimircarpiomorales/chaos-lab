@@ -791,7 +791,7 @@ ip route add blackhole {subnet}
         "topology": {
             "entry": {"label": "tú (curl)", "to": "gateway-rtr", "via": f"HTTP {vip}:8090"},
             "nodes": {
-                "gateway-rtr": {"runs": "router Linux · cliente HTTP", "look": [f"ping -c1 {vip}", "/etc/chaos_nodes.env", "ip -4 addr"]},
+                "gateway-rtr": {"runs": "router Linux · cliente HTTP", "look": [f"ping -c1 {vip}", "/etc/chaos_nodes.env", "ip -br addr"]},
                 "branch-srv": {"runs": f"python · API {vip}:8090 (en lo)", "look": ["ip addr show lo", "ss -tlnp", "/var/log/branch.log"]},
             },
             "links": [
@@ -884,7 +884,7 @@ sleep 0.5
         "topology": {
             "entry": {"label": "tú (curl)", "to": "nginx-vhost", "via": "HTTP :80 Host: portal.corp.local"},
             "nodes": {
-                "nginx-vhost": {"runs": "nginx · vhost portal.corp.local :80", "look": ["/etc/nginx/conf.d/", "/var/www/portal", "/var/log/nginx/chaos.log"]},
+                "nginx-vhost": {"runs": "nginx · vhost portal.corp.local :80", "look": ["nginx -T", "/var/www/portal", "/var/log/nginx/chaos.log"]},
             },
             "links": [],
             "checks": {"nginx-syntax": "node:nginx-vhost", "docroot-perms": "node:nginx-vhost", "vhost-serves": "entry"},
@@ -1356,7 +1356,7 @@ done
             "entry": {"label": "tú (shell)", "to": "api-client", "via": "curl https://vault.corp.internal"},
             "nodes": {
                 "api-client": {"runs": "cliente HTTPS estricto (curl, sin -k)", "look": ["/etc/hosts", "/etc/ssl/corp/ca.crt"]},
-                "tls-gateway": {"runs": f"python · pasarela HTTPS :{tls_port}", "look": ["ss -tlnp", "/usr/local/bin/restart-tls-gw", "/opt/tls/", "/etc/ssl/corp-ca/"]},
+                "tls-gateway": {"runs": f"python · pasarela HTTPS :{tls_port}", "look": ["ss -tlnp", "/usr/local/bin/restart-tls-gw", "/etc/ssl/corp-ca/"]},
             },
             "links": [
                 {"from": "api-client", "to": "tls-gateway", "via": f"HTTPS :{tls_port} /status (TLS verificado con la CA corporativa)"},

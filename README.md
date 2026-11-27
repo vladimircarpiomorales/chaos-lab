@@ -79,11 +79,11 @@ Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx` y `chaos-redis` se co
 
 ```bash
 .venv/bin/pip install pytest
-.venv/bin/python -m pytest -q tests                       # coherencia de escenarios y esquemas (sin contenedores)
+.venv/bin/python -m pytest -q tests                       # coherencia, esquemas y reglas sin spoilers (sin contenedores)
 tests/e2e/probar.sh <escenario> tests/e2e/soluciones/<escenario>.sh   # prueba real: despliega, resuelve y verifica
 ```
 
-Cada escenario es una función `_build_*` en `chaos_lab/scenarios.py` (o `scenarios_secops.py`) que devuelve nodos, setup con la avería, sondas, pistas, esquema y solución.
+¿Quieres añadir un escenario? Lee [CONTRIBUTING.md](CONTRIBUTING.md). Cada escenario es una función `_build_*` en `chaos_lab/scenarios.py` (o `scenarios_secops.py`) que devuelve nodos, setup con la avería, sondas, pistas, esquema y solución.
 
 ## Licencia
 
