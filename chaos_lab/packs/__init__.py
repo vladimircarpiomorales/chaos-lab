@@ -5,6 +5,13 @@ los convierte en entradas de SCENARIO_CATALOG (ver `load_pack`). Hoy solo hay un
 `lpic` (imagen `lpic-debian`) donde el jugador trabaja como `alumno` en un directorio de reto, con un script de
 preparación y un corrector por script (`comprueba "etiqueta" comando…`).
 
+Segundo tipo de pack, «multinodo» (p. ej. `lpic2_ldap.json`): el objeto trae `nodos` en vez de un único nodo `lpic`.
+Cada elemento de `nodos`: role, distro, preparar (script como root en ese nodo; se ejecuta en el orden de la lista),
+y opcionales workdir, default_user (por defecto root), shell, runs, look, caps, setup_timeout. `enlaces` (opcional)
+son las flechas del esquema {from, to, via}. `comprobar` es una lista de bloques {node, script, cwd?}: uno por nodo,
+cada uno con líneas `comprueba "etiqueta" comando…` (las sondas se unen en el orden de la lista). Los nodos
+comparten red y se resuelven por nombre de rol.
+
 Campos de cada objeto: id, reto (id original, es el nombre del directorio), title, briefing, hints (3),
 solution_summary, difficulty, points, estimated_min, tipo, certs, tags, objetivos_lpi, category, blind_alert,
 preparar, comprobar; opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
@@ -72,6 +79,50 @@ def _builder(item: dict[str, Any]) -> Callable[[random.Random], dict[str, Any]]:
     return build
 
 
+def _builder_multi(item: dict[str, Any]) -> Callable[[random.Random], dict[str, Any]]:
+    """Constructor de un reto con varios nodos (ver la cabecera del módulo)."""
+
+    def build(rng: random.Random) -> dict[str, Any]:
+        nodes, topo_nodes = [], {}
+        for nd in item["nodos"]:
+            node = {
+                "role": nd["role"],
+                "distro": nd["distro"],
+                "shell": nd.get("shell", "/bin/bash"),
+                "default_user": nd.get("default_user", "root"),
+                "setup_timeout": nd.get("setup_timeout", 120),
+                "setup_sh": f"set -u\n(\n{nd['preparar']}\n)",
+            }
+            if nd.get("workdir"):
+                node["workdir"] = nd["workdir"]
+            if nd.get("caps"):
+                node["caps"] = list(nd["caps"])
+            nodes.append(node)
+            topo_nodes[nd["role"]] = {"runs": nd.get("runs", ""), "look": list(nd.get("look", []))}
+        blocks = []
+        for blk in item["comprobar"]:
+            b = {"node": blk["node"], "script": "set -u\n" + blk["script"]}
+            if blk.get("cwd"):
+                b["cwd"] = blk["cwd"]
+            blocks.append(b)
+        return {
+            "vars": {},
+            "nodes": nodes,
+            "checks": [],
+            "check_script": blocks,
+            "hints": list(item["hints"]),
+            "topology": {
+                "entry": None,
+                "nodes": topo_nodes,
+                "links": [dict(l) for l in item.get("enlaces", [])],
+                "checks": {},
+            },
+            "solution_summary": item["solution_summary"],
+        }
+
+    return build
+
+
 def load_pack(name: str) -> list[dict[str, Any]]:
     """Entradas de SCENARIO_CATALOG del pack `name` (chaos_lab/packs/<name>.json)."""
     items = json.loads((PACKS_DIR / f"{name}.json").read_text(encoding="utf-8"))
@@ -91,7 +142,7 @@ def load_pack(name: str) -> list[dict[str, Any]]:
                 "objetivos_lpi": it.get("objetivos_lpi", []),
                 "blind_alert": it["blind_alert"],
                 "briefing": it["briefing"],
-                "builder": _builder(it),
+                "builder": _builder_multi(it) if "nodos" in it else _builder(it),
             }
         )
     return out

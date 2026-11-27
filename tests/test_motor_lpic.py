@@ -270,3 +270,74 @@ def test_pack_lpic1_101_rpm_en_fedora_y_resto_en_debian():
     assert "Fedora" in instantiate_scenario("lpic1-rpm", 1)["topology"]["nodes"]["lpic"]["runs"]
     assert instantiate_scenario("lpic1-dpkg", 1)["nodes"][0]["distro"] == "lpic-debian"
     assert engine.IMAGE_CANDIDATES["lpic-fedora"][0] == "localhost/chaos-lpic-fedora:1"
+
+
+# ---------- corrector multinodo y pack LPIC-2 LDAP ----------
+
+def test_check_blocks_dict_y_lista():
+    assert engine._check_blocks({"node": "a", "script": "x"}) == [{"node": "a", "script": "x"}]
+    bl = [{"node": "a", "script": "x"}, {"node": "b", "script": "y"}]
+    assert engine._check_blocks(bl) == bl
+
+
+def test_parse_con_inicio_numera_a_continuacion():
+    cs = engine._parse_check_output("✔ A\n✘ B", "b", start=3)
+    assert [c["id"] for c in cs] == ["c4", "c5"]
+    assert engine._parse_check_output("", "b", start=3)[0]["id"] == "c4"
+
+
+def test_corrector_multinodo_une_sondas_en_orden_con_ids_unicos(monkeypatch):
+    salidas = {"chaoslab-a": ["✔ A1\n✘ A2", "✘ A3"], "chaoslab-b": ["✔ B1"]}
+    orden = []
+
+    def resp(args, inp):
+        c = args[args.index("bash") - 1]
+        orden.append((c, inp))
+        return 0, salidas[c].pop(0)
+
+    monkeypatch.setattr(engine, "_run_cmd", FakeRun(resp))
+    nodes = [{"role": r, "container": f"chaoslab-{r}"} for r in ("a", "b")]
+    cs = [
+        {"node": "a", "script": "comprueba 1 true", "cwd": "/x"},
+        {"node": "b", "script": "comprueba 2 true"},
+        {"node": "a", "script": "comprueba 3 true"},
+    ]
+    out = ChaosEngine()._run_check_script(cs, nodes)
+    assert [c["id"] for c in out] == ["c1", "c2", "c3", "c4"]
+    assert [(c["node"], c["label"], c["passed"]) for c in out] == [
+        ("a", "A1", True), ("a", "A2", False), ("b", "B1", True), ("a", "A3", False)]
+    assert [o[0] for o in orden] == ["chaoslab-a", "chaoslab-b", "chaoslab-a"]
+    assert "cd /x " in orden[0][1] and "comprueba 2 true" in orden[1][1]
+
+
+def test_corrector_multinodo_bloque_vacio_o_nodo_inexistente_falla(monkeypatch):
+    monkeypatch.setattr(engine, "_run_cmd", FakeRun(lambda a, i: (0, "")))
+    nodes = [{"role": "a", "container": "chaoslab-a"}]
+    out = ChaosEngine()._run_check_script(
+        [{"node": "a", "script": "comprueba x true"}, {"node": "zz", "script": "y"}], nodes)
+    assert [c["id"] for c in out] == ["c1", "c2"] and not any(c["passed"] for c in out)
+    assert out[1]["node"] == "zz" and "(zz)" in out[1]["label"]
+
+
+def test_corrector_multinodo_bloque_auxiliar_sin_sondas_no_cuenta(monkeypatch):
+    salidas = {"chaoslab-a": ["", "✔ A1"], "chaoslab-b": ["✔ B1"]}
+    monkeypatch.setattr(engine, "_run_cmd", FakeRun(lambda a, i: (0, salidas[a[a.index("bash") - 1]].pop(0))))
+    nodes = [{"role": r, "container": f"chaoslab-{r}"} for r in ("a", "b")]
+    out = ChaosEngine()._run_check_script([
+        {"node": "a", "script": "sss_cache -E >/dev/null 2>&1; true"},
+        {"node": "b", "script": "comprueba B true"},
+        {"node": "a", "script": "comprueba A true"},
+    ], nodes)
+    assert [(c["id"], c["label"], c["passed"]) for c in out] == [("c1", "B1", True), ("c2", "A1", True)]
+    # Si ningún bloque da sondas, sigue saliendo una fallida (nunca resuelto por vacío)
+    monkeypatch.setattr(engine, "_run_cmd", FakeRun(lambda a, i: (0, "")))
+    out = ChaosEngine()._run_check_script([{"node": "a", "script": "true"}, {"node": "b", "script": "true"}], nodes)
+    assert len(out) == 1 and not out[0]["passed"]
+
+
+def test_corrector_una_orden_que_lee_stdin_no_se_come_el_resto():
+    """El corrector llega por stdin a `bash -s`: una orden que lee stdin (ssh, cat…) no debe tragarse las sondas siguientes."""
+    import subprocess
+    script = engine._build_check_script({"script": 'comprueba "uno" bash -c "cat >/dev/null"\ncomprueba "dos" true'})
+    out = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True, timeout=10).stdout
+    assert [c["label"] for c in engine._parse_check_output(out, "a")] == ["uno", "dos"]

@@ -46,6 +46,13 @@ IMAGE_CANDIDATES: dict[str, list[str]] = {
         "localhost/chaos-lpic-fedora:1",
         "docker.io/library/fedora:44",
     ],
+    # Pack LPIC-2 LDAP: servidor OpenLDAP y cliente sssd (images/ldap-srv e images/ldap-cli; comparten CA de laboratorio)
+    "ldap-srv": [
+        "localhost/chaos-ldap-srv:1",
+    ],
+    "ldap-cli": [
+        "localhost/chaos-ldap-cli:1",
+    ],
     "rocky": [
         "localhost/chaos-rocky:1",
         "docker.io/rockylinux/rockylinux:9",
@@ -180,25 +187,34 @@ def _build_check_script(cs: dict[str, Any]) -> str:
     cwd = cs.get("cwd")
     if cwd:
         parts.append(f"cd {shlex.quote(cwd)} 2>/dev/null || {{ mal {shlex.quote(CHECK_NO_CWD_LABEL)}; exit 0; }}\n")
+    # Entre llaves y con stdin a /dev/null: bash lee el bloque entero antes de ejecutarlo, así ninguna orden
+    # (ssh, read, cat…) se come el resto del corrector que llega por la misma entrada estándar.
+    parts.append("{\n")
     parts.append(cs.get("script", ""))
-    parts.append("\n")
+    parts.append("\n} </dev/null\n")
     return "".join(parts)
 
 
-def _parse_check_output(out: str, node: str) -> list[dict[str, Any]]:
-    """Líneas ✔/✘ en orden -> sondas c1, c2… Sin ninguna, una sonda fallida (nunca resuelto por vacío)."""
+def _check_blocks(cs: dict[str, Any] | list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bloques de corrector de un escenario: `check_script` puede ser un dict (un nodo) o una lista de dicts
+    {node, cwd, script} (un bloque por nodo; las sondas se unen en el orden de la lista)."""
+    return [cs] if isinstance(cs, dict) else list(cs or [])
+
+
+def _parse_check_output(out: str, node: str, start: int = 0, empty_label: str = CHECK_EMPTY_LABEL) -> list[dict[str, Any]]:
+    """Líneas ✔/✘ en orden -> sondas c<start+1>, … Sin ninguna, una sonda fallida (nunca resuelto por vacío)."""
     checks: list[dict[str, Any]] = []
     for line in out.splitlines():
         line = line.strip()
         if line[:1] in ("✔", "✘"):
             checks.append({
-                "id": f"c{len(checks) + 1}",
+                "id": f"c{start + len(checks) + 1}",
                 "label": line[1:].strip(),
                 "node": node,
                 "passed": line[0] == "✔",
             })
     if not checks:
-        checks.append({"id": "c1", "label": CHECK_EMPTY_LABEL, "node": node, "passed": False})
+        checks.append({"id": f"c{start + 1}", "label": empty_label, "node": node, "passed": False})
     return checks
 
 
@@ -631,17 +647,30 @@ class ChaosEngine:
     # -------------------- Verificación Multi-Check --------------------
 
     def _run_check_script(self, cs: dict[str, Any], nodes_runtime: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Ejecuta el corrector una vez (bash -s por stdin, como root) y devuelve las sondas con su estado."""
-        role = cs.get("node") or (nodes_runtime[0]["role"] if nodes_runtime else "")
-        nr = next((n for n in nodes_runtime if n["role"] == role), None)
-        if nr is None:
-            return [{"id": "c1", "label": CHECK_EMPTY_LABEL, "node": role, "passed": False}]
-        _rc, out = _run_cmd(
-            [RUNTIME, "exec", "-i", "--user", "root", nr["container"], "bash", "-s"],
-            timeout=CHECK_SCRIPT_TIMEOUT,
-            input_text=_build_check_script(cs),
-        )
-        return _parse_check_output(out, role)
+        """Ejecuta el corrector (bash -s por stdin, como root, un bloque por nodo si es una lista) y devuelve
+        las sondas con su estado: ids únicos c1, c2… seguidos a lo largo de todos los bloques."""
+        blocks = _check_blocks(cs)
+        multi = len(blocks) > 1
+        checks: list[dict[str, Any]] = []
+        for blk in blocks:
+            role = blk.get("node") or (nodes_runtime[0]["role"] if nodes_runtime else "")
+            empty = f"{CHECK_EMPTY_LABEL} ({role})" if multi else CHECK_EMPTY_LABEL
+            nr = next((n for n in nodes_runtime if n["role"] == role), None)
+            if nr is None:
+                checks.extend(_parse_check_output("", role, len(checks), empty))
+                continue
+            _rc, out = _run_cmd(
+                [RUNTIME, "exec", "-i", "--user", "root", nr["container"], "bash", "-s"],
+                timeout=CHECK_SCRIPT_TIMEOUT,
+                input_text=_build_check_script(blk),
+            )
+            if multi and not re.search(r"\b(comprueba|ok|mal)\b", blk.get("script", "")):
+                # Bloque auxiliar (p. ej. vaciar la caché de sssd antes de las sondas de otro nodo): no da sondas
+                continue
+            checks.extend(_parse_check_output(out, role, len(checks), empty))
+        if not checks:
+            checks = _parse_check_output("", blocks[0].get("node", "") if blocks else "", 0)
+        return checks
 
     def verify(self) -> dict[str, Any]:
         with self._lock:
