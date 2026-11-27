@@ -17,6 +17,7 @@ import termios
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
+from .runtime import RUNTIME
 
 
 def _set_winsize(fd: int, rows: int, cols: int) -> None:
@@ -50,7 +51,7 @@ async def stream_container_pty(
         exec_args = [shell, "-i"]
 
     cmd = [
-        "podman",
+        RUNTIME,
         "exec",
         "-it",
         "--user",

@@ -1,4 +1,4 @@
-podman exec "$C_INFECTED_HOST" bash -c '
+"$RT" exec "$C_INFECTED_HOST" bash -c '
 dir=$(ls -d /var/tmp/.*/ 2>/dev/null | grep -v "/\.\./\|/\./" | head -1); echo "oculto: $dir"
 grep -l "$dir" /etc/cron.d/* 2>/dev/null | xargs -r rm -v
 crontab -l 2>/dev/null | grep -v "$dir" | crontab - 2>/dev/null

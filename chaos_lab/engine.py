@@ -1,5 +1,5 @@
 """
-Motor de ejecución de laboratorios efímeros sobre Podman rootless.
+Motor de ejecución de laboratorios efímeros sobre Podman (rootless) o Docker.
 Soporta topologías de 1 a N nodos en red aislada, inyección de averías mutables,
 verificación granular por objetivos y persistencia de progreso/rachas.
 """
@@ -18,6 +18,7 @@ from typing import Any
 
 from .mentor import collect_timeline
 from .scenarios import SCENARIO_CATALOG, SCENARIOS_BY_ID, instantiate_scenario
+from .runtime import RUNTIME
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATE_FILE = BASE_DIR / "data" / "state.json"
@@ -110,12 +111,12 @@ class ChaosEngine:
         tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         tmp.replace(STATE_FILE)
 
-    # -------------------- Imágenes Podman --------------------
+    # -------------------- Imágenes (Podman o Docker) --------------------
 
     def _local_images(self, refresh: bool = False) -> set[str]:
         if self._cached_local_images is not None and not refresh:
             return self._cached_local_images
-        rc, out = _run_cmd(["podman", "images", "--format", "{{.Repository}}:{{.Tag}}"], timeout=8)
+        rc, out = _run_cmd([RUNTIME, "images", "--format", "{{.Repository}}:{{.Tag}}"], timeout=8)
         if rc == 0:
             imgs = {line.strip() for line in out.splitlines() if line.strip() and "<none>" not in line}
             self._cached_local_images = imgs
@@ -137,14 +138,15 @@ class ChaosEngine:
     def _probe_tools(self, container: str) -> list[str]:
         """Herramientas que hay de verdad en el nodo (se muestran en «🧰 Herramientas» de la UI)."""
         probe = "for t in " + " ".join(NODE_TOOLS) + "; do command -v $t >/dev/null 2>&1 && echo $t; done; true"
-        rc, out = _run_cmd(["podman", "exec", container, "sh", "-c", probe], timeout=8)
+        rc, out = _run_cmd([RUNTIME, "exec", container, "sh", "-c", probe], timeout=8)
         return out.split() if rc == 0 else []
 
     def runtime_health(self) -> dict[str, Any]:
-        rc, out = _run_cmd(["podman", "--version"], timeout=5)
+        rc, out = _run_cmd([RUNTIME, "--version"], timeout=5)
         imgs = self._local_images()
         return {
-            "podman_ok": rc == 0,
+            "engine": RUNTIME,
+            "podman_ok": rc == 0,  # nombre histórico: «motor OK» (Podman o Docker)
             "podman_version": out if rc == 0 else None,
             "cached_images_count": len(imgs),
             "error": None if rc == 0 else out,
@@ -154,14 +156,14 @@ class ChaosEngine:
 
     def cleanup_containers(self) -> None:
         rc, out = _run_cmd(
-            ["podman", "ps", "-a", "--filter", f"name=^{CONTAINER_PREFIX}", "--format", "{{.Names}}"],
+            [RUNTIME, "ps", "-a", "--filter", f"name=^{CONTAINER_PREFIX}", "--format", "{{.Names}}"],
             timeout=10,
         )
         if rc == 0 and out:
             names = [n.strip() for n in out.splitlines() if n.strip()]
             if names:
-                _run_cmd(["podman", "rm", "-f", *names], timeout=20)
-        _run_cmd(["podman", "network", "rm", "-f", NETWORK_NAME], timeout=10)
+                _run_cmd([RUNTIME, "rm", "-f", *names], timeout=20)
+        _run_cmd([RUNTIME, "network", "rm", "-f", NETWORK_NAME], timeout=10)
 
     def stop_active(self) -> dict[str, Any]:
         with self._lock:
@@ -261,7 +263,7 @@ class ChaosEngine:
                         "ip": n.get("ip", "127.0.0.1"),
                         "shell": n["shell"],
                         "tools": n.get("tools", []),
-                        "cli_attach": f"podman exec -it --user {n['default_user']} {n['container']} {n['shell']}",
+                        "cli_attach": f"{RUNTIME} exec -it --user {n['default_user']} {n['container']} {n['shell']}",
                     }
                     for n in act["nodes_runtime"]
                 ],
@@ -302,9 +304,9 @@ class ChaosEngine:
             multi_node = len(inst["nodes"]) > 1
 
             if multi_node:
-                rc_net, out_net = _run_cmd(["podman", "network", "create", NETWORK_NAME], timeout=12)
+                rc_net, out_net = _run_cmd([RUNTIME, "network", "create", NETWORK_NAME], timeout=12)
                 if rc_net != 0:
-                    return {"ok": False, "error": f"No se pudo crear la red Podman ({NETWORK_NAME}): {out_net}"}
+                    return {"ok": False, "error": f"No se pudo crear la red {RUNTIME} ({NETWORK_NAME}): {out_net}"}
 
             nodes_runtime: list[dict[str, Any]] = []
             session_id = f"{int(time.time())}-{inst['seed']}"
@@ -315,7 +317,7 @@ class ChaosEngine:
                 image = self.resolve_image(n["distro"])
 
                 cmd = [
-                    "podman",
+                    RUNTIME,
                     "run",
                     "-d",
                     "--rm",
@@ -356,7 +358,7 @@ class ChaosEngine:
                 if multi_node:
                     rc_ip, out_ip = _run_cmd(
                         [
-                            "podman",
+                            RUNTIME,
                             "inspect",
                             "-f",
                             "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
@@ -394,13 +396,13 @@ class ChaosEngine:
                     f"cat << 'EOF' > /etc/chaos_nodes.env\n{env_payload}EOF\n"
                     f"chmod 0644 /etc/chaos_nodes.env\n"
                 )
-                _run_cmd(["podman", "exec", nr["container"], "sh", "-c", bootstrap_env], timeout=10)
+                _run_cmd([RUNTIME, "exec", nr["container"], "sh", "-c", bootstrap_env], timeout=10)
 
                 # Ejecutar setup_sh inyectando avería
                 shell_bin = nr["shell"]
                 rc_setup, out_setup = _run_cmd(
                     [
-                        "podman",
+                        RUNTIME,
                         "exec",
                         nr["container"],
                         shell_bin,
@@ -500,7 +502,7 @@ class ChaosEngine:
                 shell_bin = nr["shell"]
                 rc, _out = _run_cmd(
                     [
-                        "podman",
+                        RUNTIME,
                         "exec",
                         nr["container"],
                         shell_bin,

@@ -11,6 +11,7 @@ import subprocess
 import urllib.error
 import urllib.request
 from typing import Any
+from .runtime import RUNTIME
 
 OLLAMA_BASE = "http://127.0.0.1:11434"
 PREFERRED_MODELS = [
@@ -59,7 +60,7 @@ def collect_timeline(active: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         try:
             proc = subprocess.run(
-                ["podman", "exec", node["container"], node["shell"], "-c", sig["cmd"]],
+                [RUNTIME, "exec", node["container"], node["shell"], "-c", sig["cmd"]],
                 capture_output=True,
                 text=True,
                 timeout=15,

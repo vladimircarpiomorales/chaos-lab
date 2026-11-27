@@ -1,4 +1,4 @@
-podman exec "$C_TLS_GATEWAY" bash -c '
+"$RT" exec "$C_TLS_GATEWAY" bash -c '
 cd /opt/tls
 printf "subjectAltName=DNS:vault.corp.internal\n" > good_ext.cnf
 openssl x509 -req -in server.csr -CA /etc/ssl/corp-ca/ca.crt -CAkey /etc/ssl/corp-ca/ca.key -CAcreateserial \

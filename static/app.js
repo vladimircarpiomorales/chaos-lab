@@ -53,10 +53,11 @@ async function refreshHealth() {
   try {
     const h = await fetch("/api/health").then((r) => r.json());
     const rt = h.runtime || {};
+    const motor = rt.engine === "docker" ? "Docker" : "Podman";
     $("podman-dot").className = "dot " + (rt.podman_ok ? "ok" : "err");
     $("podman-text").textContent = rt.podman_ok
-      ? `Podman OK · ${rt.cached_images_count} imgs`
-      : "Podman sin acceso";
+      ? `${motor} OK · ${rt.cached_images_count} imgs`
+      : `${motor} sin acceso`;
 
     const ol = h.ollama || {};
     $("ollama-dot").className = "dot " + (ol.online ? "ok" : "warn");
@@ -64,6 +65,7 @@ async function refreshHealth() {
       ? `IA: ${ol.model || "Ollama"}`
       : "Mentor Heurístico";
   } catch (_) {
+    const motor = rt.engine === "docker" ? "Docker" : "Podman";
     $("podman-dot").className = "dot err";
     $("podman-text").textContent = "Servidor desconectado";
   }

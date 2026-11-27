@@ -11,6 +11,10 @@ set -euo pipefail
 RAIZ="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 # Configuración local opcional (no se sube): CHAOS_PORT, CHAOS_EXPORT_DIR, CHAOS_RUNTIME…
 [ -f "${RAIZ}/.env" ] && set -a && . "${RAIZ}/.env" && set +a
+# Motor de contenedores: CHAOS_RUNTIME=podman|docker, o el primero que haya (podman → docker)
+RT="${CHAOS_RUNTIME:-}"
+[ -z "$RT" ] && { command -v podman >/dev/null 2>&1 && RT=podman || RT=docker; }
+export CHAOS_RUNTIME="$RT"
 PUERTO="${CHAOS_PORT:-7820}"
 HOST="${CHAOS_HOST:-127.0.0.1}"
 URL="http://${HOST}:${PUERTO}/"
@@ -24,8 +28,8 @@ vivo() {
 parar() {
     curl -sf -X POST --max-time 4 "${URL}api/lab/stop" >/dev/null 2>&1 || true
     fuser -k "${PUERTO}/tcp" >/dev/null 2>&1 || pkill -f "chaos_lab\.server" 2>/dev/null || true
-    podman ps -aq --filter "name=^chaoslab-" 2>/dev/null | xargs -r podman rm -f >/dev/null 2>&1 || true
-    podman network rm -f chaoslab-net >/dev/null 2>&1 || true
+    "$RT" ps -aq --filter "name=^chaoslab-" 2>/dev/null | xargs -r "$RT" rm -f >/dev/null 2>&1 || true
+    "$RT" network rm chaoslab-net >/dev/null 2>&1 || true
 }
 
 ACCION="${1:-}"
@@ -63,7 +67,7 @@ if ! vivo; then
     fi
     # Primera vez: construir las imágenes propias (herramientas de serie, sin apt al desplegar). Necesita internet una vez.
     for img in debian rocky nginx redis; do
-        if ! podman image exists "localhost/chaos-${img}:1" 2>/dev/null; then
+        if ! "$RT" image inspect "localhost/chaos-${img}:1" >/dev/null 2>&1; then
             echo "🧱 Construyendo imagen chaos-${img} (solo la primera vez)..."
             "${RAIZ}/images/construir.sh" "$img" >> "$LOG_FILE" 2>&1 \
                 || echo "⚠ No se pudo construir chaos-${img}: se usará la imagen oficial (ver ${LOG_FILE})"

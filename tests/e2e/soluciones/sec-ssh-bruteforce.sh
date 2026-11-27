@@ -1,4 +1,4 @@
-podman exec "$C_SSH_VICTIM" bash -c '
+"$RT" exec "$C_SSH_VICTIM" bash -c '
 sleep 3
 atk=$(grep "Failed password" /var/log/auth.log | sed -E "s/.* from ([0-9.]+) port.*/\1/" | sort | uniq -c | sort -rn | awk "NR==1{print \$2}")
 echo "atacante: $atk"

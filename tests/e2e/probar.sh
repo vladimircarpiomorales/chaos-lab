@@ -5,6 +5,10 @@
 set -uo pipefail
 URL="${CHAOS_URL:-http://127.0.0.1:7820}"
 SID="$1"; SOL="$2"
+# Motor de contenedores: CHAOS_RUNTIME=podman|docker, o el primero que haya (podman → docker)
+RT="${CHAOS_RUNTIME:-}"
+[ -z "$RT" ] && { command -v podman >/dev/null 2>&1 && RT=podman || RT=docker; }
+export RT
 api() { curl -s -X POST -H 'Content-Type: application/json' -H "Origin: $URL" --max-time 400 "$URL$1" ${2:+-d "$2"}; }
 estado() { api /api/lab/verify | python3 -c "import json,sys; a=json.load(sys.stdin); a=a.get('active',a); print(a.get('scenario_id'), ' '.join(('✓' if c['passed'] else '✗')+c['id'] for c in a.get('checks',[])))"; }
 res=$(api /api/lab/launch "{\"scenario_id\":\"$SID\"}")
