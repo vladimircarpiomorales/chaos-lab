@@ -1,0 +1,5 @@
+# Imagen de Chaos Lab para nodos "redis": la oficial + herramientas para trabajar cómodo
+FROM docker.io/library/redis:7-alpine
+RUN apk add --no-cache nano vim less curl iproute2 bind-tools procps
+LABEL org.opencontainers.image.title="chaos-redis" \
+      org.opencontainers.image.description="redis:7-alpine con nano, vim, less, curl, ss, dig y ps"

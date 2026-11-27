@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chaos Lab · Arena SRE &amp; Troubleshooting Linux/Red</title>
+  <script>try{var t=localStorage.getItem("chaos-theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}</script>
+  <link rel="stylesheet" href="/static/vendor/xterm.css" />
+  <link rel="stylesheet" href="/static/styles.css?v=5" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <h1>CHAOS LAB</h1>
+        <span class="subtitle">Simulador Interactivo de Incidentes Linux · Redes · Multi-Nodo</span>
+      </div>
+    </div>
+
+    <div class="topbar-status">
+      <div class="pill" id="podman-pill" title="Estado del motor de contenedores Podman">
+        <span class="dot" id="podman-dot"></span>
+        <span id="podman-text">Comprobando Podman…</span>
+      </div>
+      <div class="pill" id="ollama-pill" title="Mentor IA Socrático local">
+        <span class="dot" id="ollama-dot"></span>
+        <span id="ollama-text">Mentor Local</span>
+      </div>
+      <div class="pill xp-pill">
+        <span>🏆 <strong id="stat-xp">0</strong> XP</span>
+        <span class="sep">·</span>
+        <span><strong id="stat-solved">0/0</strong> resueltos</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <a href="http://127.0.0.1:7788/" class="btn btn-ghost" title="Volver al Centro de Control PRO (:7788)">← Panel PRO</a>
+      <select id="blind-diff-select" class="input-compact" title="Filtro de dificultad para Guardia a Ciegas">
+        <option value="Todos">Cualquier nivel</option>
+        <option value="Básico">Solo Básico</option>
+        <option value="Intermedio">Solo Intermedio</option>
+        <option value="Avanzado">Solo Avanzado</option>
+        <option value="Experto">Solo Experto</option>
+      </select>
+      <button id="btn-theme" class="theme-toggle" title="Cambiar tema claro / oscuro" aria-label="Cambiar tema">◐</button>
+      <button id="btn-blind-launch" class="btn btn-danger-glow">
+        🎲 Guardia 3:00 AM (+25% XP)
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <!-- Panel izquierdo: Catálogo de escenarios -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-title-row">
+          <h2>Catálogo de Averías</h2>
+          <button id="btn-toggle-history" class="btn-ghost-sm" title="Ver historial reciente">📜 Historial</button>
+        </div>
+        <input
+          type="search"
+          id="search-input"
+          class="search-box"
+          placeholder="Buscar por Nginx, ACL, DNS, Rocky, Routing…"
+        />
+        <div class="filter-chips" id="filter-chips">
+          <button class="chip active" data-filter="all">Todos</button>
+          <button class="chip" data-filter="multi">Multi-Nodo</button>
+          <button class="chip" data-filter="Básico">Básico</button>
+          <button class="chip" data-filter="Intermedio">Intermedio</button>
+          <button class="chip" data-filter="Avanzado">Avanzado+</button>
+          <button class="chip" data-filter="pending">Pendientes</button>
+        </div>
+      </div>
+
+      <div class="scenario-list" id="scenario-list"></div>
+
+      <div class="history-drawer hidden" id="history-drawer">
+        <div class="history-header">
+          <h3>Últimas guardias resueltas</h3>
+          <button id="btn-close-history" class="btn-ghost-sm">✕</button>
+        </div>
+        <div id="history-list" class="history-list"></div>
+      </div>
+    </aside>
+
+    <!-- Área principal -->
+    <section class="arena">
+      <!-- Estado vacío cuando no hay contenedor corriendo -->
+      <div id="empty-arena" class="empty-arena">
+        <div class="empty-card">
+          <div class="empty-badge">ENTORNO EFÍMERO AISLADO SOBRE PODMAN</div>
+          <h2>¿Listo para entrar de guardia?</h2>
+          <p>
+            Cada laboratorio levanta <strong>1 a 3 contenedores reales interconectados</strong> con averías inyectadas
+            dinámicamente (puertos, contraseñas, reglas de firewall, rutas y tokens cambian en cada partida).
+          </p>
+          <div class="feature-grid">
+            <div class="feat-item">
+              <span class="feat-ico">🖧</span>
+              <div>
+                <strong>Topologías Multi-Nodo</strong>
+                <small>Pestañas PTY reales por servidor (`edge-proxy`, `api`, `redis`, routers IPv4).</small>
+              </div>
+            </div>
+            <div class="feat-item">
+              <span class="feat-ico">🧬</span>
+              <div>
+                <strong>Chaos Mutator</strong>
+                <small>Semillas aleatorias para diagnosticar de verdad en lugar de memorizar comandos.</small>
+              </div>
+            </div>
+            <div class="feat-item">
+              <span class="feat-ico">🚨</span>
+              <div>
+                <strong>Modo Guardia 3:00 AM</strong>
+                <small>Incidente a ciegas tipo PagerDuty sin pistas en el título ni en las sondas.</small>
+              </div>
+            </div>
+            <div class="feat-item">
+              <span class="feat-ico">📝</span>
+              <div>
+                <strong>Post-Mortem &amp; Mentor SRE</strong>
+                <small>Orientación socrática sin spoilers y exportación del informe `.md` en 1 clic.</small>
+              </div>
+            </div>
+          </div>
+          <div class="empty-cta-row">
+            <button id="btn-empty-blind" class="btn btn-danger-glow btn-lg">
+              🎲 Lanzar Incidente Aleatorio a Ciegas
+            </button>
+            <button id="btn-empty-first" class="btn btn-primary btn-lg">
+              ▶ Empezar por Pasarela 502 (Multi-Nodo)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vista activa del laboratorio -->
+      <div id="active-arena" class="active-arena hidden">
+        <div class="incident-banner" id="incident-banner">
+          <div class="incident-top">
+            <div class="incident-titles">
+              <div class="incident-badges">
+                <span class="badge" id="active-diff-badge">Intermedio</span>
+                <span class="badge badge-cat" id="active-cat-badge">Categoría</span>
+                <span class="badge badge-seed" id="active-seed-badge" title="Semilla del Chaos Mutator">Seed #000000</span>
+              </div>
+              <h2 id="active-title">Título del Incidente</h2>
+            </div>
+
+            <div class="incident-controls">
+              <div class="timer-box" id="timer-box">
+                <span class="timer-label">TIEMPO</span>
+                <span class="timer-val" id="timer-val">00:00</span>
+              </div>
+              <button id="btn-reveal-blind" class="btn btn-ghost hidden" title="Mostrar qué escenario es (pierde bonus ciego)">
+                👁 Revelar Escenario
+              </button>
+              <button id="btn-remutate" class="btn btn-ghost" title="Redesplegar escenario con nueva semilla aleatoria">
+                ↻ Re-mutar
+              </button>
+              <button id="btn-postmortem" class="btn btn-ghost" title="Generar informe Post-Mortem en Markdown">
+                📄 Post-Mortem
+              </button>
+              <button id="btn-stop-lab" class="btn btn-stop" title="Detener y limpiar contenedores">
+                ⏹ Destruir Lab
+              </button>
+            </div>
+          </div>
+
+          <p class="incident-desc" id="active-desc"></p>
+          <div class="alert-timeline hidden" id="alert-timeline"></div>
+        </div>
+
+        <div class="topo-strip hidden" id="topo-strip">
+          <div class="topo-head">
+            <span class="section-label">🗺 Cómo debería fluir el tráfico</span>
+            <span class="topo-legend">
+              <span class="lg lg-unk"></span>sin comprobar
+              <span class="lg lg-ok"></span>OK
+              <span class="lg lg-bad"></span>falla
+              <span class="topo-tip">· clic en un nodo = abrir su terminal</span>
+            </span>
+            <button id="btn-topo-toggle" class="btn-ghost-sm">Ocultar</button>
+          </div>
+          <div class="topo-body" id="topo-body"></div>
+        </div>
+
+        <div class="workbench">
+          <!-- Consola PTY Multi-Nodo -->
+          <div class="terminal-pane">
+            <div class="terminal-bar">
+              <div class="node-tabs" id="node-tabs"></div>
+              <div class="terminal-tools">
+                <button id="btn-copy-cli" class="btn-tool" title="Copiar comando podman exec para abrir en tu terminal local">
+                  📋 <span class="lbl">CLI externa</span>
+                </button>
+                <button id="btn-reconnect-tty" class="btn-tool" title="Reconectar sesión PTY del nodo actual">
+                  🔌 <span class="lbl">Reconectar</span>
+                </button>
+                <button id="btn-clear-tty" class="btn-tool" title="Limpiar pantalla">
+                  🧹 <span class="lbl">Limpiar</span>
+                </button>
+              </div>
+            </div>
+            <div id="terminals-wrapper" class="terminals-wrapper"></div>
+          </div>
+
+          <!-- Panel derecho: Verificador SLO, Pistas y Mentor -->
+          <div class="inspector-pane">
+            <!-- Bloque de Victoria -->
+            <div id="victory-card" class="victory-card hidden">
+              <div class="victory-header">
+                <div class="rank-medal" id="victory-rank">S</div>
+                <div>
+                  <h3>¡Incidente Resuelto!</h3>
+                  <p id="victory-meta">+180 XP · Resuelto en 02:15</p>
+                </div>
+              </div>
+              <div class="solution-box">
+                <strong>Causa raíz documentada:</strong>
+                <pre id="victory-solution"></pre>
+              </div>
+              <button id="btn-victory-pm" class="btn btn-primary btn-block">
+                📄 Exportar Post-Mortem SRE (.md)
+              </button>
+            </div>
+
+            <!-- Sondas de validación -->
+            <div class="panel-card">
+              <div class="panel-card-header">
+                <h3>Sondas de Salud (SLO)</h3>
+                <span class="check-counter" id="check-counter">0/3</span>
+              </div>
+              <div id="checks-list" class="checks-list"></div>
+              <button id="btn-verify" class="btn btn-verify btn-block">
+                ✓ Ejecutar Verificación en Vivo
+              </button>
+            </div>
+
+            <!-- Método para empezar -->
+            <details class="panel-card howto" id="howto-card" open>
+              <summary><h3>🧭 Cómo empezar</h3></summary>
+              <ol class="howto-steps">
+                <li><strong>Reproduce el síntoma.</strong> Lanza tú la misma petición que falla (la flecha «tú» del esquema).</li>
+                <li><strong>Sigue el camino.</strong> Ve nodo a nodo en el orden de las flechas.</li>
+                <li><strong>En cada salto pregúntate:</strong> ¿el servicio está vivo? ¿escucha en la IP y puerto correctos? ¿la config apunta al sitio bueno? ¿algún firewall lo corta?</li>
+                <li><strong>Arregla de uno en uno y pulsa Verificar.</strong> El esquema se pone verde donde ya funciona.</li>
+              </ol>
+              <div id="howto-look" class="howto-look"></div>
+            </details>
+
+            <!-- Pistas progresivas -->
+            <div class="panel-card">
+              <div class="panel-card-header">
+                <h3>Pistas Escalonadas</h3>
+                <button id="btn-unlock-hint" class="btn-ghost-sm">💡 Pedir pista (-15% XP)</button>
+              </div>
+              <div id="hints-list" class="hints-list">
+                <p class="muted-note">Sin pistas consumidas. ¡Resuélvelo limpio para rango S!</p>
+              </div>
+            </div>
+
+            <!-- Copiloto Socrático -->
+            <div class="panel-card">
+              <div class="panel-card-header">
+                <h3>Mentor SRE Socrático</h3>
+                <span class="mentor-tag" id="mentor-source-tag">Listo</span>
+              </div>
+              <div class="mentor-form">
+                <input
+                  type="text"
+                  id="mentor-input"
+                  class="input-compact"
+                  placeholder="Opcional: ¿qué observas o dónde dudas?"
+                />
+                <button id="btn-ask-mentor" class="btn btn-ghost">Consultar</button>
+              </div>
+              <div id="mentor-output" class="mentor-output muted-note">
+                Analiza los comandos que has probado en la terminal y te sugiere por dónde seguir investigando sin destriparte el comando final.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Overlay de carga al levantar topología -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner"></div>
+    <h3 id="loading-title">Desplegando contenedores e inyectando caos…</h3>
+    <p id="loading-sub">Configurando red aislada Podman y mutando variables del escenario</p>
+  </div>
+
+  <!-- Modal Post-Mortem -->
+  <div id="pm-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>📄 Informe Post-Mortem SRE</h3>
+        <button id="btn-close-pm" class="btn-ghost-sm">✕ Cerrar</button>
+      </div>
+      <textarea id="pm-textarea" class="pm-textarea" readonly></textarea>
+      <div class="modal-actions">
+        <button id="btn-copy-pm" class="btn btn-ghost">📋 Copiar Markdown</button>
+        <button id="btn-vault-pm" class="btn btn-ghost">🧠 Guardar en Obsidian</button>
+        <button id="btn-download-pm" class="btn btn-primary">⬇ Descargar .md</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/static/vendor/xterm.js"></script>
+  <script src="/static/vendor/addon-fit.js"></script>
+  <script src="/static/app.js?v=5"></script>
+</body>
+</html>

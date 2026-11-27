@@ -1,0 +1,5 @@
+# Imagen de Chaos Lab para nodos "nginx": la oficial + herramientas para trabajar cómodo
+FROM docker.io/library/nginx:alpine
+RUN apk add --no-cache nano vim less curl iproute2 bind-tools procps
+LABEL org.opencontainers.image.title="chaos-nginx" \
+      org.opencontainers.image.description="nginx:alpine con nano, vim, less, curl, ss, dig y ps"

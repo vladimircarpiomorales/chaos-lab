@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*.tmp
+data/state.json
+data/server.log
+
+# Notas internas de desarrollo (no se publican)
+NOTAS.md
+TAREA_*.md
+PLAN_*.md
+PROPUESTA_*.md
+CONTEXTO_*
+*.kate-swp
+exports/
+.venv/
