@@ -60,7 +60,7 @@
     "category": "Linux Essentials · 010-160",
     "blind_alert": "PETICIÓN [INVENTARIO] · Hay que sacar un inventario rápido del contenido de una carpeta personal de ejemplo.",
     "preparar": "mkdir -p casa/documentos/2024 casa/musica\ncd casa\necho x > .bashrc\necho \"set -o vi\" > .inputrc\necho \"secreto\" > .notas\necho hola > saludo.txt\nhead -c 5000 /dev/zero > video.mp4\nhead -c 300 /dev/zero > foto.jpg\necho \"acta\" > documentos/2024/acta-enero.txt\necho \"la la\" > musica/cancion.ogg",
-    "comprobar": "comprueba \"ocultos.txt tiene .bashrc, .inputrc y .notas\" bash -c 'diff <(printf \".bashrc\\n.inputrc\\n.notas\\n\") <(sort ocultos.txt)'\ncomprueba \"grande.txt dice video.mp4\" bash -c '[ \"$(tr -d \" \\n\" < grande.txt)\" = video.mp4 ]'\ncomprueba \"arbol.txt llega hasta acta-enero.txt (es recursivo)\" grep -q acta-enero.txt arbol.txt\ncomprueba \"donde.txt es la ruta absoluta de casa/documentos/2024\" bash -c '[ \"$(cat donde.txt)\" = \"$RETO/casa/documentos/2024\" ]'"
+    "comprobar": "comprueba \"ocultos.txt tiene todos los ficheros ocultos\" bash -c 'diff <(printf \".bashrc\\n.inputrc\\n.notas\\n\") <(sort ocultos.txt)'\ncomprueba \"grande.txt: el fichero más grande\" bash -c '[ \"$(tr -d \" \\n\" < grande.txt)\" = video.mp4 ]'\ncomprueba \"arbol.txt llega hasta acta-enero.txt (es recursivo)\" grep -q acta-enero.txt arbol.txt\ncomprueba \"donde.txt es la ruta absoluta de casa/documentos/2024\" bash -c '[ \"$(cat donde.txt)\" = \"$RETO/casa/documentos/2024\" ]'"
   },
   {
     "id": "lpie-ficheros",
@@ -158,7 +158,7 @@
     "category": "Linux Essentials · 010-160",
     "blind_alert": "PETICIÓN [PROCESADO] · Hay que separar la salida normal de los errores de un comando y sacar datos de una lista con tuberías.",
     "preparar": "printf \"Marta\\nLuis\\nAna\\nPedro\\nCarla\\nBeatriz\\n\" > nombres.txt",
-    "comprobar": "comprueba \"bien.txt empieza por /etc/hostname\" bash -c '[ \"$(head -1 bien.txt)\" = /etc/hostname ]'\ncomprueba \"bien.txt termina en FIN\" bash -c '[ \"$(tail -1 bien.txt)\" = FIN ] && [ \"$(wc -l < bien.txt)\" -eq 2 ]'\ncomprueba \"mal.txt tiene el error de /no/existe\" grep -q /no/existe mal.txt\ncomprueba \"top3.txt es Ana, Beatriz, Carla\" bash -c 'diff <(printf \"Ana\\nBeatriz\\nCarla\\n\") top3.txt'\ncomprueba \"palabras.txt contiene 6\" bash -c '[ \"$(tr -d \" \\n\" < palabras.txt)\" = 6 ]'"
+    "comprobar": "comprueba \"bien.txt empieza por /etc/hostname\" bash -c '[ \"$(head -1 bien.txt)\" = /etc/hostname ]'\ncomprueba \"bien.txt termina en FIN\" bash -c '[ \"$(tail -1 bien.txt)\" = FIN ] && [ \"$(wc -l < bien.txt)\" -eq 2 ]'\ncomprueba \"mal.txt tiene el error de /no/existe\" grep -q /no/existe mal.txt\ncomprueba \"top3.txt: los tres primeros en el orden pedido\" bash -c 'diff <(printf \"Ana\\nBeatriz\\nCarla\\n\") top3.txt'\ncomprueba \"palabras.txt: el número de palabras\" bash -c '[ \"$(tr -d \" \\n\" < palabras.txt)\" = 6 ]'"
   },
   {
     "id": "lpie-grep",
@@ -189,7 +189,7 @@
     "category": "Linux Essentials · 010-160",
     "blind_alert": "PETICIÓN [BÚSQUEDA] · Hay que extraer subconjuntos de un fichero de inventario según patrones de texto.",
     "preparar": "cat > inventario.txt <<'F'\n# inventario del almacén\nCable HDMI 12\nteclado USB 0\ncable de red 5\n# revisado en enero\nratón inalámbrico 30\nCABLE de corriente 0\nteclado mecánico 4\nmonitor 27 pulgadas 10\nF",
-    "comprobar": "comprueba \"cables.txt tiene las 3 líneas de cable\" bash -c 'diff <(grep -i cable inventario.txt) cables.txt'\ncomprueba \"sin-stock.txt: las 2 líneas acabadas en 0 (no la de stock 10)\" bash -c 'diff <(printf \"teclado USB 0\\nCABLE de corriente 0\\n\") sin-stock.txt'\ncomprueba \"no-comentarios.txt no tiene líneas con # al principio y tiene las 7 demás\" bash -c '! grep -q \"^#\" no-comentarios.txt && [ \"$(wc -l < no-comentarios.txt)\" -eq 7 ]'\ncomprueba \"n-teclados.txt contiene 2\" bash -c '[ \"$(tr -d \" \\n\" < n-teclados.txt)\" = 2 ]'"
+    "comprobar": "comprueba \"cables.txt tiene las 3 líneas de cable\" bash -c 'diff <(grep -i cable inventario.txt) cables.txt'\ncomprueba \"sin-stock.txt: las 2 líneas acabadas en 0 (no la de stock 10)\" bash -c 'diff <(printf \"teclado USB 0\\nCABLE de corriente 0\\n\") sin-stock.txt'\ncomprueba \"no-comentarios.txt no tiene líneas con # al principio y tiene las 7 demás\" bash -c '! grep -q \"^#\" no-comentarios.txt && [ \"$(wc -l < no-comentarios.txt)\" -eq 7 ]'\ncomprueba \"n-teclados.txt: el número de líneas con teclado\" bash -c '[ \"$(tr -d \" \\n\" < n-teclados.txt)\" = 2 ]'"
   },
   {
     "id": "lpie-script",
@@ -393,7 +393,7 @@
     "id": "lpie-almacenamiento-datos2",
     "reto": "r010-almacenamiento-datos2",
     "title": "Procesos: PID, /proc/PID y ps",
-    "briefing": "Te piden crear un proceso y consultarlo de distintas maneras:\n1. Lanza `sleep 1234` en segundo plano con `&` y guarda su PID en `pid.txt`; la variable `$!` guarda el PID del último proceso en segundo plano.\n2. Lee en `/proc/PID/comm` el nombre del programa de ese PID y guarda solo el nombre en `comm.txt`.\n3. Guarda en `ps.txt` el PID y el nombre que muestra `ps` para ese proceso (usa `ps -p PID -o pid=,comm=`).\n4. Guarda en `estado.txt` solo la primera letra del estado del proceso según `ps` (columna STAT, `ps -o stat= -p PID`).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-almacenamiento-datos2`); los ficheros que se piden sin ruta van ahí.",
+    "briefing": "Te piden crear un proceso y consultarlo de distintas maneras:\n1. Lanza `sleep 1234` en segundo plano con `&` y guarda su PID en `pid.txt`.\n2. Lee en `/proc/PID/comm` el nombre del programa de ese PID y guarda solo el nombre en `comm.txt`.\n3. Guarda en `ps.txt` el PID y el nombre que muestra `ps` para ese proceso, sin cabeceras.\n4. Guarda en `estado.txt` solo la primera letra del estado del proceso según `ps` (la columna STAT).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-almacenamiento-datos2`); los ficheros que se piden sin ruta van ahí.",
     "hints": [
       "El proceso tiene que seguir vivo mientras pides sus datos. Una variable especial de la shell te da su PID en cuanto lo lanzas, y a partir de ahí lo consultas por `/proc` y por `ps`.",
       "Guarda el PID con `echo $! > pid.txt` justo después de lanzarlo. El nombre está en un fichero dentro del directorio `/proc/<PID>/`. Con la opción de salida de `ps` que termina en `=` se omiten las cabeceras; para la primera letra usa `cut -c1`.",
@@ -420,7 +420,7 @@
     "category": "Linux Essentials · 010-160",
     "blind_alert": "PETICIÓN [PROCESOS] · Hay que lanzar un proceso en segundo plano y documentar su identidad desde varias fuentes.",
     "preparar": "pkill -f '^sleep 1234$' 2>/dev/null || true",
-    "comprobar": "comprueba \"pid.txt: un PID de un proceso que existe\" bash -c 'p=$(cat pid.txt 2>/dev/null); [ -n \"$p\" ] && tr \"\\0\" \" \" < /proc/$p/cmdline 2>/dev/null | grep -q \"^sleep 1234\"'\ncomprueba \"comm.txt: el programa de ese PID es sleep\" bash -c '[ \"$(cat comm.txt)\" = sleep ]'\ncomprueba \"ps.txt: el PID y el nombre sleep\" bash -c '[ \"$(xargs < ps.txt)\" = \"$(cat pid.txt) sleep\" ]'\ncomprueba \"estado.txt: la letra S (durmiendo)\" bash -c '[ \"$(tr -d \" \\n\" < estado.txt)\" = S ]'"
+    "comprobar": "comprueba \"pid.txt: un PID de un proceso que existe\" bash -c 'p=$(cat pid.txt 2>/dev/null); [ -n \"$p\" ] && tr \"\\0\" \" \" < /proc/$p/cmdline 2>/dev/null | grep -q \"^sleep 1234\"'\ncomprueba \"comm.txt: el programa de ese PID es sleep\" bash -c '[ \"$(cat comm.txt)\" = sleep ]'\ncomprueba \"ps.txt: el PID y el nombre sleep\" bash -c '[ \"$(xargs < ps.txt)\" = \"$(cat pid.txt) sleep\" ]'\ncomprueba \"estado.txt: la letra del estado del proceso\" bash -c '[ \"$(tr -d \" \\n\" < estado.txt)\" = S ]'"
   },
   {
     "id": "lpie-red-basica",

@@ -13,3 +13,8 @@ CONTEXTO_*
 exports/
 .venv/
 .env
+
+# Revisiones y encargos de Argon (locales)
+REVISION_ARGON*.md
+TAREA_ARGON*.md
+CONTEXTO_PARA_ARGON*
