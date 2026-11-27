@@ -1449,9 +1449,9 @@ def build_reply(data):
     recs = load_records()
     ip = resolve_ip(qname, recs) if qtype in (1, 255) else None
     if not ip:
-        return tid + struct.pack("!HHHHHH", 0x8583, 1, 0, 0, 0) + data[12:end_q]
+        return tid + struct.pack("!HHHHH", 0x8583, 1, 0, 0, 0) + data[12:end_q]
     ans = encode_name(qname) + struct.pack("!HHIH", 1, 1, 60, 4) + socket.inet_aton(ip)
-    return tid + struct.pack("!HHHHHH", 0x8580, 1, 1, 0, 0) + data[12:end_q] + ans
+    return tid + struct.pack("!HHHHH", 0x8580, 1, 1, 0, 0) + data[12:end_q] + ans
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 sock.bind(("0.0.0.0", 53))
