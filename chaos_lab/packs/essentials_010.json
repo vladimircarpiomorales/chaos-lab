@@ -354,7 +354,7 @@
     "category": "Linux Essentials · 010-160",
     "blind_alert": "PETICIÓN [ENTORNO] · Hay que demostrar qué variables de la shell llegan a un proceso hijo y cómo afectan las comillas.",
     "preparar": "true",
-    "comprobar": "comprueba \"hijo.txt: el hijo no ve saludo y sí ve ORDEN\" bash -c 'diff <(printf \"[][desc]\\n\") hijo.txt'\ncomprueba \"entorno.txt: solo la línea ORDEN=desc de env\" bash -c 'diff <(printf \"ORDEN=desc\\n\") entorno.txt'\ncomprueba \"borrada.txt: ORDEN ya no existe tras unset\" bash -c 'diff <(printf \"[]\\n\") borrada.txt'\ncomprueba \"ls.txt: la ruta de ls\" bash -c '[ \"$(cat ls.txt)\" = \"$(which ls)\" ]'\ncomprueba \"cd.txt: type dice que cd es una orden interna (builtin)\" grep -qi builtin cd.txt\ncomprueba 'comillas.txt: dos veces $HOME sin expandir' bash -c 'diff <(printf \"%s\\n\" \"\\$HOME\" \"\\$HOME\") comillas.txt'"
+    "comprobar": "comprueba \"hijo.txt: el hijo no ve saludo y sí ve ORDEN\" bash -c 'diff <(printf \"[][desc]\\n\") hijo.txt'\ncomprueba \"entorno.txt: solo la línea ORDEN=desc de env\" bash -c 'diff <(printf \"ORDEN=desc\\n\") entorno.txt'\ncomprueba \"borrada.txt: ORDEN ya no existe\" bash -c 'diff <(printf \"[]\\n\") borrada.txt'\ncomprueba \"ls.txt: la ruta de ls\" bash -c '[ \"$(cat ls.txt)\" = \"$(which ls)\" ]'\ncomprueba \"cd.txt: la shell confirma que cd es una orden interna (builtin)\" grep -qi builtin cd.txt\ncomprueba 'comillas.txt: dos veces $HOME sin expandir' bash -c 'diff <(printf \"%s\\n\" \"\\$HOME\" \"\\$HOME\") comillas.txt'"
   },
   {
     "id": "lpie-almacenamiento-datos",
@@ -453,6 +453,6 @@
     "category": "Linux Essentials · 010-160",
     "blind_alert": "PETICIÓN [RED] · Hay que documentar la configuración de red básica de un equipo: interfaz local, nombres y servidores DNS.",
     "preparar": "true",
-    "comprobar": "comprueba \"lo.txt: la salida de ip -br addr show lo\" bash -c 'diff <(ip -br addr show lo) lo.txt'\ncomprueba \"resuelve.txt: localhost es 127.0.0.1\" bash -c '[ \"$(tr -d \" \\n\" < resuelve.txt)\" = 127.0.0.1 ]'\ncomprueba \"hosts.txt: la línea de localhost en /etc/hosts\" bash -c 'diff <(grep -m1 localhost /etc/hosts) hosts.txt'\ncomprueba \"dns.txt: el primer nameserver de resolv.conf\" bash -c 'v=$(tr -d \" \\n\" < dns.txt); [ -n \"$v\" ] && [ \"$v\" = \"$(awk \"/^nameserver/{print \\$2; exit}\" /etc/resolv.conf)\" ]'\ncomprueba \"orden.txt: la línea hosts: de nsswitch.conf\" bash -c 'diff <(grep \"^hosts:\" /etc/nsswitch.conf) orden.txt'"
+    "comprobar": "comprueba \"lo.txt: el resumen breve de la interfaz lo\" bash -c 'diff <(ip -br addr show lo) lo.txt'\ncomprueba \"resuelve.txt: localhost es 127.0.0.1\" bash -c '[ \"$(tr -d \" \\n\" < resuelve.txt)\" = 127.0.0.1 ]'\ncomprueba \"hosts.txt: la línea de localhost en /etc/hosts\" bash -c 'diff <(grep -m1 localhost /etc/hosts) hosts.txt'\ncomprueba \"dns.txt: el primer nameserver de resolv.conf\" bash -c 'v=$(tr -d \" \\n\" < dns.txt); [ -n \"$v\" ] && [ \"$v\" = \"$(awk \"/^nameserver/{print \\$2; exit}\" /etc/resolv.conf)\" ]'\ncomprueba \"orden.txt: la línea hosts: de nsswitch.conf\" bash -c 'diff <(grep \"^hosts:\" /etc/nsswitch.conf) orden.txt'"
   }
 ]
