@@ -16,7 +16,8 @@ Pensado para practicar troubleshooting de verdad (LPIC-1/2, CCNA, AZ-104, guardi
 
 ## Requisitos
 
-- Linux (probado en Debian 13) con **Podman 4+** en modo rootless. *(Docker: en preparación.)*
+- Linux con **Podman 4+** (rootless) **o Docker** 24+. Probado en Debian 13 con Podman 5.4 y en Ubuntu 24.04 con Docker 29.
+  Si tienes los dos, usa Podman; para forzar uno: `CHAOS_RUNTIME=docker` en `.env`.
 - **Python 3.11+** con el módulo `venv` (`apt install python3-venv` en Debian/Ubuntu).
 - ~1 GB libre para las imágenes y **conexión a internet la primera vez** (se construyen las imágenes y se instalan las dependencias).
 
@@ -25,7 +26,7 @@ Pensado para practicar troubleshooting de verdad (LPIC-1/2, CCNA, AZ-104, guardi
 ```bash
 git clone https://github.com/vladimircarpiomorales/chaos-lab.git && cd chaos-lab
 ./arrancar.sh              # la 1ª vez prepara .venv e imágenes; luego abre http://127.0.0.1:7820/
-./arrancar.sh --estado     # salud del servidor y de Podman
+./arrancar.sh --estado     # salud del servidor y del motor de contenedores
 ./arrancar.sh --reiniciar  # reinicia el servidor (¡destruye el laboratorio en curso!)
 ./arrancar.sh --parar      # para el servidor y borra los contenedores chaoslab-*
 ```
@@ -62,6 +63,7 @@ Opcional, en un fichero `.env` en la raíz del repo (no se sube a git):
 |---|---|---|
 | `CHAOS_PORT` | `7820` | Puerto de la interfaz web |
 | `CHAOS_HOST` | `127.0.0.1` | Dirección de escucha (déjala en local, ver *Seguridad*) |
+| `CHAOS_RUNTIME` | autodetección | `podman` o `docker` |
 | `CHAOS_EXPORT_DIR` | `./exports` | Dónde se guardan los post-mortem (p. ej. una carpeta de tu bóveda de Obsidian) |
 
 Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx` y `chaos-redis` se construyen con `images/construir.sh` (lo hace `arrancar.sh` solo si faltan). Si no existen, se usan las imágenes oficiales, que funcionan pero sin las herramientas de serie.
@@ -69,7 +71,7 @@ Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx` y `chaos-redis` se co
 ## Seguridad
 
 - El servidor escucha **solo en `127.0.0.1`**. No lo expongas a la red: da una shell root dentro de los contenedores a quien abra la página.
-- Los contenedores corren como **root dentro del contenedor** (rootless desde fuera, con Podman) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red.
+- Los contenedores corren como **root dentro del contenedor** (rootless desde fuera con Podman; con Docker, según tu instalación) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red.
 - Todo ocurre en la red aislada `chaoslab-net`; `--parar` borra contenedores y red.
 - El usuario de prácticas `alumno` tiene la contraseña `alumno`: solo existe dentro de los contenedores.
 
