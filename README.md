@@ -6,7 +6,7 @@ Simulador local de averías reales (*Break & Fix*) construido desde cero sobre *
 
 - **Topologías reales de 1 a 3 nodos en red aislada (`chaoslab-net`)**:
   - Terminales interactivas completas (`vim`, `nano`, `top`, `Tab`, `Ctrl+C`, redimensionado automático) en pestañas separadas por contenedor.
-  - Multi-distro aprovechando tus imágenes locales sin descargas (`lpi-lab-debian:trixie-v3`, `lpi-lab-rocky:9-v2`, `nginx:alpine`, `redis:7-alpine`).
+  - Multi-distro con imágenes propias (`chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`) que traen de serie nano, vim, ss, dig, curl… `arrancar.sh` las construye la primera vez.
 - **Chaos Mutator (Semilla dinámica)**:
   - Cada despliegue muta puertos, contraseñas, tokens de salud, nombres de procesos o subredes IPv4 para que tengas que diagnosticar en vez de memorizar comandos.
 - **Modo Guardia 3:00 AM (`+25% XP`)**:

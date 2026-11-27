@@ -49,6 +49,14 @@ fi
 
 if ! vivo; then
     cd "$RAIZ"
+    # Primera vez: construir las imágenes propias (herramientas de serie, sin apt al desplegar). Necesita internet una vez.
+    for img in debian rocky nginx redis; do
+        if ! podman image exists "localhost/chaos-${img}:1" 2>/dev/null; then
+            echo "🧱 Construyendo imagen chaos-${img} (solo la primera vez)..."
+            "${RAIZ}/images/construir.sh" "$img" >> "$LOG_FILE" 2>&1 \
+                || echo "⚠ No se pudo construir chaos-${img}: se usará la imagen oficial (ver ${LOG_FILE})"
+        fi
+    done
     setsid nohup env PYTHONPATH="$RAIZ" CHAOS_HOST="$HOST" CHAOS_PORT="$PUERTO" \
         python3 -m chaos_lab.server >> "$LOG_FILE" 2>&1 < /dev/null &
     for _ in $(seq 1 40); do

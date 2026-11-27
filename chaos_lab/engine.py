@@ -29,35 +29,26 @@ NODE_TOOLS = ["nano", "vim", "vi", "less", "curl", "wget", "ss", "ip", "dig", "p
 NETWORK_NAME = "chaoslab-net"
 
 IMAGE_CANDIDATES: dict[str, list[str]] = {
+    # Primero las imágenes propias (images/construir.sh, las crea arrancar.sh la primera vez);
+    # si faltan, las oficiales (funcionan, pero sin nano/vim/ss/dig y los SecOps necesitan red para apt).
     "debian": [
-        "localhost/chaos-debian:1",  # images/construir.sh
-        "localhost/lpi-lab-debian:trixie-v3",
-        "localhost/lpi-lab-debian:trixie-v1",
+        "localhost/chaos-debian:1",
         "docker.io/library/debian:trixie",
-        "docker.io/library/debian:13",
-        "docker.io/library/debian:12",
-        "docker.io/library/ubuntu:24.04",
     ],
     "rocky": [
-        "localhost/lpi-lab-rocky:9-v2",
-        "localhost/lpi-lab-fedora:44-v2",
+        "localhost/chaos-rocky:1",
         "docker.io/rockylinux/rockylinux:9",
-        "localhost/lpi-lab-debian:trixie-v3",
     ],
     "nginx": [
-        "localhost/chaos-nginx:1",  # images/construir.sh: + nano, vim, ss, dig...
+        "localhost/chaos-nginx:1",
         "docker.io/library/nginx:alpine",
-        "nginx:alpine",
     ],
     "redis": [
         "localhost/chaos-redis:1",
         "docker.io/library/redis:7-alpine",
-        "docker.io/library/redis:alpine",
-        "docker.io/library/redis:6.2-alpine",
     ],
     "alpine": [
         "docker.io/library/alpine:3.22",
-        "localhost/lpi-lab-debian:trixie-v3",
     ],
 }
 

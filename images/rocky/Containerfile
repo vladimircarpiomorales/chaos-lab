@@ -1,0 +1,15 @@
+# Imagen de Chaos Lab para nodos "rocky": Rocky Linux 9 con las herramientas de los escenarios
+FROM docker.io/rockylinux/rockylinux:9
+RUN dnf install -y --setopt=install_weak_deps=False \
+      python3 iproute iputils procps-ng psmisc sudo passwd shadow-utils acl \
+      nano vim-minimal less file bind-utils nftables iptables-nft openssl \
+ && dnf clean all \
+ && ln -sf /usr/bin/vi /usr/local/bin/vim
+# Usuario de prácticas, con contraseña (alumno), como en chaos-debian
+RUN useradd -m -s /bin/bash alumno \
+ && echo 'alumno:alumno' | chpasswd \
+ && printf 'Defaults:alumno !targetpw\nalumno ALL=(ALL) ALL\n' > /etc/sudoers.d/alumno \
+ && chmod 0440 /etc/sudoers.d/alumno
+LABEL org.opencontainers.image.title="chaos-rocky" \
+      org.opencontainers.image.description="rockylinux:9 con las herramientas de los escenarios de Chaos Lab"
+CMD ["bash"]
