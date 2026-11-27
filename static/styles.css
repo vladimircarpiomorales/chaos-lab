@@ -218,6 +218,18 @@ html, body {
 }
 .sc-card:hover { border-color: var(--border-hi); }
 .sc-card.active-sc { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.sc-card { cursor: pointer; }
+.sc-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pv-card { width: min(680px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+.pv-card h3 { margin: 0; font-size: 17px; line-height: 1.35; }
+.sc-preview { display: flex; flex-direction: column; gap: 8px; font-size: 13.5px; line-height: 1.6; }
+.pv-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); margin-top: 2px; }
+.pv-brief { white-space: pre-line; color: var(--text); overflow-wrap: anywhere; }
+.pv-brief code { font-family: var(--font-mono); font-size: 12.5px; background: var(--bg-3); padding: 0 4px; border-radius: 3px; }
+.pv-list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+.pv-role { font-family: var(--font-mono); font-size: 12px; }
+.pv-runs { color: var(--text-dim); }
+.pv-obj { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-dim); }
 
 .sc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-2); }
 .sc-title { font-weight: 600; font-size: 13.5px; line-height: 1.35; }

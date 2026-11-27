@@ -13,6 +13,7 @@ const state = {
   timerInterval: null,
   lastSessionId: null,
   pmFilename: "postmortem.md",
+  previewId: null, // escenario abierto en la ficha de vista previa
 };
 
 const $ = (id) => document.getElementById(id);
@@ -173,7 +174,8 @@ function renderScenarioList() {
         ? `<span class="badge badge-solved">✓ ${sc.best_rank || "OK"} · ${fmtSeconds(sc.best_time_s)}</span>`
         : "";
       return `
-      <div class="sc-card ${isCurrent ? "active-sc" : ""}">
+      <div class="sc-card ${isCurrent ? "active-sc" : ""}" data-id="${escapeHtml(sc.id)}"
+           role="button" tabindex="0" title="Clic para ver de qué va sin desplegarlo">
         <div class="sc-top">
           <div class="sc-title">${escapeHtml(sc.title)}</div>
           ${solvedBadge}
@@ -196,13 +198,59 @@ function renderScenarioList() {
         <div class="sc-actions">
           <span class="sc-cat" title="${escapeHtml(sc.category)}">${escapeHtml(sc.category)}</span>
           <div class="sc-buttons">
-            <button class="btn-ghost-sm" onclick="launchScenario('${sc.id}', true)" title="Jugar ocultando pistas de sondas (+25% XP)">🎲</button>
-            <button class="btn btn-primary btn-sm" onclick="launchScenario('${sc.id}', false)">▶ Desplegar</button>
+            <button class="btn-ghost-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', true)" title="Jugar ocultando pistas de sondas (+25% XP)">🎲</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', false)">▶ Desplegar</button>
           </div>
         </div>
       </div>`;
     })
     .join("");
+}
+
+/* Vista previa de un escenario dentro de su tarjeta (sin desplegar nada) */
+function scenarioPreview(sc) {
+  const code = (t) => escapeHtml(t || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  const machines = (sc.machines || [])
+    .map((m) => `<li><span class="pv-role">${escapeHtml(m.role)}</span>${m.runs ? ` <span class="pv-runs">${escapeHtml(m.runs)}</span>` : ""}</li>`)
+    .join("");
+  const links = (sc.links || [])
+    .map((l) => `<li>${escapeHtml(l.from)} → ${escapeHtml(l.to)}${l.via ? ` <span class="pv-runs">· ${escapeHtml(l.via)}</span>` : ""}</li>`)
+    .join("");
+  const obj = (sc.objetivos_lpi || []).length
+    ? `<div class="pv-obj">Objetivos LPI: ${sc.objetivos_lpi.map((o) => `<span class="tag">${escapeHtml(o)}</span>`).join(" ")}</div>`
+    : "";
+  return `
+        <div class="sc-preview">
+          <div class="pv-label">${sc.tipo === "tarea" ? "📋 El encargo" : "🔧 La incidencia"}</div>
+          <div class="pv-brief">${code(sc.briefing)}</div>
+          ${machines ? `<div class="pv-label">🖧 Máquinas</div><ul class="pv-list">${machines}</ul>` : ""}
+          ${links ? `<div class="pv-label">🔗 Conexiones</div><ul class="pv-list">${links}</ul>` : ""}
+          ${obj}
+        </div>`;
+}
+
+function openPreview(id) {
+  const sc = state.scenarios.find((x) => x.id === id);
+  if (!sc) return;
+  state.previewId = id;
+  $("pv-title").textContent = sc.title;
+  $("pv-meta").innerHTML = `
+    <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(sc.difficulty)}</span>
+    <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${sc.tipo === "tarea" ? "📋 Tarea" : "🔧 Avería"}</span>
+    <span>⚡ ${sc.points} XP</span><span>·</span><span>~${sc.estimated_min}m</span><span>·</span>
+    <span>${escapeHtml(sc.category)}</span>
+    ${(sc.certs || []).map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}
+    ${sc.solved ? `<span class="badge badge-solved">✓ ${sc.best_rank || "OK"} · ${fmtSeconds(sc.best_time_s)}</span>` : ""}`;
+  $("pv-body").innerHTML = scenarioPreview(sc);
+  $("pv-modal").classList.remove("hidden");
+  $("btn-pv-launch").focus();
+}
+
+function closePreview() {
+  $("pv-modal").classList.add("hidden");
+  const id = state.previewId;
+  state.previewId = null;
+  if (id) document.querySelector(`.sc-card[data-id="${CSS.escape(id)}"]`)?.focus();
 }
 
 /* -------------------- Lanzar / Detener / Sincronizar -------------------- */
@@ -723,6 +771,25 @@ async function openPostMortem() {
 }
 
 function bindEvents() {
+  // Ficha de vista previa: se cierra con ✕, Esc o clic fuera; desde ella se puede desplegar
+  $("btn-close-pv").addEventListener("click", closePreview);
+  $("pv-modal").addEventListener("click", (e) => { if (e.target.id === "pv-modal") closePreview(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.previewId) closePreview(); });
+  $("btn-pv-launch").addEventListener("click", () => { const id = state.previewId; closePreview(); launchScenario(id, false); });
+  $("btn-pv-blind").addEventListener("click", () => { const id = state.previewId; closePreview(); launchScenario(id, true); });
+  // Clic (o Enter/Espacio) en una tarjeta del catálogo: abre su ficha sin desplegar nada
+  const scList = $("scenario-list");
+  scList.addEventListener("click", (e) => {
+    if (e.target.closest("button, a")) return;
+    const card = e.target.closest(".sc-card");
+    if (card) openPreview(card.dataset.id);
+  });
+  scList.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("sc-card")) {
+      e.preventDefault();
+      openPreview(e.target.dataset.id);
+    }
+  });
   $("btn-blind-launch").addEventListener("click", () => launchScenario(null, true));
   $("btn-empty-blind").addEventListener("click", () => launchScenario(null, true));
   $("btn-empty-first").addEventListener("click", () => launchScenario("net-nginx-bad-gateway", false));

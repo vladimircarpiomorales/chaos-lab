@@ -328,10 +328,26 @@
     </div>
   </div>
 
+  <!-- Modal Vista previa de un escenario (sin desplegar) -->
+  <div id="pv-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="pv-title">
+    <div class="modal-card pv-card">
+      <div class="modal-header">
+        <h3 id="pv-title"></h3>
+        <button id="btn-close-pv" class="btn-ghost-sm">✕ Cerrar</button>
+      </div>
+      <div id="pv-meta" class="sc-meta"></div>
+      <div id="pv-body"></div>
+      <div class="modal-actions">
+        <button id="btn-pv-blind" class="btn btn-ghost" title="Jugar ocultando pistas de sondas (+25% XP)">🎲 A ciegas</button>
+        <button id="btn-pv-launch" class="btn btn-primary">▶ Desplegar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
 
   <script src="/static/vendor/xterm.js"></script>
   <script src="/static/vendor/addon-fit.js"></script>
-  <script src="/static/app.js?v=7"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

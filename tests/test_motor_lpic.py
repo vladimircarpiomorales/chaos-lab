@@ -359,3 +359,16 @@ def test_corrector_una_orden_que_lee_stdin_no_se_come_el_resto():
     script = engine._build_check_script({"script": 'comprueba "uno" bash -c "cat >/dev/null"\ncomprueba "dos" true'})
     out = subprocess.run(["bash", "-s"], input=script, capture_output=True, text=True, timeout=10).stdout
     assert [c["label"] for c in engine._parse_check_output(out, "a")] == ["uno", "dos"]
+
+
+def test_catalogo_trae_vista_previa_sin_pistas():
+    """Al pinchar una tarjeta se ve el encargo, las máquinas y sus conexiones; nunca pistas, «dónde mirar» ni la solución."""
+    view = ChaosEngine().get_catalog_view()
+    for s in view["scenarios"]:
+        assert s["briefing"] and len(s["machines"]) == s["node_count"]
+        assert all(set(m) == {"role", "runs"} for m in s["machines"])
+        assert all(set(l) == {"from", "to", "via"} for l in s["links"])
+        assert isinstance(s["objetivos_lpi"], list)
+        assert not {"hints", "solution_summary", "look", "checks"} & set(s)
+    ldap = next(s for s in view["scenarios"] if s["id"] == "lpic2-ldap-tls")
+    assert [m["role"] for m in ldap["machines"]] == ["ldap-srv", "ldap-cli"] and ldap["links"]

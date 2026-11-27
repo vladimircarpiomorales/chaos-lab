@@ -352,6 +352,16 @@ class ChaosEngine:
                         "tipo": item.get("tipo", "averia"),
                         "node_count": len(sample["nodes"]),
                         "nodes": [n["role"] for n in sample["nodes"]],
+                        # Vista previa (sin desplegar): lo mismo que se ve al lanzar, sin pistas ni dónde mirar
+                        "machines": [
+                            {"role": n["role"], "runs": ((sample.get("topology") or {}).get("nodes") or {}).get(n["role"], {}).get("runs", "")}
+                            for n in sample["nodes"]
+                        ],
+                        "links": [
+                            {k: l.get(k, "") for k in ("from", "to", "via")}
+                            for l in ((sample.get("topology") or {}).get("links") or [])
+                        ],
+                        "objetivos_lpi": item.get("objetivos_lpi", []),
                         "solved": bool(s_info),
                         "best_time_s": s_info.get("best_time_s") if s_info else None,
                         "best_rank": s_info.get("best_rank") if s_info else None,
