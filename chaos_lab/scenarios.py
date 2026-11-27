@@ -1587,7 +1587,10 @@ def _build_cloud_az_nsg_udr(rng: random.Random) -> dict[str, Any]:
     vip_net = f"172.29.{rng.choice([10, 20, 30])}"
     token = _tok(rng, "AZ_VNET")
 
-    nva_setup = """
+    nva_setup = f"""
+# Ruta del hub hacia el spoke del backend: en Azure la da el peering de VNets (ruta del sistema, no es parte de la avería)
+ip route add {vip_net}.0/24 via "$IP_VNET_DB"
+""" + """
 # Simula NVA Azure con IP Forwarding desactivado en regla FORWARD
 iptables -P FORWARD DROP
 cat << 'EOF' > /etc/nva_appliance.conf
