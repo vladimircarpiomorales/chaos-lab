@@ -56,7 +56,7 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title-row">
-          <h2>Catálogo de Averías</h2>
+          <h2>Catálogo</h2>
           <button id="btn-toggle-history" class="btn-ghost-sm" title="Ver historial reciente">📜 Historial</button>
         </div>
         <input
@@ -254,11 +254,17 @@
             <!-- Método para empezar -->
             <details class="panel-card howto" id="howto-card" open>
               <summary><h3>🧭 Cómo empezar</h3></summary>
-              <ol class="howto-steps">
+              <ol class="howto-steps" id="howto-averia">
                 <li><strong>Reproduce el síntoma.</strong> Lanza tú la misma petición que falla (la flecha «tú» del esquema).</li>
                 <li><strong>Sigue el camino.</strong> Ve nodo a nodo en el orden de las flechas.</li>
                 <li><strong>En cada salto pregúntate:</strong> ¿el servicio está vivo? ¿escucha en la IP y puerto correctos? ¿la config apunta al sitio bueno? ¿algún firewall lo corta?</li>
                 <li><strong>Arregla de uno en uno y pulsa Verificar.</strong> El esquema se pone verde donde ya funciona.</li>
+              </ol>
+              <ol class="howto-steps hidden" id="howto-tarea">
+                <li><strong>Lee el encargo entero.</strong> Fíjate en los nombres exactos que pide: usuarios, rutas, ficheros.</li>
+                <li><strong>Antes de tocar, mira cómo está.</strong> Consulta la configuración actual y el manual del comando (<code>man</code>, <code>--help</code>).</li>
+                <li><strong>Hazlo paso a paso.</strong> Si necesitas root, usa <code>sudo</code>.</li>
+                <li><strong>Pulsa Verificar cuando quieras.</strong> Cada sonda en verde es un punto del encargo ya cumplido.</li>
               </ol>
               <div id="howto-look" class="howto-look"></div>
             </details>

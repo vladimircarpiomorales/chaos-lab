@@ -270,7 +270,12 @@ function syncActiveView(active) {
   $("active-cat-badge").textContent = active.category;
   $("active-seed-badge").textContent = `Seed #${active.seed}`;
   $("active-title").textContent = active.title;
-  $("active-desc").textContent = active.description;
+  // `algo` → <code>algo</code>; los saltos de línea se respetan (listas numeradas del encargo)
+  $("active-desc").innerHTML = escapeHtml(active.description || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  $("active-desc").style.whiteSpace = "pre-line";
+  const esTarea = active.tipo === "tarea";
+  $("howto-averia").classList.toggle("hidden", esTarea);
+  $("howto-tarea").classList.toggle("hidden", !esTarea);
 
   // Línea de tiempo de señales correlacionadas (alerta de guardia en escenarios sec-*)
   const tl = active.timeline || [];
@@ -416,7 +421,8 @@ function svgText(x, y, cls, text, anchor = "middle") {
 function renderTopology(active) {
   const strip = $("topo-strip");
   const topo = active && active.topology;
-  if (!topo || !topo.nodes) {
+  const unNodoTarea = active && active.tipo === "tarea" && topo && Object.keys(topo.nodes || {}).length < 2;
+  if (!topo || !topo.nodes || unNodoTarea) {
     strip.classList.add("hidden");
     return;
   }

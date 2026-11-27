@@ -428,7 +428,8 @@ class ChaosEngine:
     ) -> dict[str, Any]:
         with self._lock:
             if blind_mode and not scenario_id:
-                pool = SCENARIO_CATALOG
+                # Una «tarea» (configurar desde cero) no es un incidente: la guardia sortea solo averías
+                pool = [s for s in SCENARIO_CATALOG if s.get("tipo", "averia") == "averia"]
                 if difficulty_filter and difficulty_filter != "Todos":
                     filtered = [s for s in pool if s["difficulty"] == difficulty_filter]
                     if filtered:
