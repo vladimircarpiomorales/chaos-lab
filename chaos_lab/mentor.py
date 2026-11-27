@@ -163,7 +163,7 @@ def ask_socratic_mentor(active: dict[str, Any], user_question: str = "") -> dict
     if "ps " not in tried_str:
         suggestions.append("Revisa los procesos en ejecución con `ps aux`.")
     if len(active["nodes_runtime"]) > 1 and "ip " not in tried_str:
-        suggestions.append("Verifica direcciones IP, rutas (`ip a`, `ip route`) y reglas de firewall (`iptables -S`) en cada nodo.")
+        suggestions.append("Verifica direcciones IP, rutas (`ip a`, `ip route`) y reglas de firewall (`nft list ruleset` o `iptables -S`) en cada nodo.")
     if not suggestions:
         suggestions.append(
             "Ya inspeccionaste procesos y red: revisa archivos de configuración recientes (`/etc`, `/opt`, `/srv`), permisos/ACLs (`getfacl`, `ls -la`) o tareas programadas (`/etc/cron.d`)."

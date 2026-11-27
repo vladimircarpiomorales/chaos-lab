@@ -296,13 +296,13 @@ def build_ssh_bruteforce(rng: random.Random) -> dict[str, Any]:
                 "id": "nft-rule-live",
                 "label": "El ruleset activo de nftables en ssh-victim contiene un drop/reject sobre la IP atacante",
                 "node": "ssh-victim",
-                "cmd": '. /etc/chaos_nodes.env; R=$(nft list ruleset); echo "$R" | grep -q "$IP_BOT_EXTERNO" && echo "$R" | grep -Eq "drop|reject"',
+                "cmd": '. /etc/chaos_nodes.env; R=$(nft list ruleset | sed -E \'s/comment "[^"]*"//g\'); echo "$R" | grep -q "$IP_BOT_EXTERNO" && echo "$R" | grep -Eq "drop|reject"',
             },
             {
                 "id": "nft-persistent",
                 "label": "La regla es persistente: /etc/nftables.conf (o /etc/nftables.d) incluye la IP atacante y pasa `nft -c`",
                 "node": "ssh-victim",
-                "cmd": '. /etc/chaos_nodes.env; grep -rqs "$IP_BOT_EXTERNO" /etc/nftables.conf /etc/nftables.d /etc/nftables 2>/dev/null && grep -rEqs "drop|reject" /etc/nftables.conf /etc/nftables.d /etc/nftables 2>/dev/null && nft -c -f /etc/nftables.conf',
+                "cmd": '. /etc/chaos_nodes.env; C=$(grep -rhs "" /etc/nftables.conf /etc/nftables.d /etc/nftables 2>/dev/null | sed -E \'s/#.*//; s/comment "[^"]*"//g\'); echo "$C" | grep -q "$IP_BOT_EXTERNO" && echo "$C" | grep -Eq "drop|reject" && nft -c -f /etc/nftables.conf',
             },
         ],
         "hints": [
@@ -524,9 +524,9 @@ def build_portscan_detect(rng: random.Random) -> dict[str, Any]:
             },
             {
                 "id": "nft-mitigation",
-                "label": "El ruleset activo de nftables en edge-srv contiene una mitigación (drop / reject / limit rate)",
+                "label": "Una chain de entrada (hook input) de nftables en edge-srv contiene una mitigación (drop / reject / limit rate)",
                 "node": "edge-srv",
-                "cmd": "nft list ruleset | grep -Eqi 'limit rate|drop|reject'",
+                "cmd": "nft list ruleset | sed -E 's/comment \"[^\"]*\"//g' | awk '/hook input/{f=1} f&&/^[[:space:]]*}/{f=0} f' | grep -Eqi 'limit rate|drop|reject'",
             },
             {
                 "id": "scan-mitigated",
@@ -794,7 +794,11 @@ def build_dns_exfil(rng: random.Random) -> dict[str, Any]:
                 "id": "dns-egress-blocked",
                 "label": "nftables en infected-host bloquea la salida DNS hacia el servidor externo no autorizado",
                 "node": "infected-host",
-                "cmd": f". /etc/chaos_nodes.env; ! dig +time=1 +tries=1 +short @\"$IP_NS_EXTERNO\" probe.{domain} >/dev/null 2>&1",
+                "cmd": (
+                    f". /etc/chaos_nodes.env; R=$(nft list ruleset | sed -E 's/comment \"[^\"]*\"//g'); "
+                    f"echo \"$R\" | grep -Eq \"$IP_NS_EXTERNO|dport (53|domain)\" && echo \"$R\" | grep -Eq 'drop|reject' "
+                    f"&& ! dig +time=1 +tries=1 +short @\"$IP_NS_EXTERNO\" probe.{domain} >/dev/null 2>&1"
+                ),
             },
             {
                 "id": "dns-legit-ok",
