@@ -1,0 +1,98 @@
+dn: ou=personas,dc=lpic,dc=lab
+objectClass: organizationalUnit
+ou: personas
+
+dn: ou=grupos,dc=lpic,dc=lab
+objectClass: organizationalUnit
+ou: grupos
+
+dn: uid=ana,ou=personas,dc=lpic,dc=lab
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: ana
+cn: Ana Garcia
+sn: Garcia
+givenName: Ana
+mail: ana@lpic.lab
+uidNumber: 10001
+gidNumber: 10000
+homeDirectory: /home/ana
+loginShell: /bin/bash
+userPassword: {SSHA}iIpGH0qV3nGG1yEVBad5CddT2ew0PYkm
+
+dn: uid=luis,ou=personas,dc=lpic,dc=lab
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: luis
+cn: Luis Perez
+sn: Perez
+givenName: Luis
+mail: luis@lpic.lab
+uidNumber: 10002
+gidNumber: 10000
+homeDirectory: /home/luis
+loginShell: /bin/bash
+userPassword: {SSHA}07TloRb9PnQAeZDItfgrHh4AyDGYQG/Z
+
+dn: uid=carol,ou=personas,dc=lpic,dc=lab
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: carol
+cn: Carol Ruiz
+sn: Ruiz
+givenName: Carol
+mail: carol@lpic.lab
+uidNumber: 10003
+gidNumber: 10000
+homeDirectory: /home/carol
+loginShell: /bin/bash
+userPassword: {SSHA}FK17d10exPyfGXfEfdsY4cvX9F6VvIzH
+
+dn: uid=pedro,ou=personas,dc=lpic,dc=lab
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: pedro
+cn: Pedro Lopez
+sn: Lopez
+givenName: Pedro
+mail: pedro@lpic.lab
+uidNumber: 10004
+gidNumber: 10000
+homeDirectory: /home/pedro
+loginShell: /bin/bash
+userPassword: {SSHA}/lxKHVpLeXaXErp6lnyWs4ho9lhIVLB8
+
+dn: uid=marta,ou=personas,dc=lpic,dc=lab
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+uid: marta
+cn: Marta Soto
+sn: Soto
+givenName: Marta
+mail: marta@lpic.lab
+uidNumber: 10005
+gidNumber: 10000
+homeDirectory: /home/marta
+loginShell: /bin/bash
+userPassword: {SSHA}OSU9drKSbzDWkWGe053YGtJ1XAks3kyb
+
+dn: cn=alumnos,ou=grupos,dc=lpic,dc=lab
+objectClass: posixGroup
+cn: alumnos
+gidNumber: 10000
+memberUid: ana
+memberUid: luis
+memberUid: carol
+memberUid: pedro
+memberUid: marta
+
+dn: cn=admins,ou=grupos,dc=lpic,dc=lab
+objectClass: posixGroup
+cn: admins
+gidNumber: 10001
+memberUid: ana

@@ -70,7 +70,10 @@ def fugas(item: dict, solucion_e2e: str = "") -> list[tuple[str, str]]:
     secretos = {t for t in con_digito | palabras if _es_dato(t)} - briefing - PERMITIDOS.get(item["id"], set())
     # los números de 1-2 cifras sueltos solo cuentan si la etiqueta los dice como valor («contiene 2»)
     out = []
-    for etiqueta in ETIQUETA.findall(item.get("comprobar", "")):
+    comprobar = item.get("comprobar", "")
+    if isinstance(comprobar, list):  # packs multinodo: una lista de bloques {node, script}
+        comprobar = "\n".join(b["script"] for b in comprobar)
+    for etiqueta in ETIQUETA.findall(comprobar):
         for t in sorted(_tokens(etiqueta) & secretos):
             if t.isdigit() and len(t) <= 2 and not re.search(rf"(contiene|dice|es|son|vale|prefijo)\s+{t}\b", etiqueta.lower()):
                 continue

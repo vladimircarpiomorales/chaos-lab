@@ -1,0 +1,37 @@
+# Servidor OpenLDAP de Chaos Lab (pack LPIC-2 LDAP): slapd con dc=lpic,dc=lab, 5 usuarios, 2 grupos y StartTLS/LDAPS.
+# Se construye con images/construir.sh (el contexto incluye pki/, generada en el momento: la CA y el certificado
+# no están en el repo). Debe construirse junto a ldap-cli para compartir la misma CA.
+FROM docker.io/library/debian:trixie
+ENV DEBIAN_FRONTEND=noninteractive
+RUN printf '%s\n' \
+  'slapd slapd/internal/generated_adminpw password admin' \
+  'slapd slapd/internal/adminpw password admin' \
+  'slapd slapd/password1 password admin' \
+  'slapd slapd/password2 password admin' \
+  'slapd slapd/domain string lpic.lab' \
+  'slapd shared/organization string LPIC Lab' \
+  'slapd slapd/no_configuration boolean false' \
+  'slapd slapd/purge_database boolean false' \
+  'slapd slapd/move_old_database boolean true' \
+  | debconf-set-selections \
+ && apt-get update -qq \
+ && apt-get install -y --no-install-recommends slapd ldap-utils openssh-client sshpass ca-certificates openssl \
+      procps psmisc iproute2 iputils-ping bind9-dnsutils curl less nano vim-tiny netcat-openbsd sudo \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/vim.tiny /usr/local/bin/vim
+COPY pki/ca.crt /usr/local/share/ca-certificates/lab-ca.crt
+COPY pki/ca.crt /etc/ldap/tls/ca.crt
+COPY pki/srv.crt /etc/ldap/tls/srv.crt
+COPY pki/srv.key /etc/ldap/tls/srv.key
+COPY ldap-srv/inicial.ldif ldap-srv/tls.ldif /tmp/
+COPY ldap-srv/ldap.conf /etc/ldap/ldap.conf
+COPY ldap-srv/entrada.sh ldap-srv/slapd-ctl ldap-srv/chaos-arrancar /usr/local/bin/
+RUN chmod 644 /tmp/*.ldif; update-ca-certificates >/dev/null 2>&1; \
+    chown openldap:openldap /etc/ldap/tls/srv.key; chmod 640 /etc/ldap/tls/srv.key; chmod 644 /etc/ldap/tls/*.crt; \
+    su -s /bin/bash openldap -c "slapadd -n 1 -l /tmp/inicial.ldif" \
+ && su -s /bin/bash openldap -c "slapmodify -n 0 -l /tmp/tls.ldif" \
+ && rm /tmp/*.ldif && chmod +x /usr/local/bin/entrada.sh /usr/local/bin/slapd-ctl /usr/local/bin/chaos-arrancar \
+ && mkdir -p /root/retos
+LABEL org.opencontainers.image.title="chaos-ldap-srv" \
+      org.opencontainers.image.description="OpenLDAP (slapd) de laboratorio para los retos LPIC-2 LDAP de Chaos Lab"
+CMD ["/usr/local/bin/entrada.sh"]

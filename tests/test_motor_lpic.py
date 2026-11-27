@@ -335,6 +335,24 @@ def test_corrector_multinodo_bloque_auxiliar_sin_sondas_no_cuenta(monkeypatch):
     assert len(out) == 1 and not out[0]["passed"]
 
 
+def test_pack_lpic2_ldap_dos_nodos_y_corrector_en_bloques():
+    from chaos_lab.scenarios import SCENARIO_CATALOG, instantiate_scenario
+    pack = [s for s in SCENARIO_CATALOG if s["category"] == "LPIC-2 · 202-450"]
+    assert pack and all(s["id"].startswith("lpic2-ldap-") and s["certs"] == ["LPIC-2"] for s in pack)
+    for s in pack:
+        inst = instantiate_scenario(s["id"], 1)
+        assert [n["role"] for n in inst["nodes"]] == ["ldap-srv", "ldap-cli"]
+        assert [n["distro"] for n in inst["nodes"]] == ["ldap-srv", "ldap-cli"]
+        assert isinstance(inst["check_script"], list) and inst["check_script"]
+        assert {b["node"] for b in inst["check_script"]} <= {"ldap-srv", "ldap-cli"}
+        assert any("comprueba" in b["script"] for b in inst["check_script"])
+        assert set(inst["topology"]["nodes"]) == {"ldap-srv", "ldap-cli"}
+        assert all(n["setup_sh"].lstrip("set -u\n(\n").startswith("chaos-arrancar") for n in inst["nodes"])
+    assert engine.IMAGE_CANDIDATES["ldap-srv"][0] == "localhost/chaos-ldap-srv:1"
+    nets, per = engine._plan_networks(instantiate_scenario(pack[0]["id"], 1))
+    assert nets == [engine.NETWORK_NAME] and per["ldap-cli"] == per["ldap-srv"] == [engine.NETWORK_NAME]
+
+
 def test_corrector_una_orden_que_lee_stdin_no_se_come_el_resto():
     """El corrector llega por stdin a `bash -s`: una orden que lee stdin (ssh, cat…) no debe tragarse las sondas siguientes."""
     import subprocess

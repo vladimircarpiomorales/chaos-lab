@@ -66,7 +66,7 @@ if ! vivo; then
         PY="${RAIZ}/.venv/bin/python"
     fi
     # Primera vez: construir las imágenes propias (herramientas de serie, sin apt al desplegar). Necesita internet una vez.
-    for img in debian rocky nginx redis lpic-debian lpic-fedora; do
+    for img in debian rocky nginx redis lpic-debian lpic-fedora ldap-srv ldap-cli; do
         if ! "$RT" image inspect "localhost/chaos-${img}:1" >/dev/null 2>&1; then
             echo "🧱 Construyendo imagen chaos-${img} (solo la primera vez)..."
             "${RAIZ}/images/construir.sh" "$img" >> "$LOG_FILE" 2>&1 \

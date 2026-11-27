@@ -1,0 +1,24 @@
+# Cliente LDAP de Chaos Lab (pack LPIC-2 LDAP): sssd + PAM + sshd que consultan a ldap-srv.
+# Se construye con images/construir.sh junto a ldap-srv (misma CA de laboratorio, generada en el momento).
+FROM docker.io/library/debian:trixie
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq \
+ && apt-get install -y --no-install-recommends ldap-utils sssd sssd-ldap sssd-tools libnss-sss libpam-sss \
+      libpam-runtime openssh-server openssh-client sshpass ca-certificates openssl \
+      procps psmisc iproute2 iputils-ping bind9-dnsutils curl less nano vim-tiny netcat-openbsd sudo \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/vim.tiny /usr/local/bin/vim
+COPY pki/ca.crt /usr/local/share/ca-certificates/lab-ca.crt
+COPY pki/ca.crt /etc/ldap/tls/ca.crt
+COPY ldap-cli/ldap.conf /etc/ldap/ldap.conf
+COPY ldap-cli/sssd.conf /etc/sssd/sssd.conf
+COPY ldap-cli/entrada.sh ldap-cli/chaos-arrancar /usr/local/bin/
+RUN update-ca-certificates >/dev/null 2>&1; chmod 600 /etc/sssd/sssd.conf; chmod +x /usr/local/bin/entrada.sh /usr/local/bin/chaos-arrancar; \
+    sed -i 's/^passwd:.*/passwd:         files systemd sss/; s/^group:.*/group:          files systemd sss/; s/^shadow:.*/shadow:         files sss/' /etc/nsswitch.conf; \
+    grep -q '^passwd:.*sss' /etc/nsswitch.conf || sed -i 's/^passwd:.*/passwd: files sss/; s/^group:.*/group: files sss/' /etc/nsswitch.conf; \
+    pam-auth-update --enable sss mkhomedir --force >/dev/null 2>&1; \
+    printf 'PasswordAuthentication yes\nUsePAM yes\nKbdInteractiveAuthentication no\n' > /etc/ssh/sshd_config.d/10-lab.conf; \
+    mkdir -p /run/sshd /root/retos
+LABEL org.opencontainers.image.title="chaos-ldap-cli" \
+      org.opencontainers.image.description="Cliente sssd/PAM/ssh de laboratorio para los retos LPIC-2 LDAP de Chaos Lab"
+CMD ["/usr/local/bin/entrada.sh"]

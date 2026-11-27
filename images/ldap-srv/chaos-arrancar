@@ -1,0 +1,9 @@
+#!/bin/bash
+# Chaos Lab sustituye el CMD de la imagen por un «sleep»: este script levanta lo que haría entrada.sh
+# (el supervisor de slapd, sin systemd) y espera a que el directorio responda. Es idempotente.
+pgrep -f '[e]ntrada.sh' >/dev/null || setsid nohup /usr/local/bin/entrada.sh >/var/log/entrada.log 2>&1 </dev/null &
+for i in $(seq 1 60); do
+  ldapsearch -x -H ldap://localhost -b dc=lpic,dc=lab -s base dn >/dev/null 2>&1 && exit 0
+  sleep 0.5
+done
+echo "slapd no responde" >&2; exit 1
