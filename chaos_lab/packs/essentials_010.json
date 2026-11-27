@@ -1,0 +1,458 @@
+[
+  {
+    "id": "lpie-ayuda",
+    "reto": "r010-ayuda",
+    "title": "Orden interna o programa, y localizar un fichero perdido",
+    "briefing": "Te piden resolver tres consultas del día a día (necesitas `sudo` para la última):\n1. Averigua con la propia shell qué es `cd` y guarda la respuesta completa en `tipo-cd.txt`.\n2. Haz lo mismo con `mkdir` y guárdalo en `tipo-mkdir.txt`; debe aparecer dónde está el programa.\n3. En algún punto del sistema hay un fichero llamado `tesoro-perdido.txt`. Pon al día la base de datos de `locate` y guarda en `ruta.txt` únicamente su ruta absoluta.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-ayuda`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "La shell sabe distinguir entre órdenes que lleva dentro y programas que viven en el disco: pregúntale a ella, no a un buscador de ficheros.",
+      "`type NOMBRE` responde a la primera y a la segunda consulta. Para la tercera, `locate` busca en una base de datos que solo se actualiza con un comando de la familia de `locate`, y ese comando exige privilegios.",
+      "`type cd > tipo-cd.txt`; `type mkdir > tipo-mkdir.txt`; `sudo updatedb`; `locate tesoro-perdido > ruta.txt`."
+    ],
+    "solution_summary": "`type` indica si una orden es interna de la shell (`cd` es un builtin) o un programa externo con su ruta (`/usr/bin/mkdir`). `locate` consulta una base de datos que `updatedb` (como root) refresca, por eso hay que actualizarla antes de buscar un fichero recién creado.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "type",
+      "locate",
+      "updatedb"
+    ],
+    "objetivos_lpi": [
+      "2.1",
+      "2.2"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [LOCALIZACIÓN] · Hay que averiguar qué tipo de órdenes son dos comandos y encontrar un fichero extraviado en el servidor.",
+    "preparar": "rm -rf /srv/archivo-viejo\nmkdir -p /srv/archivo-viejo/2019/cajas\necho \"¡Lo encontraste!\" > /srv/archivo-viejo/2019/cajas/tesoro-perdido.txt\necho \"busca tesoro-perdido.txt con locate (recuerda actualizar su base de datos)\"",
+    "comprobar": "comprueba \"tipo-cd.txt dice que cd es una orden interna (builtin)\" grep -qiE 'builtin|interna' tipo-cd.txt\ncomprueba \"tipo-mkdir.txt dice dónde está mkdir (/usr/bin/mkdir)\" grep -qE '(/usr)?/bin/mkdir' tipo-mkdir.txt\ncomprueba \"ruta.txt tiene la ruta absoluta del tesoro\" bash -c '[ \"$(cat ruta.txt)\" = /srv/archivo-viejo/2019/cajas/tesoro-perdido.txt ]'"
+  },
+  {
+    "id": "lpie-listar",
+    "reto": "r010-listar",
+    "title": "Inspeccionar una carpeta personal: ocultos, tamaños y árbol",
+    "briefing": "Te piden inventariar la carpeta `casa/`, que contiene ficheros visibles, ocultos y subcarpetas:\n1. Guarda en `ocultos.txt` los nombres de los ficheros ocultos de `casa/` (los que empiezan por punto), uno por línea y sin `.` ni `..`.\n2. Guarda en `grande.txt` solo el nombre del fichero de mayor tamaño de `casa/`.\n3. Guarda en `arbol.txt` el listado recursivo de `casa/`, incluidas todas sus subcarpetas.\n4. Entra en `casa/documentos/2024` y guarda en `donde.txt` su ruta absoluta.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-listar`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Cada apartado es una variante del comando que lista directorios: una opción para los ocultos, otra para ordenar por tamaño, otra para recorrer subcarpetas. La ruta absoluta la da otro comando, cuando estás dentro.",
+      "Los ocultos salen con la opción que muestra casi todo (sin `.` ni `..`) y quizá necesites filtrar el resultado. Ordenar por tamaño deja el mayor el primero; para quedarte con una línea, `head`. Para `donde.txt`, entra en la carpeta y ejecuta `pwd`.",
+      "`ls -A casa | grep '^\\.' > ocultos.txt`; `ls -S casa | head -1 > grande.txt`; `ls -R casa > arbol.txt`; `cd casa/documentos/2024 && pwd > /home/alumno/retos/r010-listar/donde.txt`."
+    ],
+    "solution_summary": "`ls -A` lista todo menos `.` y `..` (un `grep '^\\.'` deja solo los ocultos), `ls -S` ordena de mayor a menor tamaño, `ls -R` recorre recursivamente y `pwd` imprime la ruta absoluta del directorio actual tras un `cd`.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "ls",
+      "pwd",
+      "cd"
+    ],
+    "objetivos_lpi": [
+      "2.3"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [INVENTARIO] · Hay que sacar un inventario rápido del contenido de una carpeta personal de ejemplo.",
+    "preparar": "mkdir -p casa/documentos/2024 casa/musica\ncd casa\necho x > .bashrc\necho \"set -o vi\" > .inputrc\necho \"secreto\" > .notas\necho hola > saludo.txt\nhead -c 5000 /dev/zero > video.mp4\nhead -c 300 /dev/zero > foto.jpg\necho \"acta\" > documentos/2024/acta-enero.txt\necho \"la la\" > musica/cancion.ogg",
+    "comprobar": "comprueba \"ocultos.txt tiene .bashrc, .inputrc y .notas\" bash -c 'diff <(printf \".bashrc\\n.inputrc\\n.notas\\n\") <(sort ocultos.txt)'\ncomprueba \"grande.txt dice video.mp4\" bash -c '[ \"$(tr -d \" \\n\" < grande.txt)\" = video.mp4 ]'\ncomprueba \"arbol.txt llega hasta acta-enero.txt (es recursivo)\" grep -q acta-enero.txt arbol.txt\ncomprueba \"donde.txt es la ruta absoluta de casa/documentos/2024\" bash -c '[ \"$(cat donde.txt)\" = \"$RETO/casa/documentos/2024\" ]'"
+  },
+  {
+    "id": "lpie-ficheros",
+    "reto": "r010-ficheros",
+    "title": "Reorganizar un proyecto: crear, copiar, renombrar, mover y borrar",
+    "briefing": "Te piden reorganizar el directorio de trabajo:\n1. Crea en un solo comando la ruta `proyecto/src/viejo`, con todas las carpetas intermedias.\n2. Copia la carpeta `plantilla/` completa, con todo su contenido, como `proyecto/doc`.\n3. Renombra `borrador.txt` a `final.txt`.\n4. Mueve a `proyecto/src` únicamente `dia1.log` … `dia9.log` (de un solo dígito), con un comodín; `dia10.log` y `dia11.log` deben quedarse donde están.\n5. Elimina la carpeta `basura/` con todo lo que contiene.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-ficheros`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Cinco operaciones de gestión de ficheros: crear árbol de carpetas, copiar carpetas, renombrar, mover por patrón y borrar recursivamente. Cuidado con el comodín del cuarto punto.",
+      "Para crear rutas intermedias y para copiar carpetas hay una opción concreta en cada comando. Un comodín que representa exactamente un carácter distingue `dia9.log` de `dia10.log`. Renombrar es mover al mismo directorio con otro nombre.",
+      "`mkdir -p proyecto/src/viejo`; `cp -r plantilla proyecto/doc`; `mv borrador.txt final.txt`; `mv dia?.log proyecto/src/`; `rm -r basura`."
+    ],
+    "solution_summary": "`mkdir -p` crea toda la ruta, `cp -r` copia carpetas con su contenido, `mv` renombra o mueve y `rm -r` borra de forma recursiva. El comodín `?` coincide con exactamente un carácter, de modo que `dia?.log` no alcanza `dia10.log` ni `dia11.log`.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "mkdir",
+      "cp",
+      "mv",
+      "rm",
+      "comodines"
+    ],
+    "objetivos_lpi": [
+      "2.4"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [ORDEN] · Hay que reorganizar la estructura de un proyecto y limpiar lo que sobra.",
+    "preparar": "mkdir -p plantilla/img basura/sub\necho \"índice\" > plantilla/indice.md\necho \"logo\" > plantilla/img/logo.png\necho \"tmp\" > basura/sub/x.tmp\necho \"texto del informe\" > borrador.txt\nfor i in 1 2 3 7 9 10 11; do echo \"log del día $i\" > dia$i.log; done",
+    "comprobar": "comprueba \"existe proyecto/src/viejo\" test -d proyecto/src/viejo\ncomprueba \"proyecto/doc es una copia completa de plantilla/\" diff -r plantilla proyecto/doc\ncomprueba \"final.txt existe y borrador.txt ya no\" bash -c '[ -f final.txt ] && [ ! -e borrador.txt ] && grep -q informe final.txt'\ncomprueba \"dia1,2,3,7,9.log están en proyecto/src\" bash -c 'for i in 1 2 3 7 9; do [ -f proyecto/src/dia$i.log ] || exit 1; done; ! ls dia?.log 2>/dev/null | grep -q .'\ncomprueba \"dia10.log y dia11.log siguen en su sitio\" test -f dia10.log -a -f dia11.log\ncomprueba \"basura/ ya no existe\" test ! -e basura"
+  },
+  {
+    "id": "lpie-comprimir",
+    "reto": "r010-comprimir",
+    "title": "Archivar y comprimir con tar, bzip2 y zip",
+    "briefing": "Te piden preparar varios paquetes a partir de lo que hay en el directorio:\n1. Crea `copia.tar.gz`: un tar comprimido con gzip que contenga la carpeta `docs/` entera.\n2. Comprime `grande.txt` con bzip2. Debe quedar `grande.txt.bz2` y desaparecer el original.\n3. Del archivo `paquete.tar` extrae únicamente `config/red.conf`, sin sacar nada más.\n4. Crea `para-windows.zip` con la carpeta `docs/` y todo lo que hay dentro.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-comprimir`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Tres herramientas, tres formatos: tar con compresión gzip, bzip2 sobre un fichero suelto y zip para intercambiar con otros sistemas. Extraer un solo fichero de un tar es cuestión de decirle cuál.",
+      "`tar` combina en una opción crear, comprimir y nombrar el archivo; para extraer, se indica detrás el nombre del miembro tal como aparece en el tar (míralo con la opción de listar). `zip` necesita una opción para recorrer carpetas.",
+      "`tar czf copia.tar.gz docs`; `bzip2 grande.txt`; `tar xf paquete.tar config/red.conf`; `zip -r para-windows.zip docs`."
+    ],
+    "solution_summary": "`tar czf` crea un tar comprimido con gzip, `bzip2` sustituye el fichero por su versión `.bz2`, `tar xf archivo miembro` extrae solo ese miembro y `zip -r` empaqueta carpetas recursivamente.",
+    "difficulty": "Básico",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "tar",
+      "gzip",
+      "bzip2",
+      "zip"
+    ],
+    "objetivos_lpi": [
+      "3.1"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [ARCHIVOS] · Hay que preparar copias comprimidas en tres formatos distintos y recuperar un único fichero de un paquete.",
+    "preparar": "mkdir -p docs/notas\necho \"uno\" > docs/a.txt\necho \"dos\" > docs/notas/b.txt\nseq 1 20000 > grande.txt\nmkdir -p /tmp/p010/config\necho \"ip=10.0.0.5\" > /tmp/p010/config/red.conf\necho \"color=azul\" > /tmp/p010/config/tema.conf\ntar cf paquete.tar -C /tmp/p010 config\nrm -rf /tmp/p010",
+    "comprobar": "comprueba \"copia.tar.gz es un tar con gzip que contiene docs/notas/b.txt\" bash -c 'tar tzf copia.tar.gz | grep -q \"^docs/notas/b.txt$\"'\ncomprueba \"existe grande.txt.bz2 y ya no grande.txt\" bash -c '[ -f grande.txt.bz2 ] && [ ! -e grande.txt ]'\ncomprueba \"grande.txt.bz2 contiene los números 1..20000\" bash -c 'bzcat grande.txt.bz2 | cmp -s - <(seq 1 20000)'\ncomprueba \"se extrajo config/red.conf\" bash -c 'grep -q \"ip=10.0.0.5\" config/red.conf'\ncomprueba \"y NO config/tema.conf\" test ! -e config/tema.conf\ncomprueba \"para-windows.zip contiene docs/notas/b.txt\" bash -c 'unzip -l para-windows.zip | grep -q \"docs/notas/b.txt\"'"
+  },
+  {
+    "id": "lpie-redirecciones",
+    "reto": "r010-redirecciones",
+    "title": "Redirecciones de salida y error, y tuberías",
+    "briefing": "Te piden manejar flujos de texto:\n1. Ejecuta `ls /etc/hostname /no/existe` en una sola orden y guarda la salida normal en `bien.txt` y el mensaje de error en `mal.txt`.\n2. Añade la línea `FIN` al final de `bien.txt` sin borrar lo que ya tiene.\n3. Guarda en `top3.txt` las tres primeras líneas de `nombres.txt` una vez ordenado alfabéticamente, usando una tubería.\n4. Guarda en `palabras.txt` solo el número de palabras de `nombres.txt`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-redirecciones`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "La salida normal y la de error son dos flujos distintos y cada uno tiene su propio operador de redirección. Para añadir sin sobrescribir existe otro operador.",
+      "El flujo de errores es el descriptor 2. Para el apartado 3, la salida de un comando de ordenación va a otro que recorta líneas del principio. Si `wc` lee de un fichero por entrada estándar, no imprime su nombre.",
+      "`ls /etc/hostname /no/existe > bien.txt 2> mal.txt`; `echo FIN >> bien.txt`; `sort nombres.txt | head -n 3 > top3.txt`; `wc -w < nombres.txt > palabras.txt`."
+    ],
+    "solution_summary": "`>` redirige la salida estándar y `2>` el error; `>>` añade al final. Con `sort … | head -n 3` la salida del primero alimenta al segundo. `wc -w < fichero` lee por stdin y por eso imprime solo el número.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "redirección",
+      "stderr",
+      "pipe",
+      "sort",
+      "wc"
+    ],
+    "objetivos_lpi": [
+      "3.2"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [PROCESADO] · Hay que separar la salida normal de los errores de un comando y sacar datos de una lista con tuberías.",
+    "preparar": "printf \"Marta\\nLuis\\nAna\\nPedro\\nCarla\\nBeatriz\\n\" > nombres.txt",
+    "comprobar": "comprueba \"bien.txt empieza por /etc/hostname\" bash -c '[ \"$(head -1 bien.txt)\" = /etc/hostname ]'\ncomprueba \"bien.txt termina en FIN\" bash -c '[ \"$(tail -1 bien.txt)\" = FIN ] && [ \"$(wc -l < bien.txt)\" -eq 2 ]'\ncomprueba \"mal.txt tiene el error de /no/existe\" grep -q /no/existe mal.txt\ncomprueba \"top3.txt es Ana, Beatriz, Carla\" bash -c 'diff <(printf \"Ana\\nBeatriz\\nCarla\\n\") top3.txt'\ncomprueba \"palabras.txt contiene 6\" bash -c '[ \"$(tr -d \" \\n\" < palabras.txt)\" = 6 ]'"
+  },
+  {
+    "id": "lpie-grep",
+    "reto": "r010-grep",
+    "title": "Filtrar un inventario con grep y expresiones regulares",
+    "briefing": "El fichero `inventario.txt` tiene una línea por artículo (y algunas de comentario). Te piden extraer:\n1. En `cables.txt`, las líneas que contienen la palabra `cable` sin distinguir mayúsculas de minúsculas.\n2. En `sin-stock.txt`, las líneas de artículos con stock exactamente 0 (el stock es el último número; un 10 o un 30 no cuentan).\n3. En `no-comentarios.txt`, todas las líneas que no empiezan por `#`.\n4. En `n-teclados.txt`, solo el número de líneas que contienen `teclado`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-grep`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Todo se resuelve con el buscador de patrones: una opción ignora mayúsculas, otra invierte la selección y otra cuenta en lugar de mostrar. Los patrones de inicio y fin de línea tienen símbolos propios.",
+      "Para «stock 0» necesitas el ancla de fin de línea y algo que impida coger `10` o `30` (el 0 va precedido de un espacio). Para «no empieza por», invierte la búsqueda de líneas que empiezan por `#`.",
+      "`grep -i cable inventario.txt > cables.txt`; `grep ' 0$' inventario.txt > sin-stock.txt`; `grep -v '^#' inventario.txt > no-comentarios.txt`; `grep -c teclado inventario.txt > n-teclados.txt`."
+    ],
+    "solution_summary": "`grep -i` ignora mayúsculas, `' 0$'` ancla el 0 al final de línea precedido de espacio (así no coge `10` ni `30`), `-v '^#'` invierte la búsqueda de líneas que empiezan por `#` y `-c` devuelve el recuento.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "grep",
+      "regex",
+      "anclas"
+    ],
+    "objetivos_lpi": [
+      "3.2"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [BÚSQUEDA] · Hay que extraer subconjuntos de un fichero de inventario según patrones de texto.",
+    "preparar": "cat > inventario.txt <<'F'\n# inventario del almacén\nCable HDMI 12\nteclado USB 0\ncable de red 5\n# revisado en enero\nratón inalámbrico 30\nCABLE de corriente 0\nteclado mecánico 4\nmonitor 27 pulgadas 10\nF",
+    "comprobar": "comprueba \"cables.txt tiene las 3 líneas de cable\" bash -c 'diff <(grep -i cable inventario.txt) cables.txt'\ncomprueba \"sin-stock.txt: las 2 líneas acabadas en 0 (no la de stock 10)\" bash -c 'diff <(printf \"teclado USB 0\\nCABLE de corriente 0\\n\") sin-stock.txt'\ncomprueba \"no-comentarios.txt no tiene líneas con # al principio y tiene las 7 demás\" bash -c '! grep -q \"^#\" no-comentarios.txt && [ \"$(wc -l < no-comentarios.txt)\" -eq 7 ]'\ncomprueba \"n-teclados.txt contiene 2\" bash -c '[ \"$(tr -d \" \\n\" < n-teclados.txt)\" = 2 ]'"
+  },
+  {
+    "id": "lpie-script",
+    "reto": "r010-script",
+    "title": "Escribir un script que saluda a cada argumento",
+    "briefing": "Escribe un script `saluda.sh`, hazlo ejecutable y que cumpla:\n- Su primera línea es el intérprete `#!/bin/bash`.\n- Si se ejecuta sin argumentos, imprime `uso: saluda.sh NOMBRE...` y termina con código de salida 1.\n- Si recibe argumentos, imprime `Hola NOMBRE` por cada uno, en líneas separadas, usando un bucle `for`, y termina con código 0.\nPor ejemplo, `./saluda.sh Ana Luis` debe imprimir `Hola Ana` y `Hola Luis`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-script`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Tres piezas: la cabecera del intérprete, una condición sobre el número de argumentos y un bucle que recorra todos los argumentos. No olvides el permiso de ejecución.",
+      "El número de argumentos y la lista de todos ellos están en variables especiales de la shell (`$#` y `$@`). El código de salida se fija con `exit`. Entrecomilla la lista para respetar argumentos con espacios.",
+      "`#!/bin/bash`, luego `if [ $# -eq 0 ]; then echo \"uso: saluda.sh NOMBRE...\"; exit 1; fi`, después `for n in \"$@\"; do echo \"Hola $n\"; done; exit 0`, y por último `chmod +x saluda.sh`."
+    ],
+    "solution_summary": "El script comprueba `$#`; si es 0, imprime el uso y sale con `exit 1`. Si no, `for n in \"$@\"` recorre cada argumento e imprime `Hola $n`, y termina con `exit 0`. `chmod +x` lo hace ejecutable y la línea `#!/bin/bash` fija el intérprete.",
+    "difficulty": "Intermedio",
+    "points": 170,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "bash",
+      "script",
+      "for",
+      "exit"
+    ],
+    "objetivos_lpi": [
+      "3.3"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [AUTOMATIZACIÓN] · Falta una pequeña utilidad de shell que salude a las personas que se le indiquen.",
+    "preparar": "echo \"escribe tu script en $RETO/saluda.sh\"",
+    "comprobar": "comprueba \"saluda.sh existe y es ejecutable\" test -x saluda.sh\ncomprueba \"la primera línea es #!/bin/bash\" bash -c '[ \"$(head -1 saluda.sh)\" = \"#!/bin/bash\" ]'\ncomprueba \"./saluda.sh Ana Luis escribe Hola Ana y Hola Luis\" bash -c 'diff <(printf \"Hola Ana\\nHola Luis\\n\") <(./saluda.sh Ana Luis)'\ncomprueba \"con argumentos sale con código 0\" bash -c './saluda.sh Eva >/dev/null 2>&1'\ncomprueba \"sin argumentos sale con código 1 y explica el uso\" bash -c './saluda.sh >/tmp/s010 2>&1; c=$?; [ $c -eq 1 ] && grep -qi uso /tmp/s010'\ncomprueba \"usa un bucle for\" grep -q 'for ' saluda.sh"
+  },
+  {
+    "id": "lpie-usuarios",
+    "reto": "r010-usuarios",
+    "title": "Altas y bajas de cuentas y grupos",
+    "briefing": "Te piden gestionar cuentas (necesitas `sudo`):\n1. Crea el grupo `ventas`.\n2. Crea el usuario `pedro` con carpeta personal `/home/pedro`, shell `/bin/bash` y `ventas` como grupo secundario.\n3. Guarda en `pedro.txt` únicamente la línea de `pedro` en `/etc/passwd`.\n4. Guarda en `id.txt` la salida de `id pedro`.\n5. Elimina la cuenta `antiguo` (ya existe) junto con su carpeta personal.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-usuarios`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Altas y bajas de grupos y usuarios con los comandos de administración de cuentas, y dos ficheros que documentan el resultado. Todo requiere privilegios salvo escribir en tu directorio.",
+      "`useradd` tiene opciones para crear el home, fijar la shell y añadir grupos secundarios. La baja con borrado de la carpeta personal es una opción de `userdel`. Para sacar una línea de `/etc/passwd`, filtra por el inicio de línea.",
+      "`sudo groupadd ventas`; `sudo useradd -m -s /bin/bash -G ventas pedro`; `grep '^pedro:' /etc/passwd > pedro.txt`; `id pedro > id.txt`; `sudo userdel -r antiguo`."
+    ],
+    "solution_summary": "`groupadd` crea el grupo; `useradd -m -s /bin/bash -G ventas pedro` crea cuenta, home, shell y grupo secundario; `userdel -r` borra usuario y carpeta personal. La línea de `/etc/passwd` se extrae con `grep '^pedro:'` y `id` muestra uid, gid y grupos.",
+    "difficulty": "Básico",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "useradd",
+      "groupadd",
+      "userdel",
+      "/etc/passwd",
+      "id"
+    ],
+    "objetivos_lpi": [
+      "5.1",
+      "5.2"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [CUENTAS] · Hay que dar de alta a una persona nueva en un grupo y retirar una cuenta que ya no se usa.",
+    "preparar": "userdel -r pedro 2>/dev/null || true\ngroupdel ventas 2>/dev/null || true\nuserdel -r antiguo 2>/dev/null || true\nuseradd -m -s /bin/bash antiguo\necho \"hay un usuario antiguo que sobra; pedro y ventas no existen\"",
+    "comprobar": "comprueba \"existe el grupo ventas\" getent group ventas\ncomprueba \"existe pedro con /home/pedro creada\" bash -c 'id pedro >/dev/null && [ -d /home/pedro ]'\ncomprueba \"la shell de pedro es /bin/bash\" bash -c '[ \"$(getent passwd pedro | cut -d: -f7)\" = /bin/bash ]'\ncomprueba \"pedro está en ventas\" bash -c 'id -nG pedro | grep -qw ventas'\ncomprueba \"pedro.txt es su línea de /etc/passwd\" bash -c 'diff <(grep \"^pedro:\" /etc/passwd) pedro.txt'\ncomprueba \"id.txt es la salida de id pedro\" bash -c 'diff <(id pedro) id.txt'\ncomprueba \"antiguo ya no existe ni su /home/antiguo\" bash -c '! id antiguo 2>/dev/null && [ ! -e /home/antiguo ]'"
+  },
+  {
+    "id": "lpie-permisos",
+    "reto": "r010-permisos",
+    "title": "Permisos y propietarios en modo numérico y simbólico",
+    "briefing": "Ya existen el usuario `luis` y el grupo `contabilidad` (necesitas `sudo` para cambiar propietarios). Te piden ajustar:\n1. `informe.txt` debe quedar con permisos 640 (usa el modo numérico).\n2. `copia.sh` debe poder ejecutarlo solo su propietario, sin tocar el resto de permisos (modo simbólico).\n3. `informe.txt` debe pertenecer al usuario `luis` y al grupo `contabilidad`, con un solo comando.\n4. La carpeta `privado/` debe quedar con 700.\n5. A `notas.txt` hay que quitarle el permiso de lectura a «otros».\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-permisos`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Dos formas de expresar permisos, numérica y simbólica, y un comando aparte para propietario y grupo. Mira el estado inicial con `ls -l` antes de cambiar nada.",
+      "En el modo simbólico se indica a quién (`u`, `g`, `o`), si se añade o se quita (`+`/`-`) y qué permiso. El comando de propietario acepta usuario y grupo juntos separados por dos puntos.",
+      "`chmod 640 informe.txt`; `chmod u+x copia.sh`; `sudo chown luis:contabilidad informe.txt`; `chmod 700 privado`; `chmod o-r notas.txt`."
+    ],
+    "solution_summary": "`chmod 640` y `chmod 700` fijan permisos en octal; `chmod u+x` añade ejecución solo al propietario y `chmod o-r` quita lectura a otros. `chown luis:contabilidad` cambia usuario y grupo a la vez (requiere root).",
+    "difficulty": "Básico",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "chmod",
+      "chown",
+      "permisos",
+      "ls -l"
+    ],
+    "objetivos_lpi": [
+      "5.3"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [PERMISOS] · Varios ficheros del departamento tienen permisos y propietarios que no corresponden.",
+    "preparar": "userdel -r luis 2>/dev/null || true\ngroupdel contabilidad 2>/dev/null || true\ngroupadd contabilidad\nuseradd -m luis\necho \"cuentas\" > informe.txt; chmod 666 informe.txt\nprintf '#!/bin/bash\\necho copia\\n' > copia.sh; chmod 644 copia.sh\nmkdir privado; chmod 755 privado\necho \"apuntes\" > notas.txt; chmod 664 notas.txt",
+    "comprobar": "comprueba \"informe.txt tiene 640\" bash -c '[ \"$(stat -c %a informe.txt)\" = 640 ]'\ncomprueba \"copia.sh tiene 744 (solo el propietario ejecuta)\" bash -c '[ \"$(stat -c %a copia.sh)\" = 744 ]'\ncomprueba \"informe.txt es de luis:contabilidad\" bash -c '[ \"$(stat -c %U:%G informe.txt)\" = luis:contabilidad ]'\ncomprueba \"privado/ tiene 700\" bash -c '[ \"$(stat -c %a privado)\" = 700 ]'\ncomprueba \"notas.txt tiene 660\" bash -c '[ \"$(stat -c %a notas.txt)\" = 660 ]'"
+  },
+  {
+    "id": "lpie-especiales",
+    "reto": "r010-especiales",
+    "title": "Carpeta de grupo con SGID, sticky bit y un enlace simbólico",
+    "briefing": "El grupo `equipo` necesita una carpeta compartida, `compartido/` (necesitas `sudo` para el cambio de grupo):\n1. Haz que el grupo propietario de `compartido/` sea `equipo`.\n2. Dale rwx al propietario y al grupo y ningún permiso a los demás.\n3. Activa el bit SGID para que lo que se cree dentro herede el grupo `equipo`.\n4. Activa el sticky bit para que cada usuario solo pueda borrar lo suyo, como en `/tmp`.\n5. Crea un enlace simbólico llamado `atajo` que apunte a `compartido`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-especiales`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Combina cambio de grupo, permisos base, dos permisos especiales y un enlace simbólico. Los permisos especiales se pueden añadir con modo simbólico o con un cuarto dígito octal delante.",
+      "El grupo se cambia con `chgrp` o con `chown`. SGID es `g+s` y sticky es `o+t`; en octal el dígito extra vale 2 y 1 respectivamente. En un enlace simbólico, el primer argumento es el destino y el segundo el nombre del enlace.",
+      "`sudo chgrp equipo compartido`; `chmod 770 compartido`; `chmod g+s compartido`; `chmod o+t compartido` (o `chmod 3770 compartido`); `ln -s compartido atajo`."
+    ],
+    "solution_summary": "`chgrp` fija el grupo; `chmod 770` da rwx a propietario y grupo; `g+s` (SGID) hace que lo nuevo herede el grupo y `o+t` (sticky) restringe el borrado al dueño. `ln -s compartido atajo` crea el enlace simbólico (destino primero).",
+    "difficulty": "Intermedio",
+    "points": 170,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "SGID",
+      "sticky bit",
+      "chmod",
+      "chgrp",
+      "ln -s"
+    ],
+    "objetivos_lpi": [
+      "5.3",
+      "5.4"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [COLABORACIÓN] · Un equipo necesita una carpeta común donde cada miembro solo pueda borrar sus propios ficheros.",
+    "preparar": "groupdel equipo 2>/dev/null || true\ngroupadd equipo\nmkdir compartido\nchmod 755 compartido",
+    "comprobar": "comprueba \"compartido/ es del grupo equipo\" bash -c '[ \"$(stat -c %G compartido)\" = equipo ]'\ncomprueba \"compartido/ tiene rwxrwx--- (sin contar los especiales)\" bash -c '[ \"$(stat -c %a compartido | tail -c 4)\" = 770 ]'\ncomprueba \"tiene el bit SGID\" test -g compartido\ncomprueba \"tiene el sticky bit\" test -k compartido\ncomprueba \"atajo es un enlace simbólico a compartido\" bash -c '[ -L atajo ] && [ \"$(readlink atajo)\" = compartido ]'"
+  },
+  {
+    "id": "lpie-comillas-variables",
+    "reto": "r010-comillas-variables",
+    "title": "Variables locales, exportadas y comillas: qué hereda un proceso hijo",
+    "briefing": "Te piden demostrar cómo se comportan las variables y las comillas:\n1. Crea la variable local `saludo` con el valor `hola` sin exportarla, y la variable `ORDEN` con el valor `desc` exportada.\n2. Lanza un `bash` hijo que imprima en una sola línea el valor de `saludo` y el de `ORDEN`, cada uno entre corchetes, y guarda la salida en `hijo.txt`. Debe quedar `[][desc]`.\n3. Guarda en `entorno.txt` solo la línea que muestra `env` para `ORDEN`. Después elimina `ORDEN` de la shell y guarda en `borrada.txt` la salida de `echo \"[$ORDEN]\"` (debe quedar `[]`).\n4. Guarda en `ls.txt` la ruta del programa `ls` y en `cd.txt` lo que dice la shell sobre `cd`.\n5. Crea `comillas.txt` con dos líneas que contengan el texto literal `$HOME` sin expandir: la primera usando comillas simples y la segunda con comillas dobles y el `$` escapado.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-comillas-variables`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Una variable solo pasa al hijo si está exportada; las comillas simples impiden la expansión y las dobles la permiten salvo que escapes el `$`. Todos los apartados son demostraciones de esa diferencia.",
+      "Para que el `$` lo expanda el hijo y no tu shell, pasa el comando al hijo entre comillas simples. Recuerda que en `saludo=hola` no hay espacios alrededor del `=`. `which` da la ruta de un programa y `type` explica qué es una orden.",
+      "`saludo=hola; export ORDEN=desc`; `bash -c 'echo \"[$saludo][$ORDEN]\"' > hijo.txt`; `env | grep '^ORDEN=' > entorno.txt`; `unset ORDEN; echo \"[${ORDEN-}]\" > borrada.txt`; `which ls > ls.txt; type cd > cd.txt`; `printf '%s\\n' '$HOME' \"\\$HOME\" > comillas.txt`."
+    ],
+    "solution_summary": "`export` copia la variable al entorno de los hijos; `saludo` sin exportar no llega y el hijo imprime `[]`. `unset` borra la variable. Las comillas simples dejan `$HOME` literal y en dobles hay que escapar el `$` (`\\$HOME`) para lograr lo mismo.",
+    "difficulty": "Intermedio",
+    "points": 180,
+    "estimated_min": 9,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "variables",
+      "export",
+      "env",
+      "unset",
+      "comillas"
+    ],
+    "objetivos_lpi": [
+      "2.1"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [ENTORNO] · Hay que demostrar qué variables de la shell llegan a un proceso hijo y cómo afectan las comillas.",
+    "preparar": "true",
+    "comprobar": "comprueba \"hijo.txt: el hijo no ve saludo y sí ve ORDEN\" bash -c 'diff <(printf \"[][desc]\\n\") hijo.txt'\ncomprueba \"entorno.txt: solo la línea ORDEN=desc de env\" bash -c 'diff <(printf \"ORDEN=desc\\n\") entorno.txt'\ncomprueba \"borrada.txt: ORDEN ya no existe tras unset\" bash -c 'diff <(printf \"[]\\n\") borrada.txt'\ncomprueba \"ls.txt: la ruta de ls\" bash -c '[ \"$(cat ls.txt)\" = \"$(which ls)\" ]'\ncomprueba \"cd.txt: type dice que cd es una orden interna (builtin)\" grep -qi builtin cd.txt\ncomprueba 'comillas.txt: dos veces $HOME sin expandir' bash -c 'diff <(printf \"%s\\n\" \"\\$HOME\" \"\\$HOME\") comillas.txt'"
+  },
+  {
+    "id": "lpie-almacenamiento-datos",
+    "reto": "r010-almacenamiento-datos",
+    "title": "Dónde se guardan los datos: ejecutables, /etc, /proc y el disco",
+    "briefing": "Te piden recoger información de varias fuentes del sistema:\n1. Guarda en `rutas.txt` la ruta del ejecutable de `ps` y la de `cut`, una por línea.\n2. Guarda en `etc.txt` únicamente la línea del usuario `root` en `/etc/passwd`.\n3. Guarda en `memoria.txt` únicamente la línea `MemTotal` de `/proc/meminfo`.\n4. Guarda en `montaje.txt` el punto de montaje en el que está `/tmp` (última columna de la línea de datos de `df -P /tmp`).\n5. Guarda en `tamano.txt` solo el número de MiB que ocupa la carpeta `datos/` según `du -sm`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-almacenamiento-datos`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Cada apartado lee de un sitio distinto: el PATH, un fichero de configuración, el sistema de ficheros virtual del kernel y las utilidades de espacio en disco. Extrae solo lo pedido.",
+      "`which` localiza ejecutables. `grep` con ancla de inicio de línea saca una entrada de `/etc/passwd` o `/proc/meminfo`. En la salida de `df -P` la línea de datos es la segunda y el punto de montaje la sexta columna. `du -sm` imprime tamaño y nombre: quédate con el primer campo.",
+      "`{ which ps; which cut; } > rutas.txt`; `grep '^root:' /etc/passwd > etc.txt`; `grep '^MemTotal:' /proc/meminfo > memoria.txt`; `df -P /tmp | awk 'NR==2{print $6}' > montaje.txt`; `du -sm datos | cut -f1 > tamano.txt`."
+    ],
+    "solution_summary": "Los ejecutables se localizan con `which`; `/etc/passwd` guarda las cuentas; `/proc/meminfo` es información del kernel en vivo; `df -P` da el punto de montaje en la columna 6 y `du -sm | cut -f1` el tamaño en MiB.",
+    "difficulty": "Básico",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "which",
+      "/etc/passwd",
+      "/proc",
+      "df",
+      "du"
+    ],
+    "objetivos_lpi": [
+      "4.3"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [INVENTARIO] · Hay que documentar dónde residen programas, configuración, datos del kernel y espacio en disco.",
+    "preparar": "mkdir -p datos\nhead -c 1048576 /dev/zero > datos/grande.bin",
+    "comprobar": "comprueba \"rutas.txt: la ruta de ps y la de cut\" bash -c 'diff <(printf \"%s\\n\" \"$(which ps)\" \"$(which cut)\") rutas.txt'\ncomprueba \"etc.txt: la línea de root en /etc/passwd\" bash -c 'diff <(grep \"^root:\" /etc/passwd) etc.txt'\ncomprueba \"memoria.txt: la línea MemTotal de /proc/meminfo\" bash -c 'diff <(grep \"^MemTotal:\" /proc/meminfo) memoria.txt'\ncomprueba \"montaje.txt: el punto de montaje de /tmp\" bash -c 'diff <(df -P /tmp | awk \"NR==2{print \\$6}\") montaje.txt'\ncomprueba \"tamano.txt: los MiB de datos/ según du -sm\" bash -c 'v=$(tr -d \" \\t\\n\" < tamano.txt); [ -n \"$v\" ] && [ \"$v\" = \"$(du -sm datos | cut -f1)\" ]'"
+  },
+  {
+    "id": "lpie-almacenamiento-datos2",
+    "reto": "r010-almacenamiento-datos2",
+    "title": "Procesos: PID, /proc/PID y ps",
+    "briefing": "Te piden crear un proceso y consultarlo de distintas maneras:\n1. Lanza `sleep 1234` en segundo plano con `&` y guarda su PID en `pid.txt`; la variable `$!` guarda el PID del último proceso en segundo plano.\n2. Lee en `/proc/PID/comm` el nombre del programa de ese PID y guarda solo el nombre en `comm.txt`.\n3. Guarda en `ps.txt` el PID y el nombre que muestra `ps` para ese proceso (usa `ps -p PID -o pid=,comm=`).\n4. Guarda en `estado.txt` solo la primera letra del estado del proceso según `ps` (columna STAT, `ps -o stat= -p PID`).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-almacenamiento-datos2`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "El proceso tiene que seguir vivo mientras pides sus datos. Una variable especial de la shell te da su PID en cuanto lo lanzas, y a partir de ahí lo consultas por `/proc` y por `ps`.",
+      "Guarda el PID con `echo $! > pid.txt` justo después de lanzarlo. El nombre está en un fichero dentro del directorio `/proc/<PID>/`. Con la opción de salida de `ps` que termina en `=` se omiten las cabeceras; para la primera letra usa `cut -c1`.",
+      "`sleep 1234 &` y `echo $! > pid.txt`; `cat /proc/$(cat pid.txt)/comm > comm.txt`; `ps -p $(cat pid.txt) -o pid=,comm= > ps.txt`; `ps -o stat= -p $(cat pid.txt) | tr -d ' ' | cut -c1 > estado.txt`."
+    ],
+    "solution_summary": "`sleep 1234 &` crea el proceso y `$!` da su PID. `/proc/PID/comm` contiene el nombre del programa, `ps -p PID -o pid=,comm=` imprime PID y nombre sin cabecera y `ps -o stat=` muestra el estado (S = durmiendo), del que se toma la primera letra.",
+    "difficulty": "Básico",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "ps",
+      "/proc",
+      "PID",
+      "sleep",
+      "&"
+    ],
+    "objetivos_lpi": [
+      "4.3"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [PROCESOS] · Hay que lanzar un proceso en segundo plano y documentar su identidad desde varias fuentes.",
+    "preparar": "pkill -f '^sleep 1234$' 2>/dev/null || true",
+    "comprobar": "comprueba \"pid.txt: un PID de un proceso que existe\" bash -c 'p=$(cat pid.txt 2>/dev/null); [ -n \"$p\" ] && tr \"\\0\" \" \" < /proc/$p/cmdline 2>/dev/null | grep -q \"^sleep 1234\"'\ncomprueba \"comm.txt: el programa de ese PID es sleep\" bash -c '[ \"$(cat comm.txt)\" = sleep ]'\ncomprueba \"ps.txt: el PID y el nombre sleep\" bash -c '[ \"$(xargs < ps.txt)\" = \"$(cat pid.txt) sleep\" ]'\ncomprueba \"estado.txt: la letra S (durmiendo)\" bash -c '[ \"$(tr -d \" \\n\" < estado.txt)\" = S ]'"
+  },
+  {
+    "id": "lpie-red-basica",
+    "reto": "r010-red-basica",
+    "title": "Red básica del equipo: loopback, localhost, DNS y orden de resolución",
+    "briefing": "Te piden documentar la red básica del equipo:\n1. Guarda en `lo.txt` la salida en formato breve de las direcciones de la interfaz de bucle local `lo`.\n2. Guarda en `resuelve.txt` solo la dirección IPv4 con la que el sistema resuelve `localhost`.\n3. Guarda en `hosts.txt` la primera línea de `/etc/hosts` que menciona `localhost`.\n4. Guarda en `dns.txt` solo la IP del primer `nameserver` de `/etc/resolv.conf`.\n5. Guarda en `orden.txt` la línea `hosts:` de `/etc/nsswitch.conf`, que indica el orden en el que se resuelven los nombres.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r010-red-basica`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Cinco consultas sobre red: una a las herramientas de interfaces, una a la resolución de nombres del sistema y tres a ficheros de configuración. Extrae solo la línea o campo pedido.",
+      "`ip` tiene una opción de salida breve y puede limitarse a una interfaz. `getent` consulta la resolución como la haría el sistema (hay una variante para IPv4). Para el DNS, filtra las líneas que empiezan por `nameserver` y toma el segundo campo de la primera.",
+      "`ip -br addr show lo > lo.txt`; `getent ahostsv4 localhost | awk 'NR==1{print $1}' > resuelve.txt`; `grep -m1 localhost /etc/hosts > hosts.txt`; `awk '/^nameserver/{print $2; exit}' /etc/resolv.conf > dns.txt`; `grep '^hosts:' /etc/nsswitch.conf > orden.txt`."
+    ],
+    "solution_summary": "`ip -br addr show lo` muestra la interfaz de bucle en formato breve, `getent ahostsv4` resuelve como el sistema, `/etc/hosts` mapea nombres locales, `/etc/resolv.conf` lista los servidores DNS y la línea `hosts:` de `nsswitch.conf` fija el orden de las fuentes de resolución.",
+    "difficulty": "Básico",
+    "points": 150,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "Linux Essentials"
+    ],
+    "tags": [
+      "ip",
+      "/etc/hosts",
+      "resolv.conf",
+      "nsswitch.conf",
+      "getent"
+    ],
+    "objetivos_lpi": [
+      "4.4"
+    ],
+    "category": "Linux Essentials · 010-160",
+    "blind_alert": "PETICIÓN [RED] · Hay que documentar la configuración de red básica de un equipo: interfaz local, nombres y servidores DNS.",
+    "preparar": "true",
+    "comprobar": "comprueba \"lo.txt: la salida de ip -br addr show lo\" bash -c 'diff <(ip -br addr show lo) lo.txt'\ncomprueba \"resuelve.txt: localhost es 127.0.0.1\" bash -c '[ \"$(tr -d \" \\n\" < resuelve.txt)\" = 127.0.0.1 ]'\ncomprueba \"hosts.txt: la línea de localhost en /etc/hosts\" bash -c 'diff <(grep -m1 localhost /etc/hosts) hosts.txt'\ncomprueba \"dns.txt: el primer nameserver de resolv.conf\" bash -c 'v=$(tr -d \" \\n\" < dns.txt); [ -n \"$v\" ] && [ \"$v\" = \"$(awk \"/^nameserver/{print \\$2; exit}\" /etc/resolv.conf)\" ]'\ncomprueba \"orden.txt: la línea hosts: de nsswitch.conf\" bash -c 'diff <(grep \"^hosts:\" /etc/nsswitch.conf) orden.txt'"
+  }
+]

@@ -14,7 +14,7 @@ RUN apt-get update \
       net-tools netcat-openbsd openssh-client openssh-server openssl passwd pciutils plocate procps psmisc \
       python3 sudo tar tcpdump tree usbutils vim wget xz-utils \
       sysstat iftop iptraf-ng \
-      at gnupg xvfb x11-utils xauth ipcalc netbase wpasupplicant socat tzdata chrony rsyslog logrotate \
+      zip unzip at gnupg xvfb x11-utils xauth ipcalc netbase wpasupplicant socat tzdata chrony rsyslog logrotate \
       systemd-journal-remote postfix \
  && rm -rf /var/lib/apt/lists/*
 # Usuario de prácticas (el jugador trabaja como alumno, con sudo y contraseña «alumno»)

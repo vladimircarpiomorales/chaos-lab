@@ -32,7 +32,7 @@ El jugador ve, **antes de resolver**, el briefing, las etiquetas de las sondas y
 - **`look` («dónde mirar») = dónde miraría un sysadmin**, nunca un comando o fichero que aparece entre `backticks` en las pistas (salvo que ya lo diga el briefing o la alerta).
 - **`runs` y `via` describen cómo *debería* funcionar**, no qué está roto.
 - **Los datos secretos** (el puerto real cuando el reto es encontrarlo, el nombre del proceso culpable, contraseñas, dominios del atacante, tokens) solo pueden salir en la pista 3 y en la solución. Nómbralos `real_port`, `wrong_port`, `rogue_name`, `rpass`, `c2_domain`, `hidden_dir`, `decoys`, `token`… o añade el nombre a `SECRET_VARS` en `tests/test_sin_spoilers.py`.
-- Las **`tags`** (tecnologías) delatan la causa: la interfaz las oculta hasta resolver. Las **`certs`** (LPIC-1, LPIC-2, CCNA, CCNP, AZ-104) sí se ven.
+- Las **`tags`** (tecnologías) delatan la causa: la interfaz las oculta hasta resolver. Las **`certs`** (Linux Essentials, LPIC-1, LPIC-2, CCNA, CCNP, AZ-104) sí se ven.
 
 ## Sondas que no mienten
 
@@ -50,7 +50,7 @@ El jugador ve, **antes de resolver**, el briefing, las etiquetas de las sondas y
 | Avanzado | Varias capas (red + servicio) o un dato oculto que hay que deducir (ruta, IP atacante, MTU). |
 | Experto | 3 nodos y 3+ fallos encadenados en capas distintas: arreglar uno descubre el siguiente. |
 
-`category` es una de: Redes y routing · DNS · Servicios web y TLS · Sistema y permisos · Seguridad (Blue Team) · Incidente mayor · LPIC-1 · 102-500 (pack de retos, ver abajo).
+`category` es una de: Redes y routing · DNS · Servicios web y TLS · Sistema y permisos · Seguridad (Blue Team) · Incidente mayor · LPIC-1 · 102-500 · Linux Essentials · 010-160 (packs de retos, ver abajo).
 
 ## Probar antes del pull request
 
@@ -69,7 +69,7 @@ Debe salir **todo ✗ antes** (salvo sondas de «no romper lo que funciona») y 
 
 ## Packs de escenarios como datos
 
-Los escenarios repetitivos (retos de práctica con el mismo molde) no se escriben como funciones: viven en `chaos_lab/packs/<pack>.json` y `chaos_lab/packs/__init__.py` los convierte en entradas de `SCENARIO_CATALOG` (se registran en `scenarios.py` con `load_pack`). El pack `lpic1_102.json` trae los 27 retos de «LPIC-1 · 102-500»: un nodo `lpic` (imagen `lpic-debian`, usuario `alumno`, terminal en `/home/alumno/retos/<reto>`), `preparar` (script de montaje, sin `apt`: la imagen trae todo) y `comprobar` (líneas `comprueba "etiqueta" comando…`). Las mismas reglas de pistas, briefing sin spoilers y dificultad se aplican; la imagen se construye con `images/construir.sh lpic-debian`. Soluciones: `tests/e2e/soluciones/lpic1-<x>.sh`; prueba sin servidor: `tests/e2e/lpic_seco.sh <id>` (contenedor propio `lpicseco-*`).
+Los escenarios repetitivos (retos de práctica con el mismo molde) no se escriben como funciones: viven en `chaos_lab/packs/<pack>.json` y `chaos_lab/packs/__init__.py` los convierte en entradas de `SCENARIO_CATALOG` (se registran en `scenarios.py` con `load_pack`). El pack `lpic1_102.json` trae los 27 retos de «LPIC-1 · 102-500»: un nodo `lpic` (imagen `lpic-debian`, usuario `alumno`, terminal en `/home/alumno/retos/<reto>`), `preparar` (script de montaje, sin `apt`: la imagen trae todo) y `comprobar` (líneas `comprueba "etiqueta" comando…`). Las mismas reglas de pistas, briefing sin spoilers y dificultad se aplican; la imagen se construye con `images/construir.sh lpic-debian`. Soluciones: `tests/e2e/soluciones/lpic1-<x>.sh`; prueba sin servidor: `tests/e2e/lpic_seco.sh <id>` (contenedor propio `lpicseco-*`). El pack `essentials_010.json` añade los 14 retos de «Linux Essentials · 010-160» (ids `lpie-*`, `certs: ["Linux Essentials"]`, soluciones `lpie-<x>.sh`).
 
 ## Estilo
 

@@ -214,3 +214,22 @@ def test_pack_lpic1_carga_27_escenarios():
         assert n["workdir"] == f"/home/alumno/retos/{reto}" and n["distro"] == "lpic-debian" and n["default_user"] == "alumno"
         assert inst["check_script"]["cwd"] == n["workdir"] and "comprueba" in inst["check_script"]["script"]
         assert "apt-get" not in n["setup_sh"]
+
+
+# ---------- pack Linux Essentials 010-160 ----------
+
+def test_pack_essentials_010_carga_14_escenarios():
+    from chaos_lab.scenarios import SCENARIO_CATALOG, instantiate_scenario
+    pack = [s for s in SCENARIO_CATALOG if s["id"].startswith("lpie-")]
+    assert len(pack) == 14
+    assert len({s["id"] for s in SCENARIO_CATALOG}) == len(SCENARIO_CATALOG), "ids únicos en todo el catálogo"
+    for s in pack:
+        assert s["tipo"] in ("averia", "tarea") and s["category"] == "Linux Essentials · 010-160" and s["certs"] == ["Linux Essentials"]
+        assert s["difficulty"] in ("Básico", "Intermedio", "Avanzado")
+        inst = instantiate_scenario(s["id"], 1)
+        assert len(inst["hints"]) == 3 and all(inst["hints"])
+        n = inst["nodes"][0]
+        reto = "r010-" + s["id"][len("lpie-"):]
+        assert n["workdir"] == f"/home/alumno/retos/{reto}" and n["distro"] == "lpic-debian" and n["default_user"] == "alumno"
+        assert inst["check_script"]["cwd"] == n["workdir"] and "comprueba" in inst["check_script"]["script"]
+        assert "apt-get" not in n["setup_sh"]

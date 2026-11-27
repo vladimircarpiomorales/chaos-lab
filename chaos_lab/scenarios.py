@@ -2050,6 +2050,7 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
 
 # Packs definidos como datos (chaos_lab/packs/*.json)
 SCENARIO_CATALOG += load_pack("lpic1_102")
+SCENARIO_CATALOG += load_pack("essentials_010")
 
 SCENARIOS_BY_ID: dict[str, dict[str, Any]] = {s["id"]: s for s in SCENARIO_CATALOG}
 
