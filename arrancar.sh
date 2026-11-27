@@ -9,6 +9,8 @@
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+# Configuración local opcional (no se sube): CHAOS_PORT, CHAOS_EXPORT_DIR, CHAOS_RUNTIME…
+[ -f "${RAIZ}/.env" ] && set -a && . "${RAIZ}/.env" && set +a
 PUERTO="${CHAOS_PORT:-7820}"
 HOST="${CHAOS_HOST:-127.0.0.1}"
 URL="http://${HOST}:${PUERTO}/"
@@ -49,6 +51,16 @@ fi
 
 if ! vivo; then
     cd "$RAIZ"
+    # Python: .venv propio si existe; si no, el del sistema si ya tiene FastAPI; si no, crear .venv (una vez, necesita internet)
+    PY="python3"
+    if [ -x "${RAIZ}/.venv/bin/python" ]; then
+        PY="${RAIZ}/.venv/bin/python"
+    elif ! python3 -c "import fastapi, uvicorn, websockets" 2>/dev/null; then
+        echo "🐍 Creando entorno Python en .venv (solo la primera vez)..."
+        python3 -m venv "${RAIZ}/.venv" && "${RAIZ}/.venv/bin/pip" install -q -r "${RAIZ}/requirements.txt" \
+            || { echo "❌ No se pudo preparar .venv. Instala python3-venv o: pip install -r requirements.txt"; exit 1; }
+        PY="${RAIZ}/.venv/bin/python"
+    fi
     # Primera vez: construir las imágenes propias (herramientas de serie, sin apt al desplegar). Necesita internet una vez.
     for img in debian rocky nginx redis; do
         if ! podman image exists "localhost/chaos-${img}:1" 2>/dev/null; then
@@ -58,7 +70,7 @@ if ! vivo; then
         fi
     done
     setsid nohup env PYTHONPATH="$RAIZ" CHAOS_HOST="$HOST" CHAOS_PORT="$PUERTO" \
-        python3 -m chaos_lab.server >> "$LOG_FILE" 2>&1 < /dev/null &
+        "$PY" -m chaos_lab.server >> "$LOG_FILE" 2>&1 < /dev/null &
     for _ in $(seq 1 40); do
         vivo && break
         sleep 0.2

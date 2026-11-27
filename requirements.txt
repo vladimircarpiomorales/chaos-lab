@@ -1,0 +1,4 @@
+# Chaos Lab — dependencias del servidor (Python 3.11+)
+fastapi>=0.115
+uvicorn[standard]>=0.30   # incluye websockets (terminales en el navegador)
+pydantic>=2.7

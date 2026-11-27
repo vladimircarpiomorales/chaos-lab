@@ -786,7 +786,7 @@ function bindEvents() {
   $("btn-vault-pm")?.addEventListener("click", async () => {
     try {
       const res = await api("/api/lab/export-vault", { method: "POST" });
-      showToast(`🧠 Guardado en Obsidian: ${res.filename}`);
+      showToast(`📝 Post-mortem guardado: ${res.path}`);
     } catch (err) {
       showToast(`❌ ${err.message}`);
     }

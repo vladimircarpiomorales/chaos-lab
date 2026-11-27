@@ -13,3 +13,4 @@ CONTEXTO_*
 *.kate-swp
 exports/
 .venv/
+.env

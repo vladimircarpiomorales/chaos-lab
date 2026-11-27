@@ -120,6 +120,9 @@ async def api_postmortem() -> JSONResponse:
     )
 
 
+BASE_EXPORT_DIR = Path(__file__).resolve().parent.parent / "exports"
+
+
 @app.post("/api/lab/export-vault")
 async def api_export_vault() -> JSONResponse:
     if not engine.active:
@@ -128,9 +131,8 @@ async def api_export_vault() -> JSONResponse:
     import re as _re
 
     md = build_postmortem_markdown(engine.active)
-    vault_base = Path(os.path.expanduser(os.environ.get("RUTA_OBSIDIAN_VAULT", "~/Obsidian")))
-    personal = vault_base / "Personal"
-    dest_dir = (personal if personal.is_dir() else vault_base) / "PanelPro" / "Writeups-Labs"
+    # Carpeta de exportación: CHAOS_EXPORT_DIR (p. ej. una carpeta de tu bóveda de Obsidian) o ./exports
+    dest_dir = Path(os.path.expanduser(os.environ.get("CHAOS_EXPORT_DIR", str(BASE_EXPORT_DIR))))
     dest_dir.mkdir(parents=True, exist_ok=True)
     hoy = _dt.date.today().isoformat()
     slug = _re.sub(r"[^A-Za-z0-9\-_]+", "-", engine.active["id"]).strip("-")
@@ -141,9 +143,8 @@ async def api_export_vault() -> JSONResponse:
         f"date: {hoy}\n"
         f"category: ChaosLab\n"
         f"scenario: {engine.active['id']}\n"
-        f"tags: [panelpro, chaos-lab, postmortem, sre]\n"
+        f"tags: [chaos-lab, postmortem, sre]\n"
         f"---\n\n"
-        f"Volver a: [[00-Indice-PanelPro]] · [[Debilidades-Certificaciones]]\n\n"
     )
     fpath.write_text(front + md, encoding="utf-8")
     return JSONResponse({"ok": True, "filename": fname, "path": str(fpath)})
