@@ -218,17 +218,35 @@ def _parse_check_output(out: str, node: str, start: int = 0, empty_label: str = 
     return checks
 
 
-def _public_topology(topo, blind: bool):
-    """Esquema de la topología para la UI. En Modo Guardia oculta qué corre en cada nodo y dónde mirar."""
+def _networks_map(inst: dict[str, Any]) -> dict[str, list[str]]:
+    """Redes declaradas por el escenario -> roles que están en cada una (nombres cortos).
+
+    Vacío si el escenario no declara `networks` (red única clásica). Un rol en 2+ redes (router) sale en todas.
+    """
+    declared = inst.get("networks") or []
+    out: dict[str, list[str]] = {short: [] for short in declared}
+    for n in inst.get("nodes") or []:
+        for short in (n.get("networks") or ([declared[0]] if declared else [])):
+            if short in out:
+                out[short].append(n["role"])
+    return out
+
+
+def _public_topology(topo, blind: bool, networks: dict[str, list[str]] | None = None):
+    """Esquema de la topología para la UI. En Modo Guardia oculta qué corre en cada nodo y dónde mirar.
+
+    `networks` (estructura, no pista) se expone también a ciegas.
+    """
     if not topo:
         return None
     if not blind:
-        return topo
+        return {**topo, "networks": networks} if networks else topo
     return {
         "entry": {k: v for k, v in (topo.get("entry") or {}).items() if k != "via"} or None,
         "nodes": {role: {} for role in (topo.get("nodes") or {})},
         "links": [{"from": l["from"], "to": l["to"]} for l in topo.get("links") or []],
         "checks": {},
+        **({"networks": networks} if networks else {}),
     }
 
 class ChaosEngine:
@@ -361,6 +379,8 @@ class ChaosEngine:
                             {k: l.get(k, "") for k in ("from", "to", "via")}
                             for l in ((sample.get("topology") or {}).get("links") or [])
                         ],
+                        "entry": (sample.get("topology") or {}).get("entry"),
+                        "networks": _networks_map(sample),
                         "objetivos_lpi": item.get("objetivos_lpi", []),
                         "solved": bool(s_info),
                         "best_time_s": s_info.get("best_time_s") if s_info else None,
@@ -441,7 +461,7 @@ class ChaosEngine:
                     for n in act["nodes_runtime"]
                 ],
                 "checks": checks_view,
-                "topology": _public_topology(inst.get("topology"), blind),
+                "topology": _public_topology(inst.get("topology"), blind, _networks_map(inst)),
                 "timeline": act.get("timeline") or [],
                 "solution_summary": inst["solution_summary"] if act["solved"] else None,
             }

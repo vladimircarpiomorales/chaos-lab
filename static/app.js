@@ -210,10 +210,11 @@ function renderScenarioList() {
 /* Vista previa de un escenario dentro de su tarjeta (sin desplegar nada) */
 function scenarioPreview(sc) {
   const code = (t) => escapeHtml(t || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
-  const machines = (sc.machines || [])
+  const hasDraw = (sc.machines || []).length > 1 || Object.keys(sc.networks || {}).length > 0;
+  const machines = hasDraw ? "" : (sc.machines || [])
     .map((m) => `<li><span class="pv-role">${escapeHtml(m.role)}</span>${m.runs ? ` <span class="pv-runs">${escapeHtml(m.runs)}</span>` : ""}</li>`)
     .join("");
-  const links = (sc.links || [])
+  const links = hasDraw ? "" : (sc.links || [])
     .map((l) => `<li>${escapeHtml(l.from)} → ${escapeHtml(l.to)}${l.via ? ` <span class="pv-runs">· ${escapeHtml(l.via)}</span>` : ""}</li>`)
     .join("");
   const obj = (sc.objetivos_lpi || []).length
@@ -223,6 +224,7 @@ function scenarioPreview(sc) {
         <div class="sc-preview">
           <div class="pv-label">${sc.tipo === "tarea" ? "📋 El encargo" : "🔧 La incidencia"}</div>
           <div class="pv-brief">${code(sc.briefing)}</div>
+          ${hasDraw ? `<div class="pv-label">🗺 Topología</div><div class="pv-topo" id="pv-topo"></div>` : ""}
           ${machines ? `<div class="pv-label">🖧 Máquinas</div><ul class="pv-list">${machines}</ul>` : ""}
           ${links ? `<div class="pv-label">🔗 Conexiones</div><ul class="pv-list">${links}</ul>` : ""}
           ${obj}
@@ -243,10 +245,17 @@ function openPreview(id) {
     ${sc.solved ? `<span class="badge badge-solved">✓ ${sc.best_rank || "OK"} · ${fmtSeconds(sc.best_time_s)}</span>` : ""}`;
   $("pv-body").innerHTML = scenarioPreview(sc);
   $("pv-modal").classList.remove("hidden");
+  const pvBox = $("pv-topo");
+  if (pvBox) {
+    const nodes = Object.fromEntries((sc.machines || []).map((m) => [m.role, { runs: m.runs }]));
+    drawTopology(pvBox, { entry: sc.entry || null, nodes, links: sc.links || [], networks: sc.networks || {} }, { minHeight: 110 });
+  }
   $("btn-pv-launch").focus();
 }
 
 function closePreview() {
+  const pvBox = $("pv-topo");
+  if (pvBox && pvBox._topo) pvBox._topo.destroy();
   $("pv-modal").classList.add("hidden");
   const id = state.previewId;
   state.previewId = null;
@@ -439,6 +448,7 @@ function setTheme(theme) {
   Object.values(state.sessions).forEach((s) => {
     try { s.term.options.theme = termTheme(); } catch (_) {}
   });
+  restyleTopologies();
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -462,16 +472,267 @@ function topoStatus(active, target) {
   return state.verifiedSession === active.session_id ? "bad" : null;
 }
 
-function svgText(x, y, cls, text, anchor = "middle") {
-  return `<text x="${x}" y="${y}" class="${cls}" text-anchor="${anchor}">${escapeHtml(text)}</text>`;
+/* ---- Dibujo con Cytoscape.js (vendor/cytoscape.min.js) ----
+   drawTopology(container, topo, {ipOf, statusOf, activeRole, onNodeClick})
+   topo = {entry, nodes:{rol:{runs}}, links:[{from,to,via}], networks:{corto:[roles]}}
+   statusOf(target) -> "ok" | "bad" | null con target "entry" | "node:<rol>" | "link:<n>".
+   Devuelve {cy, update({statusOf, activeRole}), restyle(), destroy()}. La posición de cada nodo se calcula
+   aquí (layout `preset`, de izquierda a derecha), así el dibujo sale igual siempre. */
+
+const TOPO_LIVE = new Set();   // instancias vivas, para volver a pintarlas al cambiar de tema
+
+function topoColors() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n, d) => (cs.getPropertyValue(n) || "").trim() || d;
+  return {
+    bg: v("--bg-1", "#111"), box: v("--bg-2", "#1a1a1d"), border: v("--border-hi", "#444"),
+    text: v("--text", "#eee"), dim: v("--text-dim", "#888"), text2: v("--text-2", "#bbb"),
+    green: v("--green", "#22c55e"), red: v("--red", "#ef4444"),
+    accent: v("--accent", "#38bdf8"), accentSoft: v("--accent-soft", "rgba(56,189,248,.15)"),
+    mono: v("--font-mono", "monospace"), sans: v("--font-sans", "sans-serif"),
+  };
+}
+
+function topoStyle(c) {
+  return [
+    { selector: "node.n", style: {
+      shape: "round-rectangle", width: "data(w)", height: "data(h)",
+      "background-color": c.box, "border-width": 1.5, "border-color": c.border,
+      label: "data(label)", "text-wrap": "wrap", "text-valign": "center", "text-halign": "center",
+      color: c.text, "font-family": c.mono, "font-size": 11, "line-height": 1.35, "text-max-width": 300 } },
+    { selector: "node.router", style: { "border-style": "double", "border-width": 4 } },
+    { selector: "node.n.ok", style: { "border-color": c.green } },
+    { selector: "node.n.bad", style: { "border-color": c.red } },
+    { selector: "node.n.active", style: { "border-color": c.accent, "border-width": 3, "background-color": c.accent, "background-opacity": 0.14 } },
+    { selector: "node.n.router.active", style: { "border-width": 5 } },
+    { selector: "node.entry", style: {
+      shape: "round-rectangle", width: "data(w)", height: "data(h)", label: "data(label)",
+      "text-valign": "center", "text-halign": "center",
+      "background-opacity": 0, "border-width": 1.5, "border-style": "dashed", "border-color": c.dim,
+      color: c.text2, "font-family": c.sans, "font-size": 12 } },
+    { selector: "node.net", style: {
+      shape: "round-rectangle", "background-color": c.dim, "background-opacity": 0.07,
+      "border-width": 1.2, "border-style": "dashed", "border-color": c.dim, padding: 16,
+      label: "data(label)", "text-valign": "top", "text-halign": "center", "text-margin-y": -2,
+      color: c.dim, "font-family": c.mono, "font-size": 11 } },
+    { selector: "edge.l", style: {
+      width: 2, "line-color": c.dim, "line-style": "dashed", "target-arrow-shape": "triangle", "target-arrow-color": c.dim,
+      "arrow-scale": 1.1, "curve-style": "bezier", "control-point-step-size": 40,
+      label: "data(label)", "font-size": 10.5, "font-family": c.mono, color: c.text2, "edge-text-rotation": "none",
+      "text-background-color": c.bg, "text-background-opacity": 1, "text-background-padding": 2, "text-background-shape": "roundrectangle" } },
+    { selector: "edge.l.ok", style: { "line-color": c.green, "target-arrow-color": c.green, "line-style": "solid" } },
+    { selector: "edge.l.bad", style: { "line-color": c.red, "target-arrow-color": c.red, "line-style": "solid" } },
+    { selector: "edge.member", style: {
+      width: 1, "line-color": c.border, "line-style": "dotted", "target-arrow-shape": "none", "curve-style": "straight", opacity: 0.8 } },
+  ];
+}
+
+// Posiciones (centro) de nodos y entrada, de izquierda a derecha. Devuelve {pos, nets, netsOf}
+function topoLayout(topo, dims) {
+  const roles = Object.keys(topo.nodes || {});
+  const links = topo.links || [];
+  const nets = {};
+  Object.entries(topo.networks || {}).forEach(([n, rs]) => {
+    const own = rs.filter((r) => roles.includes(r));
+    if (own.length) nets[n] = own;
+  });
+  const netNames = Object.keys(nets);
+  const netsOf = (r) => netNames.filter((n) => nets[n].includes(r));
+
+  // Profundidad por flujo (entrada → enlaces); lo no alcanzado cuelga de lo que sí
+  const depth = {};
+  const first = topo.entry && roles.includes(topo.entry.to) ? topo.entry.to
+    : (roles.find((r) => !links.some((l) => l.to === r)) || roles[0]);
+  let queue = [first];
+  depth[first] = 0;
+  const walk = () => {
+    while (queue.length) {
+      const r = queue.shift();
+      links.filter((l) => l.from === r && depth[l.to] === undefined && roles.includes(l.to))
+        .forEach((l) => { depth[l.to] = depth[r] + 1; queue.push(l.to); });
+    }
+  };
+  walk();
+  let guard = roles.length + 2;
+  while (roles.some((r) => depth[r] === undefined) && guard-- > 0) {
+    const hit = roles.find((r) => depth[r] === undefined && links.some((l) => l.from === r && depth[l.to] !== undefined));
+    if (hit) {
+      depth[hit] = Math.min(...links.filter((l) => l.from === hit && depth[l.to] !== undefined).map((l) => depth[l.to]));  // misma columna que su destino, apilado
+      continue;
+    }
+    const orphan = roles.find((r) => depth[r] === undefined);
+    depth[orphan] = Math.max(0, ...Object.values(depth)) + 1;
+    queue = [orphan];
+    walk();
+  }
+  const byDepth = (a, b) => (depth[a] - depth[b]) || (roles.indexOf(a) - roles.indexOf(b));
+
+  // Columnas de izquierda a derecha: [{roles, extra}]
+  const cols = [];
+  const chunk = (arr, n) => { const o = []; for (let i = 0; i < arr.length; i += n) o.push(arr.slice(i, i + n)); return o; };
+  if (netNames.length) {
+    // Cada red = su(s) columna(s) de máquinas; los routers (2+ redes) van en una columna entre cajas
+    const isRouter = (r) => netsOf(r).length > 1;
+    const placed = new Set();
+    netNames.forEach((n, i) => {
+      const own = nets[n].filter((r) => !isRouter(r) && !placed.has(r)).sort(byDepth);
+      own.forEach((r) => placed.add(r));
+      chunk(own, 3).forEach((c, k) => cols.push({ roles: c, extra: k === 0 && i > 0 ? 34 : 0 }));
+      const rs = roles.filter((r) => isRouter(r) && !placed.has(r) && netsOf(r)[0] === n);
+      if (rs.length) { rs.forEach((r) => placed.add(r)); cols.push({ roles: rs.sort(byDepth), extra: 34 }); }
+    });
+    const rest = roles.filter((r) => !placed.has(r)).sort(byDepth);
+    if (rest.length) cols.push({ roles: rest, extra: 0 });
+  } else {
+    const min = Math.min(...roles.map((r) => depth[r]));
+    const groups = {};
+    roles.forEach((r) => { (groups[depth[r] - min] = groups[depth[r] - min] || []).push(r); });
+    Object.keys(groups).map(Number).sort((a, b) => a - b).forEach((d) => cols.push({ roles: groups[d].sort(byDepth), extra: 0 }));
+  }
+
+  const maxVia = Math.max(0, ...links.map((l) => (l.via || "").length), ((topo.entry && topo.entry.via) || "").length);
+  const gap = Math.min(260, Math.max(110, maxVia * 6.3 + 44));
+  const pos = {};
+  const all = [];
+  if (topo.entry) all.push({ entry: true, roles: [], w: dims.entryW, extra: 0 });
+  cols.forEach((c) => all.push({ ...c, w: Math.max(...c.roles.map((r) => dims.node[r].w)) }));
+  let x = 0, prevW = 0;
+  all.forEach((c, i) => {
+    x += i === 0 ? c.w / 2 : prevW / 2 + gap + (c.extra || 0) + c.w / 2;
+    prevW = c.w;
+    if (c.entry) { pos.__entry = { x, y: 0 }; return; }
+    const total = c.roles.reduce((s, r) => s + dims.node[r].h, 0) + (c.roles.length - 1) * 42;
+    let y = -total / 2;
+    c.roles.forEach((r) => { pos[r] = { x, y: y + dims.node[r].h / 2 }; y += dims.node[r].h + 42; });
+  });
+  return { pos, nets, netsOf };
+}
+
+function drawTopology(container, topo, opts = {}) {
+  if (container._topo) container._topo.destroy();
+  container.innerHTML = "";
+  if (typeof cytoscape === "undefined" || !topo || !topo.nodes) return null;
+  const o = { ipOf: {}, statusOf: () => null, activeRole: null, onNodeClick: null, minHeight: 0, ...opts };
+  const roles = Object.keys(topo.nodes);
+  const links = topo.links || [];
+  const clip = (t, n) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
+  const badge = (st) => (st === "ok" ? " ✓" : st === "bad" ? " ✗" : "");
+
+  const dims = { entryW: 96, node: {} };
+  roles.forEach((r) => {
+    const runs = clip((topo.nodes[r] || {}).runs || "", 42);
+    const lines = 1 + (o.ipOf[r] ? 1 : 0) + (runs ? 1 : 0);
+    dims.node[r] = { w: Math.max(150, Math.min(290, Math.ceil(Math.max(runs.length, r.length + 4) * 6.4 + 30))), h: 16 + lines * 15, runs };
+  });
+  const lay = topoLayout(topo, dims);
+
+  const els = [];
+  Object.keys(lay.nets).forEach((n) => {
+    if (lay.nets[n].some((r) => lay.netsOf(r).length === 1)) els.push({ group: "nodes", data: { id: "net:" + n, label: n }, classes: "net" });
+  });
+  roles.forEach((r) => {
+    const nets = lay.netsOf(r);
+    const router = nets.length > 1;
+    els.push({
+      group: "nodes", classes: "n" + (router ? " router" : ""), position: lay.pos[r],
+      data: { id: "n:" + r, role: r, label: "", w: dims.node[r].w, h: dims.node[r].h, ...(nets.length === 1 ? { parent: "net:" + nets[0] } : {}) },
+    });
+    // El router queda fuera de las cajas: aristas finas de pertenencia hacia cada red a la que está unido
+    if (router) nets.forEach((n) => {
+      if (lay.nets[n].some((q) => lay.netsOf(q).length === 1)) els.push({ group: "edges", classes: "member", data: { id: `m:${r}:${n}`, source: "n:" + r, target: "net:" + n } });
+    });
+  });
+  if (topo.entry) {
+    els.push({ group: "nodes", classes: "entry", position: lay.pos.__entry, data: { id: "entry", w: dims.entryW, h: 40, label: topo.entry.label || "tú" } });
+    if (roles.includes(topo.entry.to)) els.push({ group: "edges", classes: "l", data: { id: "e:entry", label: "", source: "entry", target: "n:" + topo.entry.to, via: topo.entry.via || "", tk: "entry" } });
+  }
+  links.forEach((l, i) => {
+    if (roles.includes(l.from) && roles.includes(l.to)) els.push({ group: "edges", classes: "l", data: { id: "e:" + i, label: "", source: "n:" + l.from, target: "n:" + l.to, via: l.via || "", tk: "link:" + i } });
+  });
+
+  // Alto según el dibujo: entre 150 y 260 px
+  const ys = Object.values(lay.pos).map((p) => p.y);
+  const rawH = (ys.length ? Math.max(...ys) - Math.min(...ys) : 0) + 70 + (Object.keys(lay.nets).length ? 60 : 24);
+  container.style.height = Math.round(Math.min(260, Math.max(o.minHeight || 150, rawH))) + "px";
+
+  const cy = cytoscape({
+    container, elements: els, layout: { name: "preset" }, style: topoStyle(topoColors()),
+    autoungrabify: true, boxSelectionEnabled: false, userZoomingEnabled: false,
+    minZoom: 0.2, maxZoom: 2.5,
+  });
+
+  const apply = (st) => {
+    cy.batch(() => {
+      cy.nodes(".n").forEach((n) => {
+        const r = n.data("role"), status = st.statusOf(`node:${r}`);
+        const ip = o.ipOf[r];
+        n.data("label", `${n.hasClass("router") ? "⇄ " : ""}${r}${badge(status)}` + (ip ? `\n${ip}` : "") + (dims.node[r].runs ? `\n${dims.node[r].runs}` : ""));
+        n.removeClass("ok bad");
+        if (status) n.addClass(status);
+        n.toggleClass("active", st.activeRole === r);
+      });
+      cy.edges(".l").forEach((e) => {
+        const status = st.statusOf(e.data("tk"));
+        e.data("label", (e.data("via") + badge(status)).trim());
+        e.removeClass("ok bad");
+        if (status) e.addClass(status);
+      });
+    });
+  };
+  apply(o);
+
+  if (o.onNodeClick) cy.on("tap", "node.n", (ev) => o.onNodeClick(ev.target.data("role")));
+  cy.on("mouseover", "node.n", () => { if (o.onNodeClick) container.style.cursor = "pointer"; });
+  cy.on("mouseout", "node.n", () => { container.style.cursor = ""; });
+
+  // Zoom solo con Ctrl + rueda (la rueda sola sigue haciendo scroll de la página); doble clic = ajustar
+  const onWheel = (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    const r = container.getBoundingClientRect();
+    cy.zoom({ level: Math.min(2.5, Math.max(0.2, cy.zoom() * (e.deltaY < 0 ? 1.12 : 0.89))), renderedPosition: { x: e.clientX - r.left, y: e.clientY - r.top } });
+  };
+  const onDbl = () => { cy.fit(undefined, 12); if (cy.zoom() > 1.1) { cy.zoom(1.1); cy.center(); } };
+  container.addEventListener("wheel", onWheel, { passive: false });
+  container.addEventListener("dblclick", onDbl);
+
+  // Ajusta al contenedor sin ampliar de más (cajas enormes en dibujos pequeños)
+  const refit = () => { try { cy.resize(); cy.fit(undefined, 12); if (cy.zoom() > 1.1) { cy.zoom(1.1); cy.center(); } } catch (_) {} };
+  let ro = null;
+  if (typeof ResizeObserver !== "undefined") { ro = new ResizeObserver(refit); ro.observe(container); }
+  refit();
+
+  const handle = {
+    cy,
+    update(next) { Object.assign(o, next); apply(o); },
+    restyle() { cy.style(topoStyle(topoColors())); },
+    destroy() {
+      TOPO_LIVE.delete(handle);
+      if (ro) ro.disconnect();
+      container.removeEventListener("wheel", onWheel);
+      container.removeEventListener("dblclick", onDbl);
+      try { cy.destroy(); } catch (_) {}
+      if (container._topo === handle) container._topo = null;
+    },
+  };
+  container._topo = handle;
+  TOPO_LIVE.add(handle);
+  return handle;
+}
+
+function restyleTopologies() {
+  TOPO_LIVE.forEach((h) => { try { h.restyle(); } catch (_) {} });
 }
 
 function renderTopology(active) {
   const strip = $("topo-strip");
+  const body = $("topo-body");
   const topo = active && active.topology;
   const unNodoTarea = active && active.tipo === "tarea" && topo && Object.keys(topo.nodes || {}).length < 2;
   if (!topo || !topo.nodes || unNodoTarea) {
     strip.classList.add("hidden");
+    if (body._topo) body._topo.destroy();
+    body._sig = null;
     return;
   }
   strip.classList.remove("hidden");
@@ -479,105 +740,15 @@ function renderTopology(active) {
   try { collapsed = localStorage.getItem("chaos-topo-collapsed") === "1"; } catch (_) {}
   strip.classList.toggle("collapsed", collapsed);
   $("btn-topo-toggle").textContent = collapsed ? "Mostrar esquema" : "Ocultar";
+  if (collapsed) { if (body._topo) body._topo.destroy(); body._sig = null; return; }
 
   const ipOf = Object.fromEntries((active.nodes || []).map((n) => [n.role, n.ip]));
-  const roles = Object.keys(topo.nodes);
-  const W = 190, H = 78, EW = 110, PAD = 6, TOP = 12;
-  const gapFor = (txt) => Math.max(80, (txt || "").length * 6.7 + 24);
-
-  // Colocación: una fila si hay hasta 4 nodos; con más, rejilla de varias filas (la entrada va en la primera)
-  const ROWGAP = 56;                       // hueco vertical entre filas (enlaces entre filas)
-  const perRow = roles.length > 4 ? Math.ceil(roles.length / Math.ceil(roles.length / 3)) : roles.length;
-  const rows = Math.max(1, Math.ceil(roles.length / perRow));
-  const linkVia = {};
-  (topo.links || []).forEach((l) => { linkVia[l.from + ">" + l.to] = l.via || ""; });
-  const cols = [];
-  let width = 0;
-  for (let r = 0; r < rows; r++) {
-    let x = PAD;
-    if (r === 0 && topo.entry) {
-      cols.push({ kind: "entry", x, w: EW });
-      x += EW + gapFor(topo.entry.via);
-    }
-    const rowRoles = roles.slice(r * perRow, (r + 1) * perRow);
-    rowRoles.forEach((role, i) => {
-      // La caja se ensancha si el texto de «qué corre» no cabe en el ancho base
-      const w = Math.max(W, Math.ceil(((topo.nodes[role] || {}).runs || "").length * 6.4 + 28));
-      cols.push({ kind: "node", role, x, w, row: r, y: TOP + r * (H + ROWGAP) });
-      const next = rowRoles[i + 1];
-      x += w + (next ? gapFor(linkVia[role + ">" + next]) : 0);
-    });
-    width = Math.max(width, x + PAD);
-  }
-  const pos = Object.fromEntries(cols.filter((c) => c.kind === "node").map((c) => [c.role, c]));
-  const hasBack = (topo.links || []).some((l) => pos[l.from] && pos[l.to] && pos[l.from].row === pos[l.to].row && pos[l.to].x <= pos[l.from].x);
-  const height = TOP + rows * H + (rows - 1) * ROWGAP + (hasBack ? 52 : 26);
-
-  const arrow = (x1, x2, y, via, st, key) => {
-    const cls = st ? ` st-${st}` : "";
-    const mid = (x1 + x2) / 2;
-    let out = `<line x1="${x1}" y1="${y}" x2="${x2 - 8}" y2="${y}" class="topo-link${cls}" data-k="${key}"/>`;
-    out += `<path d="M${x2 - 9},${y - 5} L${x2},${y} L${x2 - 9},${y + 5} Z" class="topo-arrow${cls}"/>`;
-    if (via) out += svgText(mid, y - 9, "topo-via", via);
-    if (st) out += svgText(mid, y + 18, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗");
-    return out;
-  };
-
-  let svg = "";
-  const cy = TOP + H / 2;
-  if (topo.entry) {
-    const st = topoStatus(active, "entry");
-    svg += `<g class="topo-entry"><rect x="${PAD}" y="${TOP + 12}" width="${EW}" height="${H - 24}" rx="8" class="topo-box"/>` +
-      svgText(PAD + EW / 2, cy + 4, "topo-name", topo.entry.label || "tú") + `</g>`;
-    const target = pos[topo.entry.to];
-    if (target) svg += arrow(PAD + EW, target.x, cy, topo.entry.via, st, "entry");
-  }
-  (topo.links || []).forEach((l, i) => {
-    const a = pos[l.from], b = pos[l.to];
-    if (!a || !b) return;
-    const st = topoStatus(active, `link:${i}`);
-    if (a.row !== b.row) {
-      // Enlace entre filas: línea recta del borde inferior/superior de una caja a la otra
-      const down = b.row > a.row;
-      const cls = st ? ` st-${st}` : "";
-      const x1 = a.x + a.w / 2, x2 = b.x + b.w / 2;
-      const y1 = down ? a.y + H : a.y, y2 = down ? b.y - 9 : b.y + H + 9;
-      const my = (y1 + y2) / 2, mx = (x1 + x2) / 2;
-      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="topo-link${cls}" data-k="link:${i}"/>`;
-      svg += `<path d="M${x2 - 5},${down ? y2 - 2 : y2 + 2} L${x2},${down ? y2 + 9 : y2 - 9} L${x2 + 5},${down ? y2 - 2 : y2 + 2} Z" class="topo-arrow${cls}"/>`;
-      if (l.via) svg += svgText(mx + 6, my + 4, "topo-via", l.via, "start");
-      if (st) svg += svgText(mx - 6, my + 4, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗", "end");
-    } else if (b.x > a.x) {
-      svg += arrow(a.x + a.w, b.x, a.y + H / 2, l.via, st, `link:${i}`);
-    } else {
-      // Enlace hacia atrás (p. ej. dos clientes hacia el mismo servidor): curva por debajo con punta, texto y estado
-      const y0 = a.y + H, yb = a.y + H + 30;
-      const cls = st ? ` st-${st}` : "";
-      const x1 = a.x + 30, x2 = b.x + b.w - 30, mid = (x1 + x2) / 2;
-      svg += `<path d="M${x1},${y0} C${x1},${yb} ${x2},${yb} ${x2},${y0 + 9}" class="topo-link${cls}" fill="none" data-k="link:${i}"/>`;
-      svg += `<path d="M${x2 - 5},${y0 + 9} L${x2},${y0} L${x2 + 5},${y0 + 9} Z" class="topo-arrow${cls}"/>`;
-      if (l.via) svg += svgText(mid, yb + 14, "topo-via", l.via);
-      if (st) svg += svgText(mid, yb - 4, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗");
-    }
-  });
-  cols.filter((c) => c.kind === "node").forEach((c) => {
-    const info = topo.nodes[c.role] || {};
-    const st = topoStatus(active, `node:${c.role}`);
-    const isActive = state.activeNodeRole === c.role;
-    svg += `<g class="topo-node${st ? " st-" + st : ""}${isActive ? " is-active" : ""}" data-role="${escapeHtml(c.role)}">` +
-      `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${H}" rx="10" class="topo-box"/>` +
-      svgText(c.x + 14, c.y + 24, "topo-name", c.role, "start") +
-      svgText(c.x + 14, c.y + 42, "topo-ip", ipOf[c.role] || "", "start") +
-      (info.runs ? svgText(c.x + 14, c.y + 62, "topo-runs", info.runs, "start") : "") +
-      (st ? svgText(c.x + c.w - 14, c.y + 24, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗", "end") : "") +
-      `</g>`;
-  });
-
-  $("topo-body").innerHTML =
-    `<svg viewBox="0 0 ${width} ${height}" style="max-height:${150 * rows}px" preserveAspectRatio="xMinYMid meet" role="img" aria-label="Esquema de la topología">${svg}</svg>`;
-  $("topo-body").querySelectorAll(".topo-node").forEach((g) => {
-    g.addEventListener("click", () => selectNodeTab(g.dataset.role));
-  });
+  const st = { statusOf: (t) => topoStatus(active, t), activeRole: state.activeNodeRole };
+  // Misma estructura que la última vez: solo se repintan estados (se conserva el zoom/arrastre del usuario)
+  const sig = JSON.stringify([active.session_id, topo.entry, topo.nodes, topo.links, topo.networks, ipOf]);
+  if (body._topo && body._sig === sig) { body._topo.update(st); return; }
+  body._sig = sig;
+  drawTopology(body, topo, { ipOf, ...st, onNodeClick: (role) => selectNodeTab(role) });
 }
 
 function renderHowtoLook(active) {

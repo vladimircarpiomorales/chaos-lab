@@ -655,31 +655,8 @@ html, body {
 .topo-tip { margin-left: 4px; }
 .topo-strip.collapsed .topo-body, .topo-strip.collapsed .topo-legend { display: none; }
 .topo-body { margin-top: var(--sp-2); }
-.topo-body svg { display: block; width: 100%; height: auto; max-height: 150px; }
-
-.topo-box { fill: var(--bg-2); stroke: var(--border-hi); stroke-width: 1.5; }
-.topo-node { cursor: pointer; }
-.topo-node:hover .topo-box { stroke: var(--accent); }
-.topo-node.is-active .topo-box { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-soft); }
-.topo-node.st-ok .topo-box { stroke: var(--green); }
-.topo-node.st-bad .topo-box { stroke: var(--red); }
-.topo-name { fill: var(--text); font: 600 13px var(--font-mono); }
-.topo-ip { fill: var(--text-dim); font: 11px var(--font-mono); }
-.topo-runs { fill: var(--text-2); font: 11.5px var(--font-sans); }
-.topo-entry .topo-box { fill: transparent; stroke-dasharray: 4 3; }
-.topo-entry .topo-name { font-family: var(--font-sans); }
-
-.topo-link { stroke: var(--text-dim); stroke-width: 2; fill: none; stroke-dasharray: 6 4; }
-.topo-link.st-ok { stroke: var(--green); stroke-dasharray: none; }
-.topo-link.st-bad { stroke: var(--red); }
-.topo-arrow { fill: var(--text-dim); }
-.topo-arrow.st-ok { fill: var(--green); }
-.topo-arrow.st-bad { fill: var(--red); }
-.topo-via { fill: var(--text-2); font: 11px var(--font-mono); }
-.topo-via-bg { fill: var(--bg-1); }
-.topo-badge { font: 700 11px var(--font-sans); }
-.topo-badge.st-ok { fill: var(--green); }
-.topo-badge.st-bad { fill: var(--red); }
+.topo-body { border-radius: 6px; }
+.pv-topo { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-1); }
 
 /* Cómo empezar */
 .howto summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }

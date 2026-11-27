@@ -43,3 +43,41 @@ def test_guardia_oculta_detalles(sid):
     assert all("via" not in l for l in pub["links"])
     assert "via" not in (pub["entry"] or {})
     assert pub["checks"] == {}
+
+
+# ---- Redes (varias cajas + router) ----
+import json
+from pathlib import Path
+
+from chaos_lab.engine import ChaosEngine, _networks_map
+
+MULTIRED = json.loads((Path(__file__).parent / "fixtures" / "topologia_multired.json").read_text(encoding="utf-8"))
+
+
+def test_networks_map_con_router():
+    assert _networks_map(MULTIRED) == {"lan": ["pc1", "pc2", "router"], "dmz": ["router", "web", "db"]}
+
+
+def test_networks_map_sin_declarar_es_vacio():
+    assert _networks_map({"nodes": [{"role": "a"}, {"role": "b"}]}) == {}
+
+
+def test_networks_map_nodo_sin_redes_va_a_la_primera():
+    inst = {"networks": ["x", "y"], "nodes": [{"role": "a"}, {"role": "b", "networks": ["y"]}]}
+    assert _networks_map(inst) == {"x": ["a"], "y": ["b"]}
+
+
+def test_topologia_publica_expone_redes_tambien_a_ciegas():
+    nets = _networks_map(MULTIRED)
+    claro = _public_topology(MULTIRED["topology"], blind=False, networks=nets)
+    ciego = _public_topology(MULTIRED["topology"], blind=True, networks=nets)
+    assert claro["networks"] == ciego["networks"] == nets
+    assert ciego["checks"] == {} and all(v == {} for v in ciego["nodes"].values())
+    # sin redes declaradas no aparece la clave y no se muta el original
+    assert "networks" not in _public_topology(MULTIRED["topology"], blind=False)
+    assert "networks" not in MULTIRED["topology"]
+
+
+def test_catalogo_incluye_entry_y_networks():
+    for s in ChaosEngine().get_catalog_view()["scenarios"]:
+        assert isinstance(s["networks"], dict) and "entry" in s
