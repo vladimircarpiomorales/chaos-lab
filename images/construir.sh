@@ -6,7 +6,7 @@
 set -euo pipefail
 DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 VERSION=1
-for nombre in "${@:-nginx redis}"; do
+for nombre in "${@:-debian nginx redis}"; do
     for n in $nombre; do
         echo "→ localhost/chaos-${n}:${VERSION}"
         podman build -t "localhost/chaos-${n}:${VERSION}" "${DIR}/${n}"

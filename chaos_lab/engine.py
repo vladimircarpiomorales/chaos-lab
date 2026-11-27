@@ -30,6 +30,7 @@ NETWORK_NAME = "chaoslab-net"
 
 IMAGE_CANDIDATES: dict[str, list[str]] = {
     "debian": [
+        "localhost/chaos-debian:1",  # images/construir.sh
         "localhost/lpi-lab-debian:trixie-v3",
         "localhost/lpi-lab-debian:trixie-v1",
         "docker.io/library/debian:trixie",

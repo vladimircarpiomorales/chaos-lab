@@ -94,9 +94,12 @@ while True:
 
 _SSH_VICTIM_SETUP = r"""
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq >/dev/null 2>&1
-apt-get install -y -qq --no-install-recommends openssh-server rsyslog >/dev/null 2>&1 \
-  || { echo "ERROR: apt no pudo instalar openssh-server/rsyslog dentro del contenedor (¿sin red?)"; exit 1; }
+# La imagen chaos-debian ya los trae; con otras imágenes se instalan (necesita red)
+if ! command -v /usr/sbin/sshd >/dev/null 2>&1 || ! command -v rsyslogd >/dev/null 2>&1; then
+  apt-get update -qq >/dev/null 2>&1
+  apt-get install -y -qq --no-install-recommends openssh-server rsyslog >/dev/null 2>&1 \
+    || { echo "ERROR: apt no pudo instalar openssh-server/rsyslog dentro del contenedor (¿sin red?)"; exit 1; }
+fi
 mkdir -p /run/sshd
 ssh-keygen -A >/dev/null 2>&1
 for u in %%USERS%%; do

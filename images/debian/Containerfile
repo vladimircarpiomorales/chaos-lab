@@ -1,0 +1,20 @@
+# Imagen de Chaos Lab para nodos "debian": todo lo que usan los escenarios, sin descargar nada al desplegar
+FROM docker.io/library/debian:trixie
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3 iproute2 iputils-ping iptables nftables dnsutils netcat-openbsd tcpdump \
+      curl wget ca-certificates openssl \
+      openssh-server openssh-client rsyslog cron \
+      sudo acl passwd procps psmisc less nano vim-tiny file \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/vim.tiny /usr/local/bin/vim
+# Usuario de prácticas (los escenarios de permisos y sudo lo usan)
+# Con contraseña (alumno), como en un servidor real: passwd -l / -u funcionan como se espera
+RUN useradd -m -s /bin/bash alumno \
+ && echo 'alumno:alumno' | chpasswd \
+ && printf 'Defaults:alumno !targetpw\nalumno ALL=(ALL) ALL\n' > /etc/sudoers.d/alumno \
+ && chmod 0440 /etc/sudoers.d/alumno
+LABEL org.opencontainers.image.title="chaos-debian" \
+      org.opencontainers.image.description="debian:trixie con las herramientas de los escenarios de Chaos Lab"
+CMD ["bash"]

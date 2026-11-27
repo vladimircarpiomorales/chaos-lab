@@ -488,7 +488,7 @@ sleep 1.2
                 "id": "rogue-stopped-truncated",
                 "label": "Proceso fugitivo detenido y /var/log/ingest/overflow.log truncado (<1 KB) sin borrarlo",
                 "node": "debian-storage",
-                "cmd": f"! pgrep -f '/usr/local/libexec/{rogue_name}' >/dev/null && test -f /var/log/ingest/overflow.log && [ $(wc -c < /var/log/ingest/overflow.log) -lt 1024 ]",
+                "cmd": f"! pgrep -f '/usr/local/libexec/[{rogue_name[0]}]{rogue_name[1:]}' >/dev/null && test -f /var/log/ingest/overflow.log && [ $(wc -c < /var/log/ingest/overflow.log) -lt 1024 ]",
             },
             {
                 "id": "core-untouched",
@@ -655,7 +655,7 @@ EOF
 chmod 0755 /usr/local/bin/deploy-check
 
 # Romper cuenta alumno y sudoers
-rm -f /etc/sudoers.d/lpi-alumno
+rm -f /etc/sudoers.d/lpi-alumno /etc/sudoers.d/alumno
 # Sudoers corrupto (falta dos puntos tras NOPASSWD y permisos 0666 inseguros)
 echo "alumno ALL=(ALL) NOPASSWD /usr/local/bin/deploy-check" > /etc/sudoers.d/90-ops
 chmod 0666 /etc/sudoers.d/90-ops
