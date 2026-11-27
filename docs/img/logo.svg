@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="180" viewBox="0 0 220 180" fill="none" role="img" aria-label="Chaos Lab">
+  <rect x="6" y="6" width="208" height="168" rx="20" stroke="#3d3d44" stroke-width="6"/>
+  <path d="M6 44 L214 44" stroke="#3d3d44" stroke-width="6"/>
+  <circle cx="30" cy="25" r="6" fill="#3d3d44"/>
+  <circle cx="50" cy="25" r="6" fill="#3d3d44"/>
+  <path d="M34 82 L56 102 L34 122" stroke="#22c55e" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M68 128 L92 128" stroke="#8b8b94" stroke-width="9" stroke-linecap="round"/>
+  <path d="M138 6 L124 62 L152 92 L130 136 L146 174" stroke="#ef4444" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

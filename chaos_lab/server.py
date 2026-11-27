@@ -49,6 +49,7 @@ async def api_health() -> dict[str, Any]:
         "ok": True,
         "runtime": engine.runtime_health(),
         "ollama": detect_ollama(),
+        "panel_url": os.environ.get("CHAOS_PANEL_URL") or None,  # botón «← Panel» opcional
         "active": engine.public_active_view(),
     }
 

@@ -1,8 +1,12 @@
-# ⚡ Chaos Lab — Arena de incidentes Linux, redes y SRE
+<p align="center"><img src="docs/img/logo.svg" width="140" alt="Logo de Chaos Lab: una terminal partida por una grieta roja"></p>
+
+# Chaos Lab — Arena de incidentes Linux, redes y SRE
 
 Laboratorio local de averías reales (*Break & Fix*): despliega 1–3 contenedores con un fallo inyectado, te da una terminal en cada uno desde el navegador y comprueba en vivo, capa por capa, si lo has arreglado.
 
 Pensado para practicar troubleshooting de verdad (LPIC-1/2, CCNA, AZ-104, guardias SRE) sin romper tu sistema: todo ocurre en contenedores aislados que se destruyen al terminar.
+
+![Chaos Lab a medio resolver la «Cascada Triple»: el esquema marca en verde lo que ya funciona y en rojo lo que falla](docs/img/captura-cascada.png)
 
 ## Qué tiene
 
@@ -64,6 +68,7 @@ Opcional, en un fichero `.env` en la raíz del repo (no se sube a git):
 | `CHAOS_PORT` | `7820` | Puerto de la interfaz web |
 | `CHAOS_HOST` | `127.0.0.1` | Dirección de escucha (déjala en local, ver *Seguridad*) |
 | `CHAOS_RUNTIME` | autodetección | `podman` o `docker` |
+| `CHAOS_PANEL_URL` | (vacío) | Si lo pones, sale un botón «← Panel» que vuelve a esa dirección (p. ej. tu dashboard) |
 | `CHAOS_EXPORT_DIR` | `./exports` | Dónde se guardan los post-mortem (p. ej. una carpeta de tu bóveda de Obsidian) |
 
 Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx` y `chaos-redis` se construyen con `images/construir.sh` (lo hace `arrancar.sh` solo si faltan). Si no existen, se usan las imágenes oficiales, que funcionan pero sin las herramientas de serie.

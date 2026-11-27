@@ -55,6 +55,8 @@ async function refreshHealth() {
   try {
     const h = await fetch("/api/health").then((r) => r.json());
     const rt = h.runtime || {};
+    const panel = $("btn-panel");
+    if (panel && h.panel_url) { panel.href = h.panel_url; panel.classList.remove("hidden"); }
     const motor = rt.engine === "docker" ? "Docker" : "Podman";
     $("podman-dot").className = "dot " + (rt.podman_ok ? "ok" : "err");
     $("podman-text").textContent = rt.podman_ok

@@ -4,14 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Chaos Lab · Arena SRE &amp; Troubleshooting Linux/Red</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <script>try{var t=localStorage.getItem("chaos-theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}</script>
   <link rel="stylesheet" href="/static/vendor/xterm.css" />
-  <link rel="stylesheet" href="/static/styles.css?v=6" />
+  <link rel="stylesheet" href="/static/styles.css?v=7" />
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      <div class="brand-icon">⚡</div>
+      <img class="brand-icon" src="/static/favicon.svg" alt="" />
       <div>
         <h1>CHAOS LAB</h1>
         <span class="subtitle">Simulador Interactivo de Incidentes Linux · Redes · Multi-Nodo</span>
@@ -35,7 +36,7 @@
     </div>
 
     <div class="topbar-actions">
-      <a href="http://127.0.0.1:7788/" class="btn btn-ghost" title="Volver al Centro de Control PRO (:7788)">← Panel PRO</a>
+      <a id="btn-panel" href="#" class="btn btn-ghost hidden" title="Volver a tu panel (CHAOS_PANEL_URL en .env)">← Panel</a>
       <select id="blind-diff-select" class="input-compact" title="Filtro de dificultad para Guardia a Ciegas">
         <option value="Todos">Cualquier nivel</option>
         <option value="Básico">Solo Básico</option>
@@ -323,6 +324,6 @@
 
   <script src="/static/vendor/xterm.js"></script>
   <script src="/static/vendor/addon-fit.js"></script>
-  <script src="/static/app.js?v=6"></script>
+  <script src="/static/app.js?v=7"></script>
 </body>
 </html>
