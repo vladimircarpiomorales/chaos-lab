@@ -55,7 +55,7 @@ MULTIRED = json.loads((Path(__file__).parent / "fixtures" / "topologia_multired.
 
 
 def test_networks_map_con_router():
-    assert _networks_map(MULTIRED) == {"lan": ["pc1", "pc2", "router"], "dmz": ["router", "web", "db"]}
+    assert _networks_map(MULTIRED) == {"lan": ["pc1", "pc2", "pc3", "router"], "dmz": ["router", "web", "db"]}
 
 
 def test_networks_map_sin_declarar_es_vacio():

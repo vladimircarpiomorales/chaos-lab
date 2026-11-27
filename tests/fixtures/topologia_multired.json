@@ -1,27 +1,123 @@
 {
-  "networks": ["lan", "dmz"],
+  "networks": [
+    "lan",
+    "dmz"
+  ],
   "nodes": [
-    {"role": "pc1", "networks": ["lan"]},
-    {"role": "pc2", "networks": ["lan"]},
-    {"role": "router", "networks": ["lan", "dmz"]},
-    {"role": "web", "networks": ["dmz"]},
-    {"role": "db", "networks": ["dmz"]}
+    {
+      "role": "pc1",
+      "networks": [
+        "lan"
+      ]
+    },
+    {
+      "role": "pc2",
+      "networks": [
+        "lan"
+      ]
+    },
+    {
+      "role": "pc3",
+      "networks": [
+        "lan"
+      ]
+    },
+    {
+      "role": "router",
+      "networks": [
+        "lan",
+        "dmz"
+      ]
+    },
+    {
+      "role": "web",
+      "networks": [
+        "dmz"
+      ]
+    },
+    {
+      "role": "db",
+      "networks": [
+        "dmz"
+      ]
+    }
   ],
   "topology": {
-    "entry": {"label": "tú", "to": "pc1", "via": "SSH"},
+    "entry": {
+      "label": "tú",
+      "to": "pc1",
+      "via": "SSH"
+    },
     "nodes": {
-      "pc1": {"runs": "cliente curl", "look": ["ip route"]},
-      "pc2": {"runs": "cliente ping", "look": ["ip a"]},
-      "router": {"runs": "ip_forward + iptables FORWARD", "look": ["sysctl net.ipv4.ip_forward"]},
-      "web": {"runs": "nginx :80 (proxy_pass a db)", "look": ["ss -ltnp"]},
-      "db": {"runs": "redis :6379", "look": ["redis-cli ping"]}
+      "pc1": {
+        "runs": "cliente curl",
+        "look": [
+          "ip route"
+        ]
+      },
+      "pc2": {
+        "runs": "cliente ping",
+        "look": [
+          "ip a"
+        ]
+      },
+      "router": {
+        "runs": "ip_forward + iptables FORWARD",
+        "look": [
+          "sysctl net.ipv4.ip_forward"
+        ]
+      },
+      "web": {
+        "runs": "nginx :80 (proxy_pass a db)",
+        "look": [
+          "ss -ltnp"
+        ]
+      },
+      "db": {
+        "runs": "redis :6379",
+        "look": [
+          "redis-cli ping"
+        ]
+      },
+      "pc3": {
+        "runs": "cliente dig",
+        "look": [
+          "ip a"
+        ]
+      }
     },
     "links": [
-      {"from": "pc1", "to": "router", "via": "gateway 10.0.1.1"},
-      {"from": "pc2", "to": "router", "via": "gateway 10.0.1.1"},
-      {"from": "router", "to": "web", "via": "HTTP :80"},
-      {"from": "web", "to": "db", "via": "TCP :6379"}
+      {
+        "from": "pc1",
+        "to": "router",
+        "via": "gateway 10.0.1.1"
+      },
+      {
+        "from": "pc2",
+        "to": "router",
+        "via": "gateway 10.0.1.1"
+      },
+      {
+        "from": "pc3",
+        "to": "router",
+        "via": "gateway 10.0.1.1"
+      },
+      {
+        "from": "router",
+        "to": "web",
+        "via": "HTTP :80"
+      },
+      {
+        "from": "web",
+        "to": "db",
+        "via": "TCP :6379"
+      }
     ],
-    "checks": {"c1": "entry", "c2": "node:router", "c3": "link:2", "c4": "link:3"}
+    "checks": {
+      "c1": "entry",
+      "c2": "node:router",
+      "c3": "link:3",
+      "c4": "link:4"
+    }
   }
 }

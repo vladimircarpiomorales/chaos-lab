@@ -243,12 +243,14 @@ function openPreview(id) {
     <span>${escapeHtml(sc.category)}</span>
     ${(sc.certs || []).map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}
     ${sc.solved ? `<span class="badge badge-solved">✓ ${sc.best_rank || "OK"} · ${fmtSeconds(sc.best_time_s)}</span>` : ""}`;
+  const oldBox = $("pv-topo");
+  if (oldBox && oldBox._topo) oldBox._topo.destroy();
   $("pv-body").innerHTML = scenarioPreview(sc);
   $("pv-modal").classList.remove("hidden");
   const pvBox = $("pv-topo");
   if (pvBox) {
     const nodes = Object.fromEntries((sc.machines || []).map((m) => [m.role, { runs: m.runs }]));
-    drawTopology(pvBox, { entry: sc.entry || null, nodes, links: sc.links || [], networks: sc.networks || {} }, { minHeight: 110 });
+    drawTopology(pvBox, { entry: sc.entry || null, nodes, links: sc.links || [], networks: sc.networks || {} }, { minHeight: 110, compact: true });
   }
   $("btn-pv-launch").focus();
 }
@@ -315,6 +317,7 @@ function syncActiveView(active) {
     state.lastSessionId = null;
     $("empty-arena").classList.remove("hidden");
     $("active-arena").classList.add("hidden");
+    renderTopology(null);
     return;
   }
 
@@ -493,13 +496,14 @@ function topoColors() {
   };
 }
 
-function topoStyle(c) {
+function topoStyle(c, compact) {
+  const fs = compact ? 12 : 11;
   return [
     { selector: "node.n", style: {
       shape: "round-rectangle", width: "data(w)", height: "data(h)",
       "background-color": c.box, "border-width": 1.5, "border-color": c.border,
       label: "data(label)", "text-wrap": "wrap", "text-valign": "center", "text-halign": "center",
-      color: c.text, "font-family": c.mono, "font-size": 11, "line-height": 1.35, "text-max-width": 300 } },
+      color: c.text, "font-family": c.mono, "font-size": fs, "line-height": 1.35, "text-max-width": 300 } },
     { selector: "node.router", style: { "border-style": "double", "border-width": 4 } },
     { selector: "node.n.ok", style: { "border-color": c.green } },
     { selector: "node.n.bad", style: { "border-color": c.red } },
@@ -518,12 +522,14 @@ function topoStyle(c) {
     { selector: "edge.l", style: {
       width: 2, "line-color": c.dim, "line-style": "dashed", "target-arrow-shape": "triangle", "target-arrow-color": c.dim,
       "arrow-scale": 1.1, "curve-style": "bezier", "control-point-step-size": 40,
-      label: "data(label)", "font-size": 10.5, "font-family": c.mono, color: c.text2, "edge-text-rotation": "none",
+      label: "data(label)", "font-size": compact ? 11 : 10.5, "font-family": c.mono, color: c.text2, "edge-text-rotation": "none",
+      ...(compact ? { "text-wrap": "wrap", "text-max-width": 96 } : {}),
       "text-background-color": c.bg, "text-background-opacity": 1, "text-background-padding": 2, "text-background-shape": "roundrectangle" } },
     { selector: "edge.l.ok", style: { "line-color": c.green, "target-arrow-color": c.green, "line-style": "solid" } },
     { selector: "edge.l.bad", style: { "line-color": c.red, "target-arrow-color": c.red, "line-style": "solid" } },
     { selector: "edge.member", style: {
-      width: 1, "line-color": c.border, "line-style": "dotted", "target-arrow-shape": "none", "curve-style": "straight", opacity: 0.8 } },
+      width: 1, "line-color": c.border, "line-style": "dotted", "target-arrow-shape": "none", "curve-style": "straight", opacity: 0.55 } },
+    { selector: "node.ghost", style: { opacity: 0, width: 2, height: 2, events: "no", label: "" } },
   ];
 }
 
@@ -578,6 +584,8 @@ function topoLayout(topo, dims) {
       const own = nets[n].filter((r) => !isRouter(r) && !placed.has(r)).sort(byDepth);
       own.forEach((r) => placed.add(r));
       chunk(own, 3).forEach((c, k) => cols.push({ roles: c, extra: k === 0 && i > 0 ? 34 : 0 }));
+      // Red solo con routers: columna con un hijo invisible para que su caja se dibuje igualmente
+      if (!own.length && dims.node["__net:" + n]) cols.push({ roles: ["__net:" + n], extra: i > 0 ? 34 : 0 });
       const rs = roles.filter((r) => isRouter(r) && !placed.has(r) && netsOf(r)[0] === n);
       if (rs.length) { rs.forEach((r) => placed.add(r)); cols.push({ roles: rs.sort(byDepth), extra: 34 }); }
     });
@@ -591,7 +599,7 @@ function topoLayout(topo, dims) {
   }
 
   const maxVia = Math.max(0, ...links.map((l) => (l.via || "").length), ((topo.entry && topo.entry.via) || "").length);
-  const gap = Math.min(260, Math.max(110, maxVia * 6.3 + 44));
+  const gap = dims.compact ? 100 : Math.min(260, Math.max(110, maxVia * 6.3 + 44));
   const pos = {};
   const all = [];
   if (topo.entry) all.push({ entry: true, roles: [], w: dims.entryW, extra: 0 });
@@ -605,30 +613,46 @@ function topoLayout(topo, dims) {
     let y = -total / 2;
     c.roles.forEach((r) => { pos[r] = { x, y: y + dims.node[r].h / 2 }; y += dims.node[r].h + 42; });
   });
-  return { pos, nets, netsOf };
+  const tall = netNames.length > 0 || cols.some((c) => c.roles.length >= 3);
+  return { pos, nets, netsOf, tall };
 }
 
 function drawTopology(container, topo, opts = {}) {
   if (container._topo) container._topo.destroy();
   container.innerHTML = "";
-  if (typeof cytoscape === "undefined" || !topo || !topo.nodes) return null;
-  const o = { ipOf: {}, statusOf: () => null, activeRole: null, onNodeClick: null, minHeight: 0, ...opts };
+  if (typeof cytoscape === "undefined" || !topo || !topo.nodes || !Object.keys(topo.nodes).length) return null;
+  const o = { ipOf: {}, statusOf: () => null, activeRole: null, onNodeClick: null, minHeight: 0, compact: false, ...opts };
   const roles = Object.keys(topo.nodes);
+  // «tú» solo si apunta a un nodo que existe
+  if (topo.entry && !roles.includes(topo.entry.to)) topo = { ...topo, entry: null };
   const links = topo.links || [];
   const clip = (t, n) => (t.length > n ? t.slice(0, n - 1) + "…" : t);
   const badge = (st) => (st === "ok" ? " ✓" : st === "bad" ? " ✗" : "");
 
-  const dims = { entryW: 96, node: {} };
+  const dims = { entryW: o.compact ? 72 : 96, node: {}, compact: o.compact };
   roles.forEach((r) => {
-    const runs = clip((topo.nodes[r] || {}).runs || "", 42);
-    const lines = 1 + (o.ipOf[r] ? 1 : 0) + (runs ? 1 : 0);
-    dims.node[r] = { w: Math.max(150, Math.min(290, Math.ceil(Math.max(runs.length, r.length + 4) * 6.4 + 30))), h: 16 + lines * 15, runs };
+    const runs = clip((topo.nodes[r] || {}).runs || "", o.compact ? 22 : 42);
+    const ipLines = o.ipOf[r] ? String(o.ipOf[r]).split("\n") : [];
+    const lines = 1 + ipLines.length + (runs ? 1 : 0);
+    const longest = Math.max(runs.length, r.length + 4, ...ipLines.map((t) => t.length));
+    dims.node[r] = o.compact
+      ? { w: Math.max(120, Math.min(190, Math.ceil(longest * 7.6 + 24))), h: 14 + lines * 16, runs }
+      : { w: Math.max(150, Math.min(290, Math.ceil(longest * 6.4 + 30))), h: 16 + lines * 15, runs };
   });
+  // Redes sin ninguna máquina propia (solo routers): hijo invisible para que la caja exista
+  const ghostNets = Object.entries(topo.networks || {}).filter(([, rs]) => {
+    const mine = rs.filter((q) => roles.includes(q));
+    return mine.length && mine.every((q) => Object.values(topo.networks).filter((x) => x.includes(q)).length > 1);
+  }).map(([n]) => n);
+  ghostNets.forEach((n) => { dims.node["__net:" + n] = { w: 110, h: 30, runs: "" }; });
   const lay = topoLayout(topo, dims);
 
   const els = [];
   Object.keys(lay.nets).forEach((n) => {
-    if (lay.nets[n].some((r) => lay.netsOf(r).length === 1)) els.push({ group: "nodes", data: { id: "net:" + n, label: n }, classes: "net" });
+    if (ghostNets.includes(n)) {
+      els.push({ group: "nodes", data: { id: "net:" + n, label: n }, classes: "net" });
+      els.push({ group: "nodes", data: { id: "ghost:" + n, parent: "net:" + n, w: 110, h: 30 }, classes: "ghost", position: lay.pos["__net:" + n] });
+    } else if (lay.nets[n].some((r) => lay.netsOf(r).length === 1)) els.push({ group: "nodes", data: { id: "net:" + n, label: n }, classes: "net" });
   });
   roles.forEach((r) => {
     const nets = lay.netsOf(r);
@@ -638,8 +662,10 @@ function drawTopology(container, topo, opts = {}) {
       data: { id: "n:" + r, role: r, label: "", w: dims.node[r].w, h: dims.node[r].h, ...(nets.length === 1 ? { parent: "net:" + nets[0] } : {}) },
     });
     // El router queda fuera de las cajas: aristas finas de pertenencia hacia cada red a la que está unido
+    // Solo si el router no tiene ya enlaces con máquinas de esa red (si los tiene, la pertenencia ya se ve)
+    const linked = (n) => links.some((l) => (l.from === r && lay.nets[n].includes(l.to) && l.to !== r) || (l.to === r && lay.nets[n].includes(l.from) && l.from !== r));
     if (router) nets.forEach((n) => {
-      if (lay.nets[n].some((q) => lay.netsOf(q).length === 1)) els.push({ group: "edges", classes: "member", data: { id: `m:${r}:${n}`, source: "n:" + r, target: "net:" + n } });
+      if (!linked(n) && (ghostNets.includes(n) || lay.nets[n].some((q) => lay.netsOf(q).length === 1))) els.push({ group: "edges", classes: "member", data: { id: `m:${r}:${n}`, source: "n:" + r, target: "net:" + n } });
     });
   });
   if (topo.entry) {
@@ -653,10 +679,10 @@ function drawTopology(container, topo, opts = {}) {
   // Alto según el dibujo: entre 150 y 260 px
   const ys = Object.values(lay.pos).map((p) => p.y);
   const rawH = (ys.length ? Math.max(...ys) - Math.min(...ys) : 0) + 70 + (Object.keys(lay.nets).length ? 60 : 24);
-  container.style.height = Math.round(Math.min(260, Math.max(o.minHeight || 150, rawH))) + "px";
+  container.style.height = Math.round(Math.min(lay.tall ? 320 : 260, Math.max(o.minHeight || 150, rawH))) + "px";
 
   const cy = cytoscape({
-    container, elements: els, layout: { name: "preset" }, style: topoStyle(topoColors()),
+    container, elements: els, layout: { name: "preset" }, style: topoStyle(topoColors(), !!o.compact),
     autoungrabify: true, boxSelectionEnabled: false, userZoomingEnabled: false,
     minZoom: 0.2, maxZoom: 2.5,
   });
@@ -705,7 +731,7 @@ function drawTopology(container, topo, opts = {}) {
   const handle = {
     cy,
     update(next) { Object.assign(o, next); apply(o); },
-    restyle() { cy.style(topoStyle(topoColors())); },
+    restyle() { cy.style(topoStyle(topoColors(), !!o.compact)); },
     destroy() {
       TOPO_LIVE.delete(handle);
       if (ro) ro.disconnect();
@@ -729,7 +755,7 @@ function renderTopology(active) {
   const body = $("topo-body");
   const topo = active && active.topology;
   const unNodoTarea = active && active.tipo === "tarea" && topo && Object.keys(topo.nodes || {}).length < 2;
-  if (!topo || !topo.nodes || unNodoTarea) {
+  if (!topo || !topo.nodes || !Object.keys(topo.nodes).length || unNodoTarea) {
     strip.classList.add("hidden");
     if (body._topo) body._topo.destroy();
     body._sig = null;
@@ -742,7 +768,11 @@ function renderTopology(active) {
   $("btn-topo-toggle").textContent = collapsed ? "Mostrar esquema" : "Ocultar";
   if (collapsed) { if (body._topo) body._topo.destroy(); body._sig = null; return; }
 
-  const ipOf = Object.fromEntries((active.nodes || []).map((n) => [n.role, n.ip]));
+  // Router con varias IPs: una línea «red ip» por red
+  const ipOf = Object.fromEntries((active.nodes || []).map((n) => {
+    const ips = Object.entries(n.ips || {});
+    return [n.role, ips.length > 1 ? ips.map(([net, ip]) => `${net} ${ip}`).join("\n") : n.ip];
+  }));
   const st = { statusOf: (t) => topoStatus(active, t), activeRole: state.activeNodeRole };
   // Misma estructura que la última vez: solo se repintan estados (se conserva el zoom/arrastre del usuario)
   const sig = JSON.stringify([active.session_id, topo.entry, topo.nodes, topo.links, topo.networks, ipOf]);
