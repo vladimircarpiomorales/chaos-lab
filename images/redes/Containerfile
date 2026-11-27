@@ -1,0 +1,14 @@
+# Imagen de los labs de redes de Chaos Lab (pack «redes»): host, router y servidor en la misma imagen.
+# Sin descargar nada al desplegar. FRR queda instalado pero parado (lo arrancan los labs que lo necesiten).
+FROM docker.io/library/debian:trixie
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      iproute2 iputils-ping traceroute tcpdump nmap netcat-openbsd nftables \
+      curl wget ca-certificates dnsutils nginx frr procps nano vim-tiny less \
+ && rm -rf /var/lib/apt/lists/* \
+ && ln -sf /usr/bin/vim.tiny /usr/local/bin/vim \
+ && (update-rc.d -f frr remove >/dev/null 2>&1 || true)
+LABEL org.opencontainers.image.title="chaos-redes" \
+      org.opencontainers.image.description="debian:trixie con las herramientas de los labs de redes de Chaos Lab (iproute2, nftables, nginx, FRR…)"
+CMD ["bash"]
