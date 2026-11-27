@@ -8,3 +8,5 @@ nft list chain inet filter output >/dev/null 2>&1 || nft "add chain inet filter 
 nft add rule inet filter output udp dport 53 ip daddr != '"$IP_CORP_DNS"' drop
 nft add rule inet filter output tcp dport 53 ip daddr != '"$IP_CORP_DNS"' drop
 nft list chain inet filter output; pgrep -af "$dir" || echo "sin proceso"'
+# la sonda exfil-stopped-at-ns exige más de 8 s sin consultas en ns-externo: esperar antes de que probar.sh compruebe
+sleep 10
