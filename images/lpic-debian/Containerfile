@@ -1,0 +1,28 @@
+# Imagen del pack «LPIC-1 · 102-500» de Chaos Lab: lo de chaos-debian + las herramientas de los retos de práctica
+# (at, gnupg, Xvfb, ipcalc, chrony, rsyslog, logrotate, journalctl, postfix…), para no descargar nada al desplegar.
+FROM docker.io/library/debian:trixie
+ENV DEBIAN_FRONTEND=noninteractive
+# Postfix sin preguntas: «Local only»
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends debconf \
+ && echo "postfix postfix/main_mailer_type select Local only" | debconf-set-selections \
+ && echo "postfix postfix/mailname string lpi-lab" | debconf-set-selections \
+ && apt-get install -y --no-install-recommends \
+      acl bash-completion bind9-dnsutils btrfs-progs bzip2 ca-certificates coreutils cpio cron curl \
+      dosfstools e2fsprogs exfatprogs fdisk gdisk parted xfsprogs \
+      file findutils gzip iproute2 iputils-ping iptables nftables kmod less man-db manpages nano \
+      net-tools netcat-openbsd openssh-client openssh-server openssl passwd pciutils plocate procps psmisc \
+      python3 sudo tar tcpdump tree usbutils vim wget xz-utils \
+      sysstat iftop iptraf-ng \
+      at gnupg xvfb x11-utils xauth ipcalc netbase wpasupplicant socat tzdata chrony rsyslog logrotate \
+      systemd-journal-remote postfix \
+ && rm -rf /var/lib/apt/lists/*
+# Usuario de prácticas (el jugador trabaja como alumno, con sudo y contraseña «alumno»)
+RUN useradd -m -s /bin/bash alumno \
+ && echo 'alumno:alumno' | chpasswd \
+ && printf 'Defaults:alumno !targetpw\nalumno ALL=(ALL) ALL\n' > /etc/sudoers.d/alumno \
+ && chmod 0440 /etc/sudoers.d/alumno \
+ && install -d -o alumno -g alumno /home/alumno/retos
+LABEL org.opencontainers.image.title="chaos-lpic-debian" \
+      org.opencontainers.image.description="debian:trixie con las herramientas de los retos LPIC-1 102-500 de Chaos Lab"
+CMD ["bash"]

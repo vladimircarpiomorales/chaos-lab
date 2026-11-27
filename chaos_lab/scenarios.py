@@ -9,6 +9,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from .packs import load_pack
 from .scenarios_secops import build_dns_exfil, build_portscan_detect, build_ssh_bruteforce
 
 
@@ -2047,6 +2048,9 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
     },
 ]
 
+# Packs definidos como datos (chaos_lab/packs/*.json)
+SCENARIO_CATALOG += load_pack("lpic1_102")
+
 SCENARIOS_BY_ID: dict[str, dict[str, Any]] = {s["id"]: s for s in SCENARIO_CATALOG}
 
 
@@ -2067,6 +2071,7 @@ def instantiate_scenario(scenario_id: str, seed: int | None = None) -> dict[str,
         "tags": meta["tags"],
         "blind_alert": meta["blind_alert"],
         "briefing": meta["briefing"],
+        "tipo": meta.get("tipo", "averia"),
         "seed": actual_seed,
         **built,
     }

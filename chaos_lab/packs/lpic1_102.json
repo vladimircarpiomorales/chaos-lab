@@ -1,0 +1,853 @@
+[
+  {
+    "id": "lpic1-cron-at",
+    "reto": "r102-cron-at",
+    "title": "Un aviso con at y una limpieza semanal en el crontab",
+    "briefing": "Te piden dos programaciones para tu usuario:\n1. Programa con `at` un trabajo para dentro de 2 horas que escriba la palabra `recordatorio` en `recordatorio.txt` (en tu directorio del reto). Guarda en `at-id.txt` solo el número de trabajo que te asigne `at`.\n2. Programa otro trabajo parecido para dentro de 3 horas y cancélalo con `atrm`. En la cola debe quedar únicamente el primero.\n3. Guarda en `atq.txt` la salida de `atq`: una sola línea, la del primer trabajo.\n4. Añade a tu crontab, sin borrar lo que ya hubiera, una línea de cinco campos que ejecute el script `limpia.sh` de tu directorio del reto (con la ruta completa) todos los domingos a las 04:00.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-cron-at`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`at` recibe el comando por la entrada estándar y responde con un número de trabajo. La cola se consulta y se vacía con otros dos comandos de la misma familia.",
+      "Prueba con `echo 'comando' | at now + 2 hours` y mira la cola con `atq`. Para el crontab, `crontab -l` enseña lo que hay y `crontab -e` lo edita; en el campo del día de la semana el domingo es el 0.",
+      "Algo así: `echo 'echo recordatorio > RUTA/recordatorio.txt' | at now + 2 hours`, apunta el número en `at-id.txt`; repite con `3 hours` y borra ese con `atrm NUM`; luego `atq > atq.txt`. La línea de cron empieza por `0 4 * * 0`."
+    ],
+    "solution_summary": "Con `at` se programa leyendo el comando por stdin (`echo '…' | at now + 2 hours`); el número que imprime va a `at-id.txt`. El segundo trabajo se cancela con `atrm` y `atq > atq.txt` guarda la cola con un solo trabajo. En el crontab (`crontab -e`) la línea `0 4 * * 0 /ruta/limpia.sh` significa minuto 0, hora 4, cualquier día del mes y del mes, domingo.",
+    "difficulty": "Intermedio",
+    "points": 210,
+    "estimated_min": 9,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "at",
+      "cron",
+      "crontab"
+    ],
+    "objetivos_lpi": [
+      "107.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [PLANIFICACIÓN] · Hay que dejar un aviso puntual y una limpieza semanal programados para tu usuario.",
+    "preparar": "for j in $(atq 2>/dev/null | awk '$NF == \"alumno\" {print $1}'); do atrm \"$j\" 2>/dev/null; done\ncrontab -l -u alumno 2>/dev/null | grep -v 'r102-cron-at' | crontab -u alumno - 2>/dev/null || true\nprintf '#!/bin/sh\\nfind /tmp -maxdepth 1 -name \"*.tmp\" -mtime +7 -delete\\n' > limpia.sh\nchmod +x limpia.sh\necho \"sin trabajos at de alumno ni línea de crontab de este reto; limpia.sh listo\"",
+    "comprobar": "ID=$(cat at-id.txt 2>/dev/null | tr -d '[:space:]')\nen_cola() { atq | awk -v id=\"$ID\" '$1 == id && $NF == \"alumno\" { f = 1 } END { exit !f }'; }\nguarda_recordatorio() { at -c \"$ID\" | grep -q 'recordatorio.txt'; }\nsolo_uno() { [ \"$(atq | awk '$NF == \"alumno\"' | wc -l)\" -eq 1 ]; }\natq_guardado() { [ \"$(wc -l < atq.txt)\" -eq 1 ] && awk -v id=\"$ID\" '$1 == id && $NF == \"alumno\" { f = 1 } END { exit !f }' atq.txt; }\ncron_ok() { crontab -l -u alumno 2>/dev/null | grep -Eq '^0[[:space:]]+4[[:space:]]+\\*[[:space:]]+\\*[[:space:]]+0[[:space:]]+/home/alumno/retos/r102-cron-at/limpia\\.sh[[:space:]]*$'; }\ncomprueba \"at-id.txt contiene solo el número de un trabajo\" grep -Eqx '[0-9]+' at-id.txt\ncomprueba \"el trabajo de at-id.txt es de alumno y sigue en la cola\" en_cola\ncomprueba \"ese trabajo ejecutará un comando que escribe recordatorio.txt\" guarda_recordatorio\ncomprueba \"solo queda un trabajo de alumno en la cola (el otro está cancelado)\" solo_uno\ncomprueba \"atq.txt tiene una sola línea: el trabajo de alumno del paso 1\" atq_guardado\ncomprueba \"el crontab de alumno ejecuta limpia.sh los domingos a las 04:00\" cron_ok"
+  },
+  {
+    "id": "lpic1-gpg-simetrico",
+    "reto": "r102-gpg-simetrico",
+    "title": "GnuPG: cifrado con contraseña, par de claves y mensaje para un destinatario",
+    "briefing": "Te piden trabajar con GnuPG sin tocar tu `~/.gnupg`. Antes de empezar, en la terminal:\n`export GNUPGHOME=/home/alumno/retos/r102-gpg-simetrico/gnupg`\n1. Cifra `secreto.txt` con la contraseña `clave-reto` (sin que `gpg` te pregunte nada) y deja el resultado en `secreto.txt.gpg`.\n2. Genera un par de claves con los valores por defecto (ed25519 con subclave de cifrado), sin contraseña y sin caducidad, para `Alumno LPI <alumno@lpi.example>`, sin preguntas interactivas.\n3. Exporta la clave pública en formato ASCII a `publica.asc`.\n4. Cifra `mensaje.txt` para `alumno@lpi.example` (salida `mensaje.txt.gpg`) y descífralo en `mensaje-recuperado.txt`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-gpg-simetrico`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Son dos tipos de cifrado distintos: uno con una contraseña compartida y otro con la clave pública de una persona. Para que `gpg` no pregunte nada hace falta modo batch.",
+      "Opciones útiles: `--batch --pinentry-mode loopback --passphrase ...`, `--symmetric`, `--quick-generate-key`, `--armor --export`, `--encrypt -r` y `-d`. Con `-o` eliges el fichero de salida.",
+      "`gpg --batch --pinentry-mode loopback --passphrase clave-reto --symmetric -o secreto.txt.gpg secreto.txt`; la clave con `--quick-generate-key 'Alumno LPI <alumno@lpi.example>' default default never` (frase vacía); después `--armor --export`, `--encrypt -r` y `-d -o`."
+    ],
+    "solution_summary": "El cifrado simétrico usa `--symmetric` con la contraseña en modo loopback. `--quick-generate-key 'NOMBRE <correo>' default default never` crea la clave ed25519 sin caducidad. `--armor --export` da la pública en ASCII. `--encrypt -r correo` cifra para el destinatario y `gpg -d -o` recupera el original con la clave privada del llavero.",
+    "difficulty": "Avanzado",
+    "points": 250,
+    "estimated_min": 11,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "gpg",
+      "GnuPG",
+      "cifrado"
+    ],
+    "objetivos_lpi": [
+      "110.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [CIFRADO] · Hay que entregar un fichero cifrado con contraseña y otro cifrado para un destinatario, con un llavero aparte.",
+    "preparar": "GNUPGHOME=/home/alumno/retos/r102-gpg-simetrico/gnupg gpgconf --kill gpg-agent 2>/dev/null || true\nrm -rf \"/home/alumno/retos/r102-gpg-simetrico/gnupg\"; mkdir -m 700 \"/home/alumno/retos/r102-gpg-simetrico/gnupg\"\nprintf 'El codigo del almacen es 4471.\\n' > secreto.txt\nprintf 'Hola desde GnuPG.\\n' > mensaje.txt\necho \"llavero del reto vacío; secreto.txt y mensaje.txt listos\"",
+    "comprobar": "export GNUPGHOME=/home/alumno/retos/r102-gpg-simetrico/gnupg\nC=$(mktemp -d); trap 'gpgconf --homedir \"$C/gh\" --kill gpg-agent 2>/dev/null; rm -rf \"$C\"' EXIT\nmkdir -m 700 \"$C/gh\"; tar --exclude='S.*' -C \"$GNUPGHOME\" -cf - . | tar -C \"$C/gh\" -xf -\nexport GNUPGHOME=\"$C/gh\"   # se trabaja con una copia: comprobar no escribe en el llavero del alumno\nsimetrico() { gpg --list-packets secreto.txt.gpg 2>/dev/null | grep -q 'symkey enc packet'; }\ndescifra_secreto() { gpg --batch --pinentry-mode loopback --passphrase clave-reto -d secreto.txt.gpg 2>/dev/null | grep -qx 'El codigo del almacen es 4471.'; }\nclave_ed25519() { gpg --with-colons --list-secret-keys alumno@lpi.example 2>/dev/null | awk -F: '$1 == \"sec\" && $4 == 22 && $7 == \"\" { s = 1 } $1 == \"uid\" && $10 ~ /alumno@lpi\\.example/ { u = 1 } END { exit !(s && u) }'; }\npublica_ok() { grep -q 'BEGIN PGP PUBLIC KEY BLOCK' publica.asc && gpg --with-colons --show-keys publica.asc 2>/dev/null | grep -q 'alumno@lpi.example'; }\ncifrado_destinatario() { gpg --list-packets mensaje.txt.gpg 2>/dev/null | grep -q 'pubkey enc packet' && ! gpg --list-packets mensaje.txt.gpg 2>/dev/null | grep -q 'symkey enc packet'; }\nida_y_vuelta() { gpg --batch -d mensaje.txt.gpg 2>/dev/null | cmp -s - mensaje.txt && cmp -s mensaje.txt mensaje-recuperado.txt; }\ncomprueba \"secreto.txt.gpg está cifrado con contraseña (symkey)\" simetrico\ncomprueba \"secreto.txt.gpg se descifra con clave-reto y da el texto original\" descifra_secreto\ncomprueba \"existe la clave ed25519 de Alumno LPI, sin caducidad\" clave_ed25519\ncomprueba \"publica.asc es la clave pública en ASCII de alumno@lpi.example\" publica_ok\ncomprueba \"mensaje.txt.gpg va cifrado para la clave pública del destinatario\" cifrado_destinatario\ncomprueba \"mensaje-recuperado.txt es el mensaje original, descifrado\" ida_y_vuelta"
+  },
+  {
+    "id": "lpic1-shell-entorno3",
+    "reto": "r102-shell-entorno3",
+    "title": "Un entorno de shell que se carga solo en cada sesión",
+    "briefing": "Te piden que tu entorno funcione en cualquier shell nueva. Todo debe quedar en `~/.bashrc`; escribirlo solo en la shell actual no vale.\n1. Crea la carpeta `~/bin` con un script `saluda`, ejecutable, que escriba `hola desde ~/bin`. Añade `~/bin` al principio de `PATH` en `~/.bashrc`.\n2. Define una función `fyi` que escriba tres líneas: el usuario, el directorio personal y el nombre del equipo.\n3. Define un alias `carpeta` que ejecute `pwd` y después `ls -la`, en ese orden.\nPara probarlo, abre otra shell con `bash` y lanza `saluda`, `fyi` y `carpeta`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-shell-entorno3`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un script solo se encuentra por su nombre si está en un directorio de `PATH`. Y lo que quieres que sobreviva va en el fichero que `bash` lee al arrancar una shell interactiva.",
+      "Añade a `~/.bashrc` un `export PATH=...` que ponga `$HOME/bin` delante, una función con `nombre() { ...; }` y un `alias nombre='cmd1; cmd2'`. Para los datos: `id -un`, `$HOME` y `uname -n`.",
+      "Escribe en `~/.bashrc`: `export PATH=\"$HOME/bin:$PATH\"`, `fyi() { echo ...; echo ...; echo ...; }` y `alias carpeta='pwd; ls -la'`. Crea `~/bin/saluda` con `#!/bin/bash` y haz `chmod +x`."
+    ],
+    "solution_summary": "`~/.bashrc` se lee en cada shell interactiva nueva, así que ahí van el `export PATH=\"$HOME/bin:$PATH\"`, la función `fyi` (con `id -un`, `$HOME` y `uname -n`) y el alias `carpeta='pwd; ls -la'`. El script `~/bin/saluda` necesita shebang y permiso de ejecución para resolverse por `PATH`.",
+    "difficulty": "Intermedio",
+    "points": 180,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "bash",
+      ".bashrc",
+      "PATH",
+      "alias"
+    ],
+    "objetivos_lpi": [
+      "105.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [ENTORNO] · Cada vez que abres una shell nueva pierdes tus utilidades. Hay que dejarlas fijas en la configuración del usuario.",
+    "preparar": "B=/home/alumno/.bashrc\npython3 - \"$B\" <<'PY'\nimport re, sys\np = sys.argv[1]\nt = open(p, encoding='utf-8').read()\nt = re.sub(r'(?ms)^(function fyi|fyi\\(\\)).*?^\\}[ \\t]*\\n?', '', t)\nt = re.sub(r'(?m)^.*HOME/bin:\\$PATH.*\\n?', '', t)\nt = re.sub(r'(?m)^alias carpeta=.*\\n?', '', t)\nopen(p, 'w', encoding='utf-8').write(t)\nPY\nrm -f /home/alumno/bin/saluda; rmdir /home/alumno/bin 2>/dev/null || true\necho \"~/.bashrc sin PATH de ~/bin, sin fyi ni carpeta; ~/bin vacía\"",
+    "comprobar": "sesion() { env -i HOME=/home/alumno USER=alumno LOGNAME=alumno SHELL=/bin/bash PATH=/usr/bin:/bin bash -ic \"$1\" 2>/dev/null; }\ncomprueba \"existe ~/bin/saluda y es ejecutable\" test -x /home/alumno/bin/saluda\ncomprueba \"en una shell nueva, saluda escribe «hola desde ~/bin» (PATH de ~/bin en .bashrc)\" bash -c \"$(declare -f sesion); sesion saluda | grep -q 'hola desde ~/bin'\"\ncomprueba \"en una shell nueva, fyi existe como función\" bash -c \"$(declare -f sesion); sesion 'type -t fyi' | grep -qx function\"\ncomprueba \"fyi escribe el usuario, /home/alumno y el nombre del equipo\" bash -c \"$(declare -f sesion); s=\\$(sesion fyi); echo \\\"\\$s\\\" | grep -qw alumno && echo \\\"\\$s\\\" | grep -q '/home/alumno' && echo \\\"\\$s\\\" | grep -qF \\\"\\$(uname -n)\\\"\"\ncomprueba \"el alias carpeta ejecuta pwd y después ls\" bash -c \"$(declare -f sesion); sesion 'alias carpeta' | grep -Eq 'pwd.*ls'\""
+  },
+  {
+    "id": "lpic1-sudo",
+    "reto": "r102-sudo",
+    "title": "Permisos de sudo a medida para el usuario soporte",
+    "briefing": "Te piden dar a `soporte` solo dos permisos con `sudo`. Crea el fichero `/etc/sudoers.d/soporte` con estas reglas (usa `sudo`, eres `alumno`):\n1. `soporte` puede ejecutar como root, sin contraseña, `/usr/bin/ls /root` y `/usr/bin/id` (este con cualquier argumento).\n2. `soporte` puede ejecutar `/usr/bin/whoami` como el usuario `www-data`, también sin contraseña.\n3. El fichero es de root y tiene permisos `440`.\n4. Comprueba la sintaxis con `visudo -cf` y guarda lo que responde en `visudo.txt`.\nPara probarlo: `sudo su - soporte -c 'sudo -l'`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-sudo`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Cada regla de sudoers indica quién, desde dónde, como qué usuario, si pide contraseña y qué comandos. Un fichero en `sudoers.d` se edita mejor con la herramienta que valida la sintaxis.",
+      "Formato: `usuario ALL=(destino) NOPASSWD: /ruta/cmd args, /ruta/otro`. Para el segundo caso necesitas otra línea con `(www-data)`. Después `chmod 440` y `visudo -cf FICHERO`.",
+      "Dos líneas: `soporte ALL=(root) NOPASSWD: /usr/bin/ls /root, /usr/bin/id` y `soporte ALL=(www-data) NOPASSWD: /usr/bin/whoami`. Guárdalas con `sudo visudo -f /etc/sudoers.d/soporte` y redirige `visudo -cf` a `visudo.txt`."
+    ],
+    "solution_summary": "Las reglas `usuario ALL=(destino) NOPASSWD: comando` limitan lo que `soporte` puede lanzar y como quién. Un comando sin argumentos en sudoers admite cualquiera; con argumentos exige exactamente esos. El fichero debe ser `root:root` y `0440`, y `visudo -cf` confirma que se ha parseado bien.",
+    "difficulty": "Intermedio",
+    "points": 180,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "sudo",
+      "sudoers",
+      "visudo"
+    ],
+    "objetivos_lpi": [
+      "110.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [PRIVILEGIOS] · El usuario `soporte` necesita dos permisos concretos con sudo y nada más.",
+    "preparar": "rm -f /etc/sudoers.d/soporte\nuserdel -r soporte >/dev/null 2>&1 || true\nuseradd -m -s /bin/bash soporte\necho \"usuario soporte creado, sin permisos de sudo; sudo instalado\"",
+    "comprobar": "comoSoporte() { su - soporte -c \"$1\" </dev/null; }\ncomprueba \"soporte puede ejecutar ls /root e id como root sin contraseña (y no cat /etc/shadow)\" bash -c \"$(declare -f comoSoporte); comoSoporte 'sudo -n ls /root' && [ \\\"\\$(comoSoporte 'sudo -n id -u')\\\" = 0 ] && ! comoSoporte 'sudo -n cat /etc/shadow' && ! comoSoporte 'sudo -n ls /etc'\"\ncomprueba \"soporte puede ejecutar whoami como www-data (y no como root)\" bash -c \"$(declare -f comoSoporte); [ \\\"\\$(comoSoporte 'sudo -n -u www-data whoami')\\\" = www-data ] && ! comoSoporte 'sudo -n whoami'\"\ncomprueba \"/etc/sudoers.d/soporte es de root con permisos 440\" bash -c '[ \"$(stat -c %U:%a /etc/sudoers.d/soporte)\" = root:440 ]'\ncomprueba \"visudo -cf da el fichero por bueno y visudo.txt lo recoge\" bash -c 'visudo -cf /etc/sudoers.d/soporte && grep -q \"parsed OK\" visudo.txt' "
+  },
+  {
+    "id": "lpic1-limites",
+    "reto": "r102-limites",
+    "title": "Límites persistentes para el grupo de becarios",
+    "briefing": "Te piden acotar lo que pueden hacer los becarios. Existe un grupo `alumnos` y un usuario `becario` que pertenece a él.\nCrea el fichero `/etc/security/limits.d/90-alumnos.conf` (mismo formato que `/etc/security/limits.conf`: dominio, tipo, recurso, valor) con estos límites:\n1. Para todo el grupo `alumnos`: límite soft de memoria bloqueada (`memlock`) de 2048.\n2. Para el grupo `alumnos`: límite hard de `memlock` de 4096.\n3. Solo para el usuario `becario`: límite hard del tamaño de fichero (`fsize`) de 10240.\nPara verlo: `sudo su - becario -c 'ulimit -Sl; ulimit -Hl; ulimit -Hf'`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-limites`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Los límites por usuario o grupo los aplica PAM al abrir sesión, leyendo un fichero de configuración con una línea por límite. Hay un directorio `.d` para añadir los tuyos.",
+      "Cada línea es `dominio tipo recurso valor`. Un grupo se escribe con un símbolo delante del nombre; los tipos son `soft` y `hard`. Necesitas `sudo` para escribir en `/etc/security/limits.d/`.",
+      "Tres líneas: `@alumnos soft memlock 2048`, `@alumnos hard memlock 4096` y `becario hard fsize 10240`. Pruébalo con `su -`, que sí abre sesión PAM."
+    ],
+    "solution_summary": "En `limits.d` cada línea es `dominio tipo recurso valor`; el prefijo `@` indica grupo. Las tres líneas fijan soft y hard de `memlock` para `@alumnos` y el hard de `fsize` para `becario`. Los aplica `pam_limits` al iniciar sesión, por eso se ven con `su -` y no en la shell ya abierta.",
+    "difficulty": "Intermedio",
+    "points": 170,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "limits.conf",
+      "ulimit",
+      "PAM"
+    ],
+    "objetivos_lpi": [
+      "110.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [RECURSOS] · Los becarios consumen más de lo debido. Hay que acotar sus límites de forma permanente.",
+    "preparar": "rm -f /etc/security/limits.d/90-alumnos.conf\nmkdir -p /etc/security/limits.d\nuserdel -r becario >/dev/null 2>&1 || true\ngroupdel alumnos >/dev/null 2>&1 || true\ngroupadd alumnos\nuseradd -m -s /bin/bash -G alumnos becario\necho \"grupo alumnos y usuario becario creados; ahora mismo becario tiene:\"\nsu - becario -c 'echo \"  memlock soft=$(ulimit -Sl) hard=$(ulimit -Hl)  fsize hard=$(ulimit -Hf)\"' </dev/null",
+    "comprobar": "F=/etc/security/limits.d/90-alumnos.conf\ncomprueba \"en una sesión de becario el límite flexible de memlock es 2048\" bash -c '[ -f \"$1\" ] && [ \"$(su - becario -c \"ulimit -Sl\" </dev/null)\" = 2048 ]' x \"$F\"\ncomprueba \"el límite estricto de memlock es 4096 (y se aplica al grupo, con @alumnos)\" bash -c '[ \"$(su - becario -c \"ulimit -Hl\" </dev/null)\" = 4096 ] && grep -Eq \"^[[:space:]]*@alumnos[[:space:]]+hard[[:space:]]+memlock[[:space:]]+4096\" \"$1\"' x \"$F\"\ncomprueba \"el límite estricto de fsize de becario es 10240\" bash -c '[ \"$(su - becario -c \"ulimit -Hf\" </dev/null)\" = 10240 ] && grep -Eq \"^[[:space:]]*becario[[:space:]]+hard[[:space:]]+fsize[[:space:]]+10240\" \"$1\"' x \"$F\""
+  },
+  {
+    "id": "lpic1-claves-ssh",
+    "reto": "r102-claves-ssh",
+    "title": "Acceso por clave: par ed25519, authorized_keys y un Host en ssh_config",
+    "briefing": "Te piden preparar el acceso por clave del usuario `root` a la cuenta `ina` (que ya existe). Necesitas privilegios de root (`sudo -i`).\n1. Como root, genera un par ed25519 sin frase de paso en `/root/.ssh/lab_ed25519`, con el comentario `root@lpi-lab`.\n2. Crea `/home/ina/.ssh` (de `ina`, permisos `700`) y dentro `authorized_keys` (de `ina`, permisos `600`) con tu clave pública.\n3. Añade a `/root/.ssh/config` un bloque `Host servidor-lab` con `HostName 127.0.0.1`, `User ina`, `Port 2222` e `IdentityFile ~/.ssh/lab_ed25519`.\nPara verlo sin conectar: `ssh -G servidor-lab | grep -E '^(hostname|user|port|identityfile) '`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-claves-ssh`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Son tres piezas: la clave, quién la acepta y cómo la usa el cliente. SSH es muy estricto con los dueños y permisos de `.ssh` y `authorized_keys`.",
+      "`ssh-keygen` tiene opciones para el tipo (`-t`), la frase (`-N`), el comentario (`-C`) y el fichero (`-f`). `install -d -m 700 -o ina -g ina` crea la carpeta con dueño y modo de una vez.",
+      "`ssh-keygen -t ed25519 -N '' -C root@lpi-lab -f /root/.ssh/lab_ed25519`; después `cat` de la `.pub` a `authorized_keys`, `chown ina:ina` y `chmod 600`. El bloque `Host` va en `/root/.ssh/config` con una opción por línea."
+    ],
+    "solution_summary": "La clave privada se queda en `/root/.ssh` y la pública se añade al `authorized_keys` de `ina`, que debe ser de `ina` con modo `600` dentro de un `.ssh` de modo `700`. El bloque `Host servidor-lab` en `~/.ssh/config` pone alias, destino, usuario, puerto y clave; `ssh -G` muestra la configuración resultante sin conectar.",
+    "difficulty": "Intermedio",
+    "points": 190,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "ssh",
+      "authorized_keys",
+      "ssh_config"
+    ],
+    "objetivos_lpi": [
+      "110.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [ACCESO SSH] · Hay que preparar el acceso con clave de `root` a la cuenta `ina`.",
+    "preparar": "userdel -r ina >/dev/null 2>&1 || true\nuseradd -m -s /bin/bash ina\nrm -f /root/.ssh/lab_ed25519 /root/.ssh/lab_ed25519.pub\nif [ -f /root/.ssh/config ]; then\n  awk 'BEGIN{b=0} /^[[:space:]]*(Host|Match)[[:space:]]/{b=($1==\"Host\" && $2==\"servidor-lab\")} !b' /root/.ssh/config > /root/.ssh/config.tmp && cat /root/.ssh/config.tmp > /root/.ssh/config\n  rm -f /root/.ssh/config.tmp\nfi\necho \"usuario ina creado sin ~/.ssh; /root/.ssh sin lab_ed25519 ni Host servidor-lab\"",
+    "comprobar": "K=/root/.ssh/lab_ed25519\ncomprueba \"hay un par ed25519 en $K, sin frase de paso, con el comentario root@lpi-lab\" bash -c '[ \"$(stat -c %a \"$1\")\" = 600 ] && ssh-keygen -y -P \"\" -f \"$1\" >/dev/null && ssh-keygen -l -f \"$1.pub\" | grep -q \"root@lpi-lab (ED25519)\"' x \"$K\"\ncomprueba \"/home/ina/.ssh (700) y authorized_keys (600) son de ina y tienen tu clave pública\" bash -c 'A=/home/ina/.ssh/authorized_keys; [ \"$(stat -c %U:%a /home/ina/.ssh)\" = ina:700 ] && [ \"$(stat -c %U:%a $A)\" = ina:600 ] && grep -qF \"$(cut -d\" \" -f2 \"$1.pub\")\" $A' x \"$K\"\ncomprueba \"ssh -G servidor-lab: 127.0.0.1, usuario ina, puerto 2222 y la clave lab_ed25519\" bash -c 'G=$(ssh -G servidor-lab </dev/null) && echo \"$G\" | grep -qx \"hostname 127.0.0.1\" && echo \"$G\" | grep -qx \"user ina\" && echo \"$G\" | grep -qx \"port 2222\" && echo \"$G\" | grep -Eqx \"identityfile (~|/root)/.ssh/lab_ed25519\"' "
+  },
+  {
+    "id": "lpic1-xvfb",
+    "reto": "r102-xvfb",
+    "title": "Un servidor X virtual protegido con cookie de xauth",
+    "briefing": "Te piden levantar un servidor X virtual que dibuje en memoria. Usa el display `:7`.\n1. Crea con `xauth` una cookie para el display `:7` en el fichero `cookie` (en tu directorio del reto).\n2. Arranca en segundo plano `Xvfb` en el display `:7`, usando esa cookie (`-auth`) y una pantalla `0` de `800x600x24`.\n3. Con `DISPLAY` y `XAUTHORITY` bien puestas, guarda en `pantalla.txt` la salida de `xdpyinfo`.\nSin la cookie el servidor debe rechazarte: pruébalo con `XAUTHORITY=/dev/null xdpyinfo`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-xvfb`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "El servidor X acepta solo a quien presente una cookie que él conoce. Hay una herramienta para fabricar esa cookie en un fichero y variables de entorno para que los clientes la encuentren.",
+      "`xauth -f FICHERO add :7 . CLAVE` crea la entrada; `mcookie` genera una clave aleatoria. El servidor se arranca con `Xvfb :7 -auth FICHERO -screen 0 AxBxP &`. Los clientes necesitan `DISPLAY` y `XAUTHORITY`.",
+      "`xauth -f cookie add :7 . $(mcookie)`; `Xvfb :7 -auth \"$PWD/cookie\" -screen 0 800x600x24 &`; `export DISPLAY=:7 XAUTHORITY=\"$PWD/cookie\"` y `xdpyinfo > pantalla.txt` (espera un instante a que el servidor arranque)."
+    ],
+    "solution_summary": "`xauth -f cookie add :7 . $(mcookie)` guarda la cookie MIT-MAGIC-COOKIE para el display `:7`. `Xvfb :7 -auth cookie -screen 0 800x600x24` arranca el servidor exigiéndola. Con `DISPLAY=:7` y `XAUTHORITY` apuntando a la cookie, `xdpyinfo` responde; sin ella el servidor lo rechaza.",
+    "difficulty": "Avanzado",
+    "points": 240,
+    "estimated_min": 10,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "X11",
+      "Xvfb",
+      "xauth",
+      "DISPLAY"
+    ],
+    "objetivos_lpi": [
+      "106.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [GRÁFICOS] · Un servicio necesita un servidor X sin pantalla física, y que solo acepte clientes autorizados.",
+    "preparar": "pkill -f '^Xvfb :7( |$)' 2>/dev/null\nfor i in $(seq 30); do pgrep -f '^Xvfb :7( |$)' >/dev/null || break; sleep 0.1; done\nrm -f /tmp/.X7-lock /tmp/.X11-unix/X7\ncommand -v Xvfb >/dev/null && echo \"Xvfb, xauth y xdpyinfo instalados; el display :7 está libre\"",
+    "comprobar": "comprueba \"cookie tiene una entrada de xauth para el display :7\" bash -c 'xauth -f cookie list 2>/dev/null | grep -q \":7 \"'\ncomprueba \"el servidor X :7 responde con la cookie y su pantalla es de 800x600\" bash -c 'DISPLAY=:7 XAUTHORITY=$PWD/cookie xdpyinfo | grep -Eq \"dimensions:[[:space:]]+800x600 pixels\"'\ncomprueba \"el servidor rechaza a quien no tiene la cookie\" bash -c 'DISPLAY=:7 XAUTHORITY=$PWD/cookie xdpyinfo >/dev/null && ! DISPLAY=:7 XAUTHORITY=/dev/null xdpyinfo'\ncomprueba \"pantalla.txt tiene la salida de xdpyinfo del display :7\" bash -c 'grep -q \"name of display:[[:space:]]*:7\" pantalla.txt && grep -q \"800x600\" pantalla.txt' "
+  },
+  {
+    "id": "lpic1-localizacion",
+    "reto": "r102-localizacion",
+    "title": "Formato de fecha y codificación según la configuración regional",
+    "briefing": "Te piden controlar la configuración regional comando a comando.\n1. Con la fecha fija que hay en `fecha.txt`, obtén el nombre del mes en inglés y guárdalo en `mes.txt`.\n2. Haz que solo ese comando use la configuración regional `C`.\n3. Guarda en `codificacion.txt` la codificación de caracteres de la regional `C.UTF-8`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-localizacion`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Las variables de entorno `LC_*` y `LANG` deciden idioma y formato. Se pueden poner delante de un comando para que afecten solo a ese.",
+      "`date -d` acepta una fecha como texto y `+%B` da el nombre del mes. Para saber la codificación existe el comando `locale` con una opción que imprime solo el juego de caracteres.",
+      "`LC_ALL=C date -d \"$(cat fecha.txt)\" +%B > mes.txt` y `LC_ALL=C.UTF-8 locale charmap > codificacion.txt`."
+    ],
+    "solution_summary": "`LC_ALL=C` antepuesto al comando solo afecta a ese proceso; `date -d \"$(cat fecha.txt)\" +%B` imprime `January`. `locale charmap` muestra la codificación de la regional activa, que con `LC_ALL=C.UTF-8` es `UTF-8`.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "locale",
+      "date",
+      "LC_ALL"
+    ],
+    "objetivos_lpi": [
+      "107.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [LOCALIZACIÓN] · Un informe sale con el mes en otro idioma. Hay que controlar la regional de un solo comando.",
+    "preparar": "printf '2020-01-02\\n' > fecha.txt\nrm -f mes.txt codificacion.txt",
+    "comprobar": "comprueba \"el comando usó el mes inglés esperado\" bash -c 'test \"$(cat mes.txt)\" = January'\ncomprueba \"se guardó la codificación\" grep -Eqi '^UTF-?8$' codificacion.txt"
+  },
+  {
+    "id": "lpic1-subredes",
+    "reto": "r102-subredes",
+    "title": "Subredes IPv4 calculadas a mano y verificadas",
+    "briefing": "Te piden calcular primero a mano y comprobar después con `ipcalc`. Un dato por línea, sin nada más:\n1. En `red-a.txt`, para `10.0.45.200` con máscara `255.255.240.0`, cuatro líneas en este orden: el prefijo CIDR (solo el número), la dirección de red, la de broadcast y el número de hosts utilizables.\n2. En `red-b.txt`, para `192.168.100.130/26`, cuatro líneas en este orden: la máscara con puntos, la dirección de red, la de broadcast y el número de hosts.\n3. En `binario.txt`, la dirección `192.168.100.130` en binario: cuatro grupos de 8 bits separados por puntos.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-subredes`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "El prefijo es la cantidad de bits a 1 de la máscara. Los bloques de cada subred crecen de forma regular en el octeto donde cae el límite.",
+      "Hosts utilizables = 2^(32 - prefijo) - 2. Pesos de un octeto: 128 64 32 16 8 4 2 1. `ipcalc DIRECCIÓN/PREFIJO` te enseña el resultado para contrastar.",
+      "Con `/20` el tercer octeto avanza de 16 en 16 (red `10.0.32.0`); con `/26` el cuarto de 64 en 64 (red `192.168.100.128`). Convierte cada octeto de la dirección a 8 bits."
+    ],
+    "solution_summary": "Una máscara `255.255.240.0` son 20 bits a 1 (`/20`); el bloque del tercer octeto es 16, así que la red es `10.0.32.0`, el broadcast `10.0.47.255` y hay 4094 hosts. Con `/26` la máscara es `255.255.255.192`, bloques de 64: red `.128`, broadcast `.191`, 62 hosts. `ipcalc` confirma los cálculos.",
+    "difficulty": "Intermedio",
+    "points": 160,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "IPv4",
+      "subredes",
+      "CIDR",
+      "ipcalc"
+    ],
+    "objetivos_lpi": [
+      "109.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [DIRECCIONAMIENTO] · Hay que documentar dos redes: prefijo, red, broadcast y hosts útiles.",
+    "preparar": "rm -f red-a.txt red-b.txt binario.txt\necho \"Trabaja en $RETO. ipcalc disponible: $(command -v ipcalc || echo no)\"",
+    "comprobar": "comprueba \"red-a.txt: prefijo 20\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" red-a.txt | sed -n 1p | tr -d \" \\t\\r/\")\" = 20 ]'\ncomprueba \"red-a.txt: red 10.0.32.0, broadcast 10.0.47.255 y 4094 hosts\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" red-a.txt | sed -n 2,4p | tr -d \" \\t\\r\" | paste -sd\" \")\" = \"10.0.32.0 10.0.47.255 4094\" ]'\ncomprueba \"red-b.txt: máscara 255.255.255.192\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" red-b.txt | sed -n 1p | tr -d \" \\t\\r\")\" = 255.255.255.192 ]'\ncomprueba \"red-b.txt: red 192.168.100.128, broadcast 192.168.100.191 y 62 hosts\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" red-b.txt | sed -n 2,4p | tr -d \" \\t\\r\" | paste -sd\" \")\" = \"192.168.100.128 192.168.100.191 62\" ]'\ncomprueba \"binario.txt: 11000000.10101000.01100100.10000010\" bash -c '[ \"$(tr -d \" \\t\\r\\n\" < binario.txt)\" = 11000000.10101000.01100100.10000010 ]'"
+  },
+  {
+    "id": "lpic1-puertos-ipv6",
+    "reto": "r102-puertos-ipv6",
+    "title": "Puertos de /etc/services y abreviado de direcciones IPv6",
+    "briefing": "Te piden consultar `/etc/services` (con `getent services` o `grep`) y abreviar dos direcciones IPv6.\n1. En `puertos.txt`, uno por línea y en este orden, el número de puerto de: `ssh`, `smtp`, `domain` (DNS), `imaps` y `ldaps`.\n2. En `servicio.txt`, dos líneas: el nombre que `/etc/services` da al puerto `995/tcp` y el nombre del puerto `514/udp` (ojo: `514/tcp` es un servicio distinto).\n3. En `ipv6.txt`, dos líneas con la forma más corta de estas direcciones (grupos `0000` como `0` y `::` una sola vez):\n   `fd42:abcd:1234:0000:0000:0000:0000:5678`\n   `2001:dead:0000:0000:beef:0000:0000:cafe`\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-puertos-ipv6`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`/etc/services` asocia nombre, puerto y protocolo. En IPv6 se puede quitar ceros a la izquierda de cada grupo y sustituir una racha de grupos nulos por dos puntos dobles.",
+      "`getent services NOMBRE` o `getent services PUERTO/PROTOCOLO` consultan la tabla. `grep -w 514 /etc/services` te enseña los dos protocolos del 514.",
+      "`::` solo puede aparecer una vez: en la segunda dirección hay dos rachas de ceros y ambas del mismo tamaño; vale comprimir cualquiera de las dos. La primera tiene una única racha larga."
+    ],
+    "solution_summary": "`getent services ssh` da 22/tcp, `smtp` 25, `domain` 53, `imaps` 993 y `ldaps` 636. El puerto 995/tcp es `pop3s` y 514/udp es `syslog`. En IPv6, `fd42:abcd:1234::5678` comprime la racha única; en la segunda se comprime una sola racha de ceros y las otras se escriben como `0`.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "/etc/services",
+      "IPv6",
+      "puertos"
+    ],
+    "objetivos_lpi": [
+      "109.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [DOCUMENTACIÓN] · Hay que anotar puertos de servicios conocidos y dos direcciones IPv6 en su forma corta.",
+    "preparar": "echo \"/etc/services tiene $(grep -vc '^#' /etc/services) líneas\"",
+    "comprobar": "comprueba \"puertos.txt: 22 25 53 993 636\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" puertos.txt | tr -d \" \\t\\r\" | paste -sd\" \")\" = \"22 25 53 993 636\" ]'\ncomprueba \"servicio.txt, línea 1: 995/tcp es pop3s\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" servicio.txt | sed -n 1p | tr -d \" \\t\\r\")\" = pop3s ]'\ncomprueba \"servicio.txt, línea 2: 514/udp es syslog\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" servicio.txt | sed -n 2p | tr -d \" \\t\\r\")\" = syslog ]'\ncomprueba \"ipv6.txt, línea 1: fd42:abcd:1234::5678\" bash -c '[ \"$(grep -v \"^[[:space:]]*$\" ipv6.txt | sed -n 1p | tr -d \" \\t\\r\" | tr A-F a-f)\" = fd42:abcd:1234::5678 ]'\ncomprueba \"ipv6.txt, línea 2: 2001:dead::beef:0:0:cafe (o 2001:dead:0:0:beef::cafe)\" bash -c 'l=\"$(grep -v \"^[[:space:]]*$\" ipv6.txt | sed -n 2p | tr -d \" \\t\\r\" | tr A-F a-f)\"; [ \"$l\" = 2001:dead::beef:0:0:cafe ] || [ \"$l\" = 2001:dead:0:0:beef::cafe ]'"
+  },
+  {
+    "id": "lpic1-resolucion",
+    "reto": "r102-resolucion",
+    "title": "Orden de resolución de nombres, hosts del laboratorio y dominio de búsqueda",
+    "briefing": "Alguien ha cambiado cómo resuelve nombres este equipo y faltan dos servidores del laboratorio. Te piden:\n1. Arregla `/etc/nsswitch.conf`: la línea `hosts` debe consultar primero los ficheros locales (`files`) y después el DNS (`dns`).\n2. Añade a `/etc/hosts` dos máquinas, cada una con su nombre completo y su alias corto: `192.168.50.10` `servidor.lab.local` (alias `servidor`) y `192.168.50.20` `backup.lab.local` (alias `backup`).\n3. Guarda en `backup.txt` la salida de `getent hosts backup`.\n4. En `/etc/resolv.conf` añade el dominio `lab.local` a la búsqueda (`search`) sin quitar los que ya haya y SIN tocar las líneas `nameserver`. Ojo: el contenedor monta este fichero, así que `sed -i` no funciona; usa un editor o `>>`.\nNecesitas `sudo` para editar estos ficheros.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-resolucion`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Hay tres piezas distintas: el orden de las fuentes de nombres, la tabla local y los dominios de búsqueda del cliente DNS. `getent` consulta como lo haría cualquier programa.",
+      "Mira la línea `hosts` de `/etc/nsswitch.conf`. En `/etc/hosts` cada línea es IP, nombre completo y alias. En `resolv.conf` manda la última línea `search`. Edita con `sudo nano` o con `sudo tee -a`.",
+      "Pon `hosts: files dns`. Añade `192.168.50.10 servidor.lab.local servidor` y `192.168.50.20 backup.lab.local backup`. Añade al final de `resolv.conf` una línea `search` con los dominios que ya había más `lab.local`."
+    ],
+    "solution_summary": "`nsswitch.conf` tenía `dns files`; debe ser `hosts: files dns` para que la tabla local gane. En `/etc/hosts` el formato es `IP nombre-completo alias`. En `resolv.conf` solo cuenta la última línea `search`, así que se repite con los dominios previos más `lab.local` sin tocar los `nameserver`.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 8,
+    "tipo": "averia",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "nsswitch.conf",
+      "/etc/hosts",
+      "resolv.conf",
+      "DNS"
+    ],
+    "objetivos_lpi": [
+      "109.2",
+      "109.4"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "INCIDENCIA [RESOLUCIÓN] · Los nombres del laboratorio no resuelven como deberían desde que alguien tocó la configuración del cliente.",
+    "preparar": "# el orden de hosts, al revés (dns antes que files): sigue resolviendo, pero mal ordenado\nsed -i -E 's/^hosts:.*/hosts:          dns files/' /etc/nsswitch.conf\n# /etc/hosts y /etc/resolv.conf los monta podman: se reescriben con cat >, no con sed -i\ngrep -v 'lab\\.local' /etc/hosts > /tmp/hosts.$$; cat /tmp/hosts.$$ > /etc/hosts; rm -f /tmp/hosts.$$\nsed -E '/^(search|domain)[[:space:]]/ s/[[:space:]]+lab\\.local([[:space:]]|$)/\\1/g' /etc/resolv.conf | grep -Ev '^(search|domain)[[:space:]]*$' > /tmp/resolv.$$\ncat /tmp/resolv.$$ > /etc/resolv.conf; rm -f /tmp/resolv.$$\ngrep '^nameserver' /etc/resolv.conf > nameservers.antes\necho '--- línea hosts de /etc/nsswitch.conf:'; grep '^hosts:' /etc/nsswitch.conf\necho '--- /etc/resolv.conf:'; cat /etc/resolv.conf\necho '(copia de tus nameserver en nameservers.antes: no los cambies)'",
+    "comprobar": "comprueba \"nsswitch.conf: hosts consulta files antes que dns\" grep -Eq '^hosts:[[:space:]]+files([[:space:]].*)?[[:space:]]dns([[:space:]]|$)' /etc/nsswitch.conf\ncomprueba \"/etc/hosts: servidor y servidor.lab.local son 192.168.50.10\" bash -c '[ \"$(getent -s files hosts servidor | awk \"{print \\$1}\")\" = 192.168.50.10 ] && [ \"$(getent -s files hosts servidor.lab.local | awk \"{print \\$1}\")\" = 192.168.50.10 ]'\ncomprueba \"/etc/hosts: backup y backup.lab.local son 192.168.50.20\" bash -c '[ \"$(getent -s files hosts backup | awk \"{print \\$1}\")\" = 192.168.50.20 ] && [ \"$(getent -s files hosts backup.lab.local | awk \"{print \\$1}\")\" = 192.168.50.20 ]'\ncomprueba \"backup.txt tiene la salida de getent hosts backup\" bash -c 'grep -Eq \"^192\\.168\\.50\\.20[[:space:]].*backup\\.lab\\.local\" backup.txt'\ncomprueba \"resolv.conf: la búsqueda (última línea search) incluye lab.local\" bash -c 'grep -E \"^(search|domain)[[:space:]]\" /etc/resolv.conf | tail -n 1 | grep -Eq \"^search[[:space:]](.*[[:space:]])?lab\\.local([[:space:]]|$)\"'\ncomprueba \"resolv.conf: las líneas nameserver siguen igual (el DNS funciona)\" bash -c 'test -f nameservers.antes && [ \"$(grep \"^nameserver\" /etc/resolv.conf)\" = \"$(cat nameservers.antes)\" ]'"
+  },
+  {
+    "id": "lpic1-networkd",
+    "reto": "r102-networkd",
+    "title": "Red de un portátil con ficheros .network de systemd-networkd y WPA",
+    "briefing": "Te piden dejar escrita la red de un portátil. En el contenedor no hay systemd, así que solo se crean los ficheros (usa `sudo`):\n1. `/etc/systemd/network/30-lan.network`: debe aplicarse a TODAS las interfaces ethernet (con un comodín), con IP fija `192.168.0.100/24`, puerta de enlace `192.168.0.1` y servidor DNS `192.168.0.1`.\n2. `/etc/systemd/network/40-wifi.network`: para la interfaz `wlo1`, que pida por DHCP solo la dirección IPv4.\n3. Con `wpa_passphrase`, crea `/etc/wpa_supplicant/wpa_supplicant-wlo1.conf` para la red `MyWifi` con la contraseña `MyPassword`. Después borra de ese fichero la línea comentada con la contraseña en claro.\n4. Guarda en `servicio.txt` el nombre completo de la unidad de systemd que usaría ese fichero para conectar `wlo1`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-networkd`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Los ficheros `.network` tienen una sección que dice a qué interfaces se aplican y otra con los parámetros. Las interfaces ethernet empiezan todas igual.",
+      "Secciones `[Match]` (`Name=`) y `[Network]` (`Address=`, `Gateway=`, `DNS=`, `DHCP=`). Crea los directorios con `sudo mkdir -p`. `wpa_passphrase SSID CONTRASEÑA` imprime el bloque por pantalla. La unidad de WPA es una plantilla con `@`.",
+      "`Name=en*` para ethernet y `DHCP=ipv4` para la Wi-Fi. `wpa_passphrase MyWifi MyPassword | sudo tee /etc/wpa_supplicant/wpa_supplicant-wlo1.conf`, luego borra la línea `#psk=`. La unidad es `wpa_supplicant@INTERFAZ.service`."
+    ],
+    "solution_summary": "`[Match] Name=en*` casa con todas las ethernet y `[Network]` fija dirección, puerta y DNS. En la Wi-Fi basta `DHCP=ipv4`. `wpa_passphrase` genera el `psk` en hash y deja la clave en claro en un comentario `#psk=` que hay que borrar. La unidad que conecta `wlo1` es la plantilla `wpa_supplicant@wlo1.service`.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 9,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "systemd-networkd",
+      "wpa_supplicant",
+      "Wi-Fi"
+    ],
+    "objetivos_lpi": [
+      "109.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [RED] · Hay que dejar preparada la red cableada y la Wi-Fi de un portátil mediante ficheros de configuración.",
+    "preparar": "rm -f /etc/systemd/network/30-lan.network /etc/systemd/network/40-wifi.network /etc/wpa_supplicant/wpa_supplicant-wlo1.conf\necho \"wpa_passphrase disponible: $(command -v wpa_passphrase || echo no)\"",
+    "comprobar": "ini() { awk -v s=\"[$2]\" -v k=\"$3\" '{sub(/\\r$/,\"\")} /^[[:space:]]*\\[/{gsub(/[[:space:]]/,\"\"); sec=$0; next} sec==s && $0 ~ \"^[[:space:]]*\" k \"[[:space:]]*=\" {sub(/^[^=]*=[[:space:]]*/,\"\"); sub(/[[:space:]]+$/,\"\"); print}' \"$1\" 2>/dev/null; }\nL=/etc/systemd/network/30-lan.network; W=/etc/systemd/network/40-wifi.network; S=/etc/wpa_supplicant/wpa_supplicant-wlo1.conf\ncomprueba \"30-lan.network: [Match] Name=en*\" test \"$(ini $L Match Name)\" = 'en*'\ncomprueba \"30-lan.network: [Network] Address=192.168.0.100/24\" test \"$(ini $L Network Address)\" = 192.168.0.100/24\ncomprueba \"30-lan.network: [Network] Gateway=192.168.0.1 y DNS=192.168.0.1\" bash -c '[ \"$1\" = 192.168.0.1 ] && [ \"$2\" = 192.168.0.1 ]' x \"$(ini $L Network Gateway)\" \"$(ini $L Network DNS)\"\ncomprueba \"40-wifi.network: [Match] Name=wlo1 y [Network] DHCP=ipv4\" bash -c '[ \"$1\" = wlo1 ] && [ \"$2\" = ipv4 ]' x \"$(ini $W Match Name)\" \"$(ini $W Network DHCP)\"\ncomprueba \"wpa_supplicant-wlo1.conf: red MyWifi con el psk (hash) de MyPassword\" bash -c 'grep -q \"ssid=\\\"MyWifi\\\"\" \"$1\" && grep -Eq \"^[[:space:]]*psk=$(wpa_passphrase MyWifi MyPassword | sed -n \"s/^[[:space:]]*psk=\\([0-9a-f]\\{64\\}\\)$/\\1/p\")[[:space:]]*$\" \"$1\"' x \"$S\"\ncomprueba \"wpa_supplicant-wlo1.conf: ya no está la contraseña en claro\" bash -c 'test -f \"$1\" && ! grep -q \"MyPassword\" \"$1\"' x \"$S\"\ncomprueba \"servicio.txt: wpa_supplicant@wlo1.service\" bash -c '[ \"$(tr -d \" \\t\\r\\n\" < servicio.txt)\" = wpa_supplicant@wlo1.service ]'"
+  },
+  {
+    "id": "lpic1-ip-rutas",
+    "reto": "r102-ip-rutas",
+    "title": "Leer interfaces, ruta por defecto y direcciones con ip",
+    "briefing": "Te piden documentar la red de este contenedor con el comando `ip` (solo mirar; no se pueden cambiar direcciones ni rutas). Un dato por fichero, sin nada más:\n1. En `mtu.txt`, la MTU de la interfaz de loopback `lo`.\n2. En `puerta.txt`, la IP de la puerta de enlace de la ruta por defecto. Si no hay ruta por defecto, escribe `ninguna`.\n3. En `interfaz.txt`, el nombre de la interfaz por la que sale esa ruta por defecto (o `ninguna`).\n4. En `direccion.txt`, la dirección IPv4 de esa interfaz con su prefijo, por ejemplo `192.168.1.20/24` (o `ninguna`).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-ip-rutas`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`ip` tiene subcomandos para enlaces, direcciones y rutas. Cada dato que piden sale de uno distinto.",
+      "`ip link show lo` para la MTU, `ip route` para la ruta por defecto (`default via … dev …`) y `ip -4 address show dev INTERFAZ` para la dirección con su prefijo.",
+      "Extrae cada campo con `awk` de la salida de `ip route show default` (la IP va tras `via`, la interfaz tras `dev`) y la dirección de `ip -4 -o address show dev INTERFAZ`."
+    ],
+    "solution_summary": "`ip link show lo` da la MTU (65536 en un loopback típico). `ip route show default` muestra `default via PUERTA dev INTERFAZ`, de donde salen la puerta y la interfaz. `ip -4 -o address show dev INTERFAZ` da la IPv4 con prefijo. Si no hay ruta por defecto, se escribe `ninguna`.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "ip",
+      "iproute2",
+      "rutas"
+    ],
+    "objetivos_lpi": [
+      "109.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [INVENTARIO] · Hay que anotar los datos de red de este equipo sin cambiar nada.",
+    "preparar": "rm -f mtu.txt puerta.txt interfaz.txt direccion.txt\necho \"iproute2 disponible: $(command -v ip || echo no)\"",
+    "comprobar": "leer() { tr -d ' \\t\\r\\n' 2>/dev/null < \"$1\"; }\nGW=$(ip -4 route show default 2>/dev/null | awk '{for(i=1;i<NF;i++) if($i==\"via\"){print $(i+1); exit}}'); DEV=$(ip -4 route show default 2>/dev/null | awk '{for(i=1;i<NF;i++) if($i==\"dev\"){print $(i+1); exit}}')\ncomprueba \"mtu.txt: la MTU de lo ($(cat /sys/class/net/lo/mtu))\" test \"$(leer mtu.txt)\" = \"$(cat /sys/class/net/lo/mtu)\"\ncomprueba \"puerta.txt: la puerta de enlace por defecto\" test \"$(leer puerta.txt)\" = \"${GW:-ninguna}\"\ncomprueba \"interfaz.txt: la interfaz de la ruta por defecto\" test \"$(leer interfaz.txt)\" = \"${DEV:-ninguna}\"\nif [ -n \"$DEV\" ]; then comprueba \"direccion.txt: una IPv4 con prefijo de $DEV\" bash -c 'd=$(tr -d \" \\t\\r\\n\" < direccion.txt); [ -n \"$d\" ] && ip -4 -o address show dev \"$1\" | awk \"{print \\$4}\" | grep -qxF \"$d\"' x \"$DEV\"\nelse comprueba \"direccion.txt: ninguna\" test \"$(leer direccion.txt)\" = ninguna; fi"
+  },
+  {
+    "id": "lpic1-ss-nc",
+    "reto": "r102-ss-nc",
+    "title": "Localizar un servicio escondido con ss y hablarle con nc",
+    "briefing": "Al preparar el reto se ha arrancado un servicio TCP que escucha solo en `127.0.0.1`, en un puerto alto entre `20000` y `29999` que no te decimos. Te piden:\n1. Encuéntralo con `ss` y guarda el número de puerto en `puerto.txt`.\n2. Guarda en `programa.txt` el nombre del programa que escucha en ese puerto.\n3. Conéctate con `nc`: te responde una frase que termina en una palabra clave. Guarda solo esa palabra en `clave.txt`.\n4. Para el servicio con `kill` y comprueba con `ss` que ya no escucha.\nEl servicio corre como root: para ver su proceso y pararlo necesitas `sudo`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-ss-nc`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un servicio en escucha es un socket TCP en estado LISTEN. `ss` los lista y puede mostrar a qué proceso pertenece, pero solo ves los procesos ajenos si tienes privilegios.",
+      "Usa `sudo ss` con las opciones de TCP, escucha, números y proceso. Verás algo como `users:((\"nombre\",pid=N,…))`. Para hablar con el puerto, `nc 127.0.0.1 PUERTO`.",
+      "`sudo ss -tlnp` y busca el puerto entre 20000 y 29999 en `127.0.0.1`. Conéctate con `nc 127.0.0.1 PUERTO < /dev/null`, toma la última palabra de la respuesta y para el PID con `sudo kill`."
+    ],
+    "solution_summary": "`sudo ss -tlnp` lista los sockets en escucha con su proceso; el puerto alto en `127.0.0.1` pertenece a `socat`. `nc 127.0.0.1 PUERTO` devuelve una frase cuya última palabra es la clave. `sudo kill PID` (el PID sale en `ss`) detiene el servicio y `ss` confirma que el puerto ya no aparece.",
+    "difficulty": "Avanzado",
+    "points": 240,
+    "estimated_min": 9,
+    "tipo": "averia",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "ss",
+      "nc",
+      "puertos",
+      "socat"
+    ],
+    "objetivos_lpi": [
+      "109.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "INCIDENCIA [SERVICIO DESCONOCIDO] · Un proceso escucha en un puerto alto local que nadie documentó. Hay que identificarlo y pararlo.",
+    "preparar": "D=/var/lib/lpi-retos/r102-ss-nc; mkdir -p $D; chmod 700 /var/lib/lpi-retos $D\n# si quedaba el servicio de otra vez, se para\nif [ -f $D/puerto ]; then for p in $(ss -Hltnp \"sport = :$(cat $D/puerto)\" | grep -o 'pid=[0-9]*' | cut -d= -f2); do kill $p 2>/dev/null; done; fi\nclaves=(pingüino router paquete antena switch firewall latencia gateway); C=${claves[RANDOM % ${#claves[@]}]}$((RANDOM % 90 + 10))\nP=$((20000 + RANDOM % 10000)); while ss -Hltn \"sport = :$P\" | grep -q .; do P=$((20000 + RANDOM % 10000)); done\necho \"Hola desde el laboratorio LPI. La clave es: $C\" > $D/mensaje; echo $P > $D/puerto\nsetsid -f socat TCP-LISTEN:$P,bind=127.0.0.1,reuseaddr,fork SYSTEM:\"cat $D/mensaje\" </dev/null >/dev/null 2>&1\nfor i in $(seq 50); do ss -Hltn \"sport = :$P\" | grep -q . && break; sleep 0.1; done\nrm -f puerto.txt programa.txt clave.txt\necho 'Servicio arrancado. Búscalo con ss.'",
+    "comprobar": "D=/var/lib/lpi-retos/r102-ss-nc; P=$(cat $D/puerto 2>/dev/null); C=$(awk '{print $NF}' $D/mensaje 2>/dev/null)\ncomprueba \"puerto.txt: el puerto del servicio\" test -n \"$P\" -a \"$(tr -d ' \\t\\r\\n' 2>/dev/null < puerto.txt)\" = \"$P\"\ncomprueba \"programa.txt: socat\" test \"$(tr -d ' \\t\\r\\n' 2>/dev/null < programa.txt)\" = socat\ncomprueba \"clave.txt: la palabra clave que devuelve el servicio\" test -n \"$C\" -a \"$(tr -d ' \\t\\r\\n' 2>/dev/null < clave.txt)\" = \"$C\"\ncomprueba \"el servicio ya no escucha en ese puerto\" bash -c '[ -n \"$1\" ] && [ -f puerto.txt ] && ! ss -Hltn \"sport = :$1\" | grep -q .' x \"$P\""
+  },
+  {
+    "id": "lpic1-variables",
+    "reto": "r102-variables",
+    "title": "Variables y alias que sobreviven a cada sesión",
+    "briefing": "Te piden configurar el entorno de `alumno`:\n1. Añade a tu `~/.bashrc` una variable exportada `PRACTICA` con el valor `lpi`.\n2. Añade también un alias `ll` que sea `ls -l`.\n3. Guarda en `ruta.txt` el valor actual de la variable `PATH`.\nPara probarlo, abre otra shell con `bash` y mira `echo $PRACTICA` y `alias ll`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-variables`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Lo que escribes en la terminal desaparece al cerrarla. Lo que debe durar va en el fichero de arranque de `bash` de tu usuario.",
+      "`export` hace que la variable la vean los programas hijos. Un alias se define con `alias nombre='comando'`. Para añadir líneas a un fichero sin borrarlo, usa `>>`.",
+      "`echo 'export PRACTICA=lpi' >> ~/.bashrc`, `echo \"alias ll='ls -l'\" >> ~/.bashrc` y `echo \"$PATH\" > ruta.txt`."
+    ],
+    "solution_summary": "`~/.bashrc` se carga en cada shell interactiva: ahí van `export PRACTICA=lpi` y `alias ll='ls -l'`. `export` hace que la variable llegue a los procesos hijos. `echo \"$PATH\" > ruta.txt` guarda el valor actual de `PATH`.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "bash",
+      "variables de entorno",
+      "alias",
+      "PATH"
+    ],
+    "objetivos_lpi": [
+      "105.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [ENTORNO] · Un usuario pierde su variable y su atajo cada vez que abre una terminal nueva.",
+    "preparar": "sed -i '/PRACTICA=/d; /alias ll=/d' /home/alumno/.bashrc\necho \"limpio: sin PRACTICA ni alias ll en ~/.bashrc\"",
+    "comprobar": "comprueba \"una shell nueva ve PRACTICA=lpi\" bash -c '[ \"$(HOME=/home/alumno bash -ic \"echo \\$PRACTICA\" 2>/dev/null | tail -1)\" = lpi ]'\ncomprueba \"PRACTICA se exporta (la ve un programa hijo)\" bash -c 'HOME=/home/alumno bash -ic \"env\" 2>/dev/null | grep -qx PRACTICA=lpi'\ncomprueba \"el alias ll es ls -l\" bash -c 'HOME=/home/alumno bash -ic \"alias ll\" 2>/dev/null | grep -q \"ls -l\"'\ncomprueba \"ruta.txt tiene un PATH (con /usr/bin)\" grep -q /usr/bin ruta.txt"
+  },
+  {
+    "id": "lpic1-script",
+    "reto": "r102-script",
+    "title": "Un script con argumentos, condición y código de salida",
+    "briefing": "Te piden escribir `cuenta.sh` (ejecutable) en tu directorio del reto, con este comportamiento:\n1. Si no recibe argumentos, escribe `uso: cuenta.sh FICHERO...` y termina con código de salida 1.\n2. Si recibe argumentos, escribe cuántos son (solo el número) y termina con código 0.\nEjemplo: `./cuenta.sh a b c` escribe `3`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-script`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un script necesita decir qué intérprete lo ejecuta y tener permiso de ejecución. El shell guarda el número de argumentos en una variable especial.",
+      "`$#` es el número de argumentos. Usa `if [ ... ]; then ... fi` para el caso sin argumentos, y `exit` con el código que toque.",
+      "Primera línea `#!/bin/bash`; `if [ $# -eq 0 ]; then echo 'uso: cuenta.sh FICHERO...'; exit 1; fi`; después `echo $#`. Termina con `chmod +x cuenta.sh`."
+    ],
+    "solution_summary": "El shebang `#!/bin/bash` elige el intérprete y `chmod +x` permite ejecutarlo. `$#` cuenta los argumentos: con 0 se imprime el mensaje de uso y se sale con `exit 1`; en caso contrario `echo $#` imprime el total y el script acaba con 0.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "bash",
+      "script",
+      "exit",
+      "$#"
+    ],
+    "objetivos_lpi": [
+      "105.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [AUTOMATIZACIÓN] · Falta una utilidad que cuente argumentos y avise si no recibe ninguno.",
+    "preparar": "echo \"escribe tu script en $RETO/cuenta.sh\"",
+    "comprobar": "comprueba \"cuenta.sh existe y es ejecutable\" test -x cuenta.sh\ncomprueba \"empieza por #! (shebang)\" bash -c 'head -1 cuenta.sh | grep -q \"^#!\"'\ncomprueba \"./cuenta.sh a b c escribe 3\" bash -c '[ \"$(./cuenta.sh a b c)\" = 3 ]'\ncomprueba \"./cuenta.sh x escribe 1 y sale con 0\" bash -c '[ \"$(./cuenta.sh x)\" = 1 ]'\ncomprueba \"sin argumentos sale con código 1\" bash -c './cuenta.sh >/dev/null 2>&1; [ $? -eq 1 ]'\ncomprueba \"sin argumentos explica el uso\" bash -c './cuenta.sh 2>&1 | grep -qi uso' "
+  },
+  {
+    "id": "lpic1-usuarios",
+    "reto": "r102-usuarios",
+    "title": "Alta de un usuario con grupo, caducidad y contraseña bloqueada",
+    "briefing": "Te piden dar de alta una cuenta (necesitas `sudo`):\n1. Crea el grupo `desarrollo`.\n2. Crea el usuario `ana` con carpeta personal (`/home/ana`), shell `/bin/bash` y `desarrollo` como grupo secundario.\n3. Haz que la cuenta de `ana` caduque el `2027-12-31`.\n4. Bloquea la contraseña de `ana`, de modo que no pueda entrar con contraseña hasta que se la desbloquees.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-usuarios`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Son cuatro operaciones sobre cuentas, cada una con su comando: grupos, usuarios, caducidad y bloqueo. Todas requieren privilegios.",
+      "`useradd` tiene opciones para crear el home, fijar la shell y añadir grupos secundarios. La caducidad se gestiona con `chage`; el bloqueo, con `passwd` o `usermod`.",
+      "`sudo groupadd desarrollo`; `sudo useradd -m -s /bin/bash -G desarrollo ana`; `sudo chage -E 2027-12-31 ana`; `sudo passwd -l ana`."
+    ],
+    "solution_summary": "`groupadd` crea el grupo; `useradd -m -s /bin/bash -G desarrollo ana` crea usuario, home, shell y grupo secundario. `chage -E` fija la fecha de caducidad de la cuenta. `passwd -l` antepone `!` al hash en `/etc/shadow`, lo que bloquea la contraseña.",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "useradd",
+      "groupadd",
+      "chage",
+      "passwd"
+    ],
+    "objetivos_lpi": [
+      "107.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [ALTAS] · Llega una nueva persona al equipo de desarrollo y hay que darle de alta con condiciones.",
+    "preparar": "userdel -r ana 2>/dev/null || true\ngroupdel desarrollo 2>/dev/null || true\necho \"sin ana ni desarrollo: empieza\"",
+    "comprobar": "comprueba \"existe el grupo desarrollo\" getent group desarrollo\ncomprueba \"existe el usuario ana\" id ana\ncomprueba \"ana tiene /home/ana creada\" test -d /home/ana\ncomprueba \"la shell de ana es /bin/bash\" bash -c '[ \"$(getent passwd ana | cut -d: -f7)\" = /bin/bash ]'\ncomprueba \"ana está en desarrollo\" bash -c 'id -nG ana | grep -qw desarrollo'\ncomprueba \"la cuenta caduca el 2027-12-31\" bash -c 'chage -l ana | grep -i \"account expires\" | grep -q \"2027\"'\ncomprueba \"la contraseña está bloqueada (! en /etc/shadow)\" bash -c 'getent shadow ana | cut -d: -f2 | grep -q \"^!\"' "
+  },
+  {
+    "id": "lpic1-cron",
+    "reto": "r102-cron",
+    "title": "Una copia diaria como root en /etc/cron.d",
+    "briefing": "Te piden que `/home/alumno/retos/r102-cron/copia.sh` se ejecute como root todos los días a las 02:30.\nHazlo con un fichero del sistema: crea (con `sudo`) `/etc/cron.d/copia` con la línea de cron correcta (en `/etc/cron.d` se indica el usuario, a diferencia de `crontab -e`).\nAdemás, guarda en `campos.txt` qué significa cada uno de los 5 primeros campos, uno por línea y en este orden: `minuto`, `hora`, `dia`, `mes`, `semana`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-cron`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Los ficheros de `/etc/cron.d` usan el mismo formato que un crontab, con una columna más. Los cinco primeros campos son tiempo.",
+      "Formato: cinco campos de tiempo, el usuario y el comando con ruta completa. Necesitas `sudo` para escribir ahí, por ejemplo con `sudo tee`.",
+      "La línea es `30 2 * * * root /home/alumno/retos/r102-cron/copia.sh`. `campos.txt` lleva las cinco palabras, una por línea."
+    ],
+    "solution_summary": "En `/etc/cron.d` cada línea es `m h dom mon dow usuario comando`. Las 02:30 diarias son `30 2 * * *`, con `root` como usuario. Los cinco campos de tiempo son minuto, hora, día del mes, mes y día de la semana.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "cron",
+      "/etc/cron.d"
+    ],
+    "objetivos_lpi": [
+      "107.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [COPIAS] · Hay un script de copia que debe ejecutarse solo, cada noche, con privilegios de root.",
+    "preparar": "mkdir -p /etc/cron.d; rm -f /etc/cron.d/copia\nprintf '#!/bin/sh\\ntar czf /tmp/copia.tgz /etc\\n' > copia.sh; chmod +x copia.sh",
+    "comprobar": "comprueba \"existe /etc/cron.d/copia\" test -f /etc/cron.d/copia\ncomprueba \"la línea es: 30 2 * * * root .../copia.sh\" bash -c 'grep -Eq \"^[[:space:]]*30[[:space:]]+2[[:space:]]+\\*[[:space:]]+\\*[[:space:]]+\\*[[:space:]]+root[[:space:]]+/home/alumno/retos/r102-cron/copia\\.sh[[:space:]]*$\" /etc/cron.d/copia'\ncomprueba \"campos.txt: minuto hora dia mes semana\" bash -c 'diff <(printf \"minuto\\nhora\\ndia\\nmes\\nsemana\\n\") <(tr \"[:upper:]íÍ\" \"[:lower:]ii\" < campos.txt)' "
+  },
+  {
+    "id": "lpic1-suid",
+    "reto": "r102-suid",
+    "title": "Auditoría de ficheros con SUID",
+    "briefing": "Un auditor te pide dos cosas:\n1. Guarda en `suid.txt` la lista de ficheros con SUID dentro de `/usr/bin` (solo las rutas, una por línea y ordenadas).\n2. En el directorio `sospechoso/` hay un programa llamado `copia-de-bash` con SUID que no debería tenerlo. Quítale el SUID sin cambiar el resto de sus permisos.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-suid`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "El bit SUID hace que un programa se ejecute con los privilegios de su dueño. `find` sabe buscar por permisos.",
+      "`find /usr/bin -perm -MODO -type f` con el modo del SUID, y `sort` para ordenar. Para quitar solo ese bit, `chmod` con `u-s`.",
+      "`find /usr/bin -perm -4000 -type f | sort > suid.txt` y `chmod u-s sospechoso/copia-de-bash`. Si usaras un modo numérico, ten cuidado de dejar `755`."
+    ],
+    "solution_summary": "`find /usr/bin -perm -4000 -type f | sort > suid.txt` lista los ficheros con SUID (`-4000` exige ese bit, sin importar el resto). `chmod u-s` quita solo ese bit y deja el modo `755` intacto.",
+    "difficulty": "Básico",
+    "points": 140,
+    "estimated_min": 6,
+    "tipo": "averia",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "SUID",
+      "find",
+      "chmod",
+      "permisos"
+    ],
+    "objetivos_lpi": [
+      "110.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "AUDITORÍA [PERMISOS] · Un programa copiado del sistema conserva el bit SUID y no debería.",
+    "preparar": "mkdir sospechoso\ncp /bin/bash sospechoso/copia-de-bash\nchmod 4755 sospechoso/copia-de-bash",
+    "comprobar": "comprueba \"suid.txt coincide con find /usr/bin -perm -4000\" bash -c 'diff <(find /usr/bin -perm -4000 -type f | sort) <(sort suid.txt)'\ncomprueba \"suid.txt no está vacío\" test -s suid.txt\ncomprueba \"copia-de-bash ya no tiene SUID\" bash -c '[ ! -u sospechoso/copia-de-bash ]'\ncomprueba \"y sigue con 755\" bash -c '[ \"$(stat -c %a sospechoso/copia-de-bash)\" = 755 ]' "
+  },
+  {
+    "id": "lpic1-cuenta-shadow",
+    "reto": "r102-cuenta-shadow",
+    "title": "Proteger una cuenta: bloqueo, sin caducidad y revisión de shadow",
+    "briefing": "Te piden proteger la cuenta `lpi-shadow` (necesitas `sudo`):\n1. Bloquea la cuenta `lpi-shadow`.\n2. Elimina su fecha de caducidad.\n3. Comprueba que `/etc/passwd` usa el marcador `x` y que la contraseña está en `/etc/shadow`, y que este último archivo no tiene permisos para otros usuarios.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-cuenta-shadow`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Hay un comando para bloquear la contraseña y otro para gestionar la caducidad de la cuenta. Después, revisa dos ficheros del sistema.",
+      "`passwd -l` bloquea. Con `chage` se quita la caducidad usando un valor especial. Revisa la línea de la cuenta en `/etc/passwd` y los permisos de `/etc/shadow` con `stat`.",
+      "`sudo passwd -l lpi-shadow` y `sudo chage -E -1 lpi-shadow`. Comprueba con `grep '^lpi-shadow:' /etc/passwd` y `stat -c %a /etc/shadow`."
+    ],
+    "solution_summary": "`passwd -l` bloquea la contraseña (añade `!` en `/etc/shadow`) y `chage -E -1` deja la cuenta sin caducidad. El `x` en `/etc/passwd` indica que el hash vive en `/etc/shadow`, que debe quedar sin permisos para otros (por ejemplo `640`).",
+    "difficulty": "Básico",
+    "points": 130,
+    "estimated_min": 5,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "shadow",
+      "passwd",
+      "chage",
+      "/etc/passwd"
+    ],
+    "objetivos_lpi": [
+      "110.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [SEGURIDAD] · La cuenta `lpi-shadow` debe quedar bloqueada y sin caducidad, y hay que revisar dónde vive su contraseña.",
+    "preparar": "userdel -r lpi-shadow 2>/dev/null || true\nuseradd -M -s /usr/sbin/nologin lpi-shadow\nprintf 'lpi-shadow:Temporal-LPI-123' | chpasswd\nchage -E 2030-01-01 lpi-shadow",
+    "comprobar": "comprueba \"la contraseña de la cuenta está bloqueada\" bash -c 'passwd -S lpi-shadow | cut -d\" \" -f2 | grep -qx L'\ncomprueba \"/etc/passwd usa x como marcador\" grep -q '^lpi-shadow:x:' /etc/passwd\ncomprueba \"la cuenta no tiene fecha de caducidad\" bash -c '[ -z \"$(grep \"^lpi-shadow:\" /etc/shadow | cut -d: -f8)\" ]'\ncomprueba \"otros usuarios no pueden leer /etc/shadow\" bash -c '(( (8#$(stat -c %a /etc/shadow) & 7) == 0 ))'"
+  },
+  {
+    "id": "lpic1-zonahoraria",
+    "reto": "r102-zonahoraria",
+    "title": "Zona horaria sin timedatectl y fechas con date",
+    "briefing": "En el contenedor no hay `timedatectl` (no hay systemd), así que lo harás a mano. Necesitas `sudo`:\n1. Cambia la zona horaria del sistema a `America/Bogota`: `/etc/localtime` debe ser un enlace simbólico a su fichero de `/usr/share/zoneinfo`.\n2. Sin cambiar la zona del sistema, guarda en `tokio.txt` la abreviatura de la zona `Asia/Tokyo` (la que da `date +%Z`, con la variable `TZ` puesta solo para ese comando).\n3. Guarda en `epoch.txt` la fecha en UTC, con formato `AAAA-MM-DD`, del instante `1564013011` (segundos desde el epoch).\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-zonahoraria`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "La zona del sistema es un enlace a un fichero de la base de datos de zonas horarias. Una variable de entorno permite probar otra zona sin tocar el sistema.",
+      "Los ficheros viven bajo `/usr/share/zoneinfo`. Con `ln -sf` reemplazas el enlace. `date -u -d @SEGUNDOS` interpreta un epoch; `+%F` da la fecha con guiones.",
+      "`sudo ln -sf /usr/share/zoneinfo/America/Bogota /etc/localtime`; `TZ=Asia/Tokyo date +%Z > tokio.txt`; `date -u -d @1564013011 +%F > epoch.txt`."
+    ],
+    "solution_summary": "`/etc/localtime` es un enlace a `/usr/share/zoneinfo/America/Bogota`, que `ln -sf` reemplaza. `TZ=Asia/Tokyo date +%Z` aplica la zona solo a ese comando y devuelve `JST`. `date -u -d @1564013011 +%F` convierte el epoch a fecha UTC (2019-07-25).",
+    "difficulty": "Intermedio",
+    "points": 160,
+    "estimated_min": 6,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "tzdata",
+      "localtime",
+      "date",
+      "TZ"
+    ],
+    "objetivos_lpi": [
+      "108.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [HORA] · El servidor debe pasar a la hora de Bogotá y hay que dejar documentadas dos conversiones de fecha.",
+    "preparar": "ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime\necho \"zona del sistema puesta en UTC: $(date +%Z)\"",
+    "comprobar": "comprueba \"/etc/localtime es un enlace simbólico\" test -L /etc/localtime\ncomprueba \"el enlace apunta a zoneinfo/America/Bogota\" bash -c 'readlink /etc/localtime | grep -Eq \"zoneinfo/America/Bogota$\"'\ncomprueba \"date ya muestra la hora de Bogotá (-05)\" bash -c '[ \"$(date +%Z)\" = \"-05\" ]'\ncomprueba \"tokio.txt dice JST\" bash -c '[ \"$(tr -d \" \\n\" < tokio.txt)\" = JST ]'\ncomprueba \"epoch.txt dice 2019-07-25\" bash -c '[ \"$(tr -d \" \\n\" < epoch.txt)\" = 2019-07-25 ]'"
+  },
+  {
+    "id": "lpic1-chrony",
+    "reto": "r102-chrony",
+    "title": "chrony con servidores NTP de España",
+    "briefing": "Te piden sincronizar la hora con servidores de España y no con el pool de Debian. Edita `/etc/chrony/chrony.conf` (en RHEL sería `/etc/chrony.conf`) con `sudo`:\n1. Comenta (o borra) la línea `pool` que trae Debian.\n2. Añade dos servidores, `0.es.pool.ntp.org` y `1.es.pool.ntp.org`, ambos con la opción `iburst`.\n3. Cambia `makestep` para que el reloj se corrija de golpe si la diferencia supera 0.5 segundos, pero solo durante las 5 primeras actualizaciones.\n4. Comprueba que `chronyd` acepta el fichero con `chronyd -p` (imprime la configuración y sale, sin arrancar nada) y guarda su salida en `config.txt`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-chrony`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`chronyd` lee un fichero con una directiva por línea. `pool` y `server` son dos maneras de indicar fuentes de tiempo.",
+      "`server NOMBRE iburst` añade una fuente. `makestep UMBRAL LÍMITE` permite saltos solo al inicio. `chronyd -p` valida y muestra la configuración efectiva.",
+      "Comenta la línea `pool`, añade las dos líneas `server …es.pool.ntp.org iburst`, deja una sola `makestep 0.5 5` y ejecuta `chronyd -p > config.txt`."
+    ],
+    "solution_summary": "`pool` se sustituye por dos líneas `server X iburst`. `makestep 0.5 5` corrige el reloj de golpe si el desfase supera 0.5 s, pero solo en las 5 primeras actualizaciones. `chronyd -p` carga el fichero, imprime la configuración efectiva y valida la sintaxis sin arrancar el demonio.",
+    "difficulty": "Intermedio",
+    "points": 180,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "chrony",
+      "NTP",
+      "makestep"
+    ],
+    "objetivos_lpi": [
+      "108.1"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [SINCRONIZACIÓN] · La empresa quiere usar servidores NTP españoles en lugar del pool que trae la distribución.",
+    "preparar": "cp /usr/share/chrony/chrony.conf /etc/chrony/chrony.conf\necho \"/etc/chrony/chrony.conf vuelve a estar como lo trae Debian:\"\ngrep -E '^(pool|server|makestep)' /etc/chrony/chrony.conf",
+    "comprobar": "comprueba \"no queda ninguna línea pool activa\" bash -c '! grep -Eq \"^[[:space:]]*pool[[:space:]]\" /etc/chrony/chrony.conf'\ncomprueba \"server 0.es.pool.ntp.org iburst\" grep -Eq \"^[[:space:]]*server[[:space:]]+0\\.es\\.pool\\.ntp\\.org([[:space:]].*)?[[:space:]]iburst\" /etc/chrony/chrony.conf\ncomprueba \"server 1.es.pool.ntp.org iburst\" grep -Eq \"^[[:space:]]*server[[:space:]]+1\\.es\\.pool\\.ntp\\.org([[:space:]].*)?[[:space:]]iburst\" /etc/chrony/chrony.conf\ncomprueba \"una sola línea makestep y es makestep 0.5 5\" bash -c '[ \"$(grep -E \"^[[:space:]]*makestep\" /etc/chrony/chrony.conf | tr -s \" \\t\" \" \" | sed \"s/ $//\")\" = \"makestep 0.5 5\" ]'\ncomprueba \"chronyd -p acepta el fichero\" bash -c 'chronyd -p -f /etc/chrony/chrony.conf >/dev/null 2>&1'\ncomprueba \"config.txt tiene la salida de chronyd -p con tus servidores\" bash -c 'grep -q \"^server 0.es.pool.ntp.org\" config.txt && grep -q \"^makestep 0.5 5\" config.txt'"
+  },
+  {
+    "id": "lpic1-rsyslog",
+    "reto": "r102-rsyslog",
+    "title": "Reglas de rsyslog para los registros de una aplicación",
+    "briefing": "Tu aplicación registra con la facilidad `local5`. El demonio `rsyslogd` está parado al empezar. Te piden (con `sudo`):\n1. Crea `/etc/rsyslog.d/60-app.conf` con dos reglas: todos los mensajes de `local5` a `/var/log/app.log`, y solo los de prioridad exactamente `err` de `local5` a `/var/log/app-err.log`.\n2. Comprueba la sintaxis con `rsyslogd -N1` y arranca `rsyslogd` a mano (en el contenedor no hay `systemctl`).\n3. Con `logger` y la etiqueta `app`, envía tres mensajes de `local5`: `arranque correcto` con prioridad `info`, `fallo de disco` con `err` y `temperatura alta` con `crit`.\nAl final `app.log` debe tener los tres y `app-err.log` solo `fallo de disco`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-rsyslog`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Una regla de syslog es un selector `facilidad.prioridad` seguido de un destino. Hay una forma de elegir una prioridad exacta en lugar de «esa y las más graves».",
+      "`local5.*` casa con cualquier prioridad; con un signo `=` delante de la prioridad solo casa con ella. `rsyslogd -N1` valida, `rsyslogd` arranca el demonio y `logger -t ETIQ -p facilidad.prioridad \"texto\"` envía mensajes.",
+      "Dos líneas: `local5.* /var/log/app.log` y `local5.=err /var/log/app-err.log`. Arranca `sudo rsyslogd` antes de usar `logger -t app -p local5.info …`, `local5.err …` y `local5.crit …`."
+    ],
+    "solution_summary": "`local5.*` envía todo lo de esa facilidad a `app.log`; `local5.=err` solo la prioridad `err` a `app-err.log` (sin `=` incluiría también las más graves). Tras validar con `rsyslogd -N1` y arrancar el demonio, `logger -t app -p local5.PRIO` genera los tres mensajes y cada regla filtra los suyos.",
+    "difficulty": "Intermedio",
+    "points": 210,
+    "estimated_min": 9,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "rsyslog",
+      "logger",
+      "syslog",
+      "facility"
+    ],
+    "objetivos_lpi": [
+      "108.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [REGISTROS] · Una aplicación escribe con la facilidad local5 y sus mensajes deben separarse por prioridad.",
+    "preparar": "pkill -x rsyslogd 2>/dev/null && sleep 1\nrm -f /run/rsyslogd.pid /etc/rsyslog.d/60-app.conf /var/log/app.log /var/log/app-err.log\necho \"rsyslogd parado y sin regla para local5\"",
+    "comprobar": "comprueba \"existe /etc/rsyslog.d/60-app.conf\" test -f /etc/rsyslog.d/60-app.conf\ncomprueba \"regla local5.* hacia /var/log/app.log\" grep -Eq \"^[[:space:]]*local5\\.\\*[[:space:]]+-?/var/log/app\\.log[[:space:]]*$\" /etc/rsyslog.d/60-app.conf\ncomprueba \"regla local5.=err hacia /var/log/app-err.log\" grep -Eq \"^[[:space:]]*local5\\.=err[[:space:]]+-?/var/log/app-err\\.log[[:space:]]*$\" /etc/rsyslog.d/60-app.conf\ncomprueba \"rsyslogd -N1 no da errores\" bash -c 'rsyslogd -N1 >/dev/null 2>&1'\ncomprueba \"app.log tiene los tres mensajes con la etiqueta app\" bash -c 'for m in \"arranque correcto\" \"fallo de disco\" \"temperatura alta\"; do grep -Eq \"app(\\[[0-9]+\\])?: $m\" /var/log/app.log || exit 1; done'\ncomprueba \"app-err.log tiene «fallo de disco»\" grep -q \"fallo de disco\" /var/log/app-err.log\ncomprueba \"app-err.log no tiene ni info ni crit\" bash -c '! grep -Eq \"arranque correcto|temperatura alta\" /var/log/app-err.log'"
+  },
+  {
+    "id": "lpic1-logrotate",
+    "reto": "r102-logrotate",
+    "title": "Rotación semanal de los registros de una tienda con logrotate",
+    "briefing": "La tienda online escribe sus registros en `/var/log/tienda/` (`acceso.log` y `errores.log`). Te piden, con `sudo`:\n1. Crea `/etc/logrotate.d/tienda` para `/var/log/tienda/*.log` con: rotación semanal, 4 copias, compresión aplazada un ciclo (`compress` y `delaycompress`), que no falle si falta el fichero, que no rote ficheros vacíos, y que cree el fichero nuevo con permisos `640`, dueño `root` y grupo `adm`.\n2. Simula la rotación con `logrotate -d /etc/logrotate.d/tienda` y comprueba que no da errores.\n3. Fuerza una rotación real con `logrotate -f`. Debe quedar `acceso.log.1` (aún sin comprimir) y un `acceso.log` nuevo y vacío con permisos `640` y grupo `adm`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-logrotate`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Un fichero de `logrotate.d` es un bloque con la ruta de los logs y una directiva por línea. Hay opciones para la frecuencia, el número de copias, la compresión y los permisos del fichero nuevo.",
+      "Directivas: `weekly`, `rotate N`, `compress`, `delaycompress`, `missingok`, `notifempty` y `create MODO DUEÑO GRUPO`. `logrotate -d` simula; `-f` fuerza.",
+      "Bloque: `/var/log/tienda/*.log { weekly rotate 4 compress delaycompress missingok notifempty create 640 root adm }`, cada directiva en su línea. Luego `sudo logrotate -d …` y `sudo logrotate -f …`."
+    ],
+    "solution_summary": "El bloque `/var/log/tienda/*.log { … }` combina `weekly`, `rotate 4`, `compress`, `delaycompress`, `missingok`, `notifempty` y `create 640 root adm`. `-d` solo simula; `-f` rota aunque no toque. Con `delaycompress` la copia `.1` queda sin comprimir y el fichero nuevo nace con el modo, dueño y grupo indicados.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 9,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "logrotate",
+      "/var/log",
+      "compress"
+    ],
+    "objetivos_lpi": [
+      "108.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [LOGS] · Los registros de la tienda online crecen sin control. Hay que rotarlos con una política concreta.",
+    "preparar": "rm -rf /var/log/tienda; rm -f /etc/logrotate.d/tienda\nmkdir -p /var/log/tienda; chmod 755 /var/log/tienda\nfor i in 1 2 3; do echo \"192.0.2.$i - - GET /producto/$i 200\" >> /var/log/tienda/acceso.log; done\necho \"ERROR pago rechazado\" > /var/log/tienda/errores.log\nchmod 644 /var/log/tienda/*.log\nls -l /var/log/tienda",
+    "comprobar": "F=/etc/logrotate.d/tienda\ncomprueba \"existe /etc/logrotate.d/tienda para /var/log/tienda/*.log\" bash -c 'grep -q \"/var/log/tienda/\\*\\.log\" /etc/logrotate.d/tienda'\nfor d in weekly compress delaycompress missingok notifempty; do\n  comprueba \"tiene la directiva $d\" grep -Eq \"^[[:space:]]*$d[[:space:]]*$\" $F\ndone\ncomprueba \"rotate 4\" grep -Eq \"^[[:space:]]*rotate[[:space:]]+4[[:space:]]*$\" $F\ncomprueba \"create 640 root adm\" grep -Eq \"^[[:space:]]*create[[:space:]]+0?640[[:space:]]+root[[:space:]]+adm[[:space:]]*$\" $F\ncomprueba \"logrotate -d no da errores\" bash -c 'logrotate -d /etc/logrotate.d/tienda >/tmp/lr.$$ 2>&1; r=$?; ! grep -qi \"^error:\" /tmp/lr.$$; e=$?; rm -f /tmp/lr.$$; [ $r -eq 0 ] && [ $e -eq 0 ]'\ncomprueba \"existe acceso.log.1 sin comprimir con las líneas antiguas\" grep -q \"GET /producto/3\" /var/log/tienda/acceso.log.1\ncomprueba \"no hay acceso.log.1.gz (delaycompress)\" test ! -e /var/log/tienda/acceso.log.1.gz\ncomprueba \"acceso.log nuevo, vacío, con permisos 640 y grupo adm\" bash -c '[ -f /var/log/tienda/acceso.log ] && [ ! -s /var/log/tienda/acceso.log ] && [ \"$(stat -c \"%a %U %G\" /var/log/tienda/acceso.log)\" = \"640 root adm\" ]'"
+  },
+  {
+    "id": "lpic1-diario",
+    "reto": "r102-diario",
+    "title": "Consultar con journalctl el diario copiado de otra máquina",
+    "briefing": "En `diario/` tienes una copia del diario de systemd de la máquina `web01`. Léela con `journalctl -D diario` (sin tocar el diario del contenedor) y guarda solo el texto de los mensajes, uno por línea (`-o cat`):\n1. En `errores.txt`, los mensajes de la etiqueta `copias` con prioridad `err` o más grave.\n2. En `avisos.txt`, los mensajes de cualquier etiqueta con prioridad exactamente `warning` (ni más ni menos grave).\n3. En `ultimas.txt`, las 3 entradas más recientes de `sshd`, empezando por la más nueva.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-diario`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "`journalctl` puede leer un directorio de diario ajeno y filtrar por etiqueta, prioridad y orden. Con un formato de salida simple solo verás el texto.",
+      "`-D DIR` elige el diario, `-t ETIQUETA` filtra por identificador, `-p` por prioridad (admite un intervalo `desde..hasta`), `-r` invierte el orden y `-n N` limita el número de líneas.",
+      "`journalctl -D diario -t copias -p err -o cat`; para `warning` exacto usa el intervalo `warning..warning`; para las últimas de `sshd`, `-t sshd -r -n 3`. Redirige cada salida a su fichero."
+    ],
+    "solution_summary": "`-p err` incluye `err` y todo lo más grave; `-p warning..warning` limita a esa única prioridad. `-t` filtra por etiqueta, `-r -n 3` da las tres más recientes en orden inverso y `-o cat` imprime solo el mensaje. `-D diario` lee el diario copiado sin tocar el del sistema.",
+    "difficulty": "Avanzado",
+    "points": 240,
+    "estimated_min": 10,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "journalctl",
+      "systemd-journald",
+      "prioridades"
+    ],
+    "objetivos_lpi": [
+      "108.2"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [DIAGNÓSTICO] · Se ha traído el diario de systemd de `web01` y hay que extraer tres listados concretos.",
+    "preparar": "B=5f1e2d3c4b5a69788796a5b4c3d2e1f0\nT=1758870000000000\ne(){ T=$((T+60000000)); printf \"__CURSOR=x\\n__REALTIME_TIMESTAMP=%s\\n__MONOTONIC_TIMESTAMP=%s\\n_BOOT_ID=%s\\n_HOSTNAME=web01\\nSYSLOG_IDENTIFIER=%s\\nPRIORITY=%s\\nMESSAGE=%s\\n\\n\" \"$T\" \"$T\" \"$B\" \"$1\" \"$2\" \"$3\"; }\nmkdir diario\n{\n  e copias 6 \"copia iniciada\"\n  e sshd 6 \"Accepted password for ana\"\n  e web 4 \"respuesta lenta en /carrito\"\n  e copias 3 \"disco lleno en /backup\"\n  e sshd 5 \"Failed password for root\"\n  e web 6 \"peticion GET /\"\n  e sshd 4 \"Too many authentication failures\"\n  e copias 2 \"copia abortada\"\n  e web 4 \"certificado caduca en 7 dias\"\n  e sshd 6 \"Disconnected from user ana\"\n} | /usr/lib/systemd/systemd-journal-remote -o \"$RETO/diario/system.journal\" - >/dev/null 2>&1\necho \"diario copiado de la máquina web01 en $RETO/diario ($(journalctl -D diario -q --no-pager | wc -l) entradas)\"",
+    "comprobar": "comprueba \"errores.txt: disco lleno y copia abortada\" bash -c 'diff -q <(printf \"disco lleno en /backup\\ncopia abortada\\n\") errores.txt'\ncomprueba \"avisos.txt: los tres warning, en orden\" bash -c 'diff -q <(printf \"respuesta lenta en /carrito\\nToo many authentication failures\\ncertificado caduca en 7 dias\\n\") avisos.txt'\ncomprueba \"ultimas.txt: las 3 últimas de sshd, de la más nueva a la más vieja\" bash -c 'diff -q <(printf \"Disconnected from user ana\\nToo many authentication failures\\nFailed password for root\\n\") ultimas.txt'"
+  },
+  {
+    "id": "lpic1-aliases",
+    "reto": "r102-aliases",
+    "title": "Alias de correo en /etc/aliases y reenvío personal con ~/.forward",
+    "briefing": "El servidor tiene Postfix (solo correo local) y los usuarios `marta` y `pablo`. Te piden (con `sudo`):\n1. En `/etc/aliases` añade el alias `soporte`, que reparte el correo entre `marta` y `pablo`, y el alias `webmaster`, que lo envía a `root`.\n2. Haz que el MTA vea los cambios: reconstruye la base de datos de alias.\n3. Como usuario `pablo` (`sudo su - pablo`), crea su `~/.forward` para que su correo se reenvíe a `marta`.\nPara verlo: `postalias -q soporte /etc/aliases`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-aliases`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "Los alias son una tabla de texto que el MTA consulta desde una base de datos binaria; editar el texto no basta. El reenvío personal es un fichero en el home de cada usuario.",
+      "Formato: `nombre: destino1, destino2`. Para reconstruir la base hay un comando que empieza por `new`. El `.forward` solo contiene la dirección de destino.",
+      "Añade `soporte: marta, pablo` y `webmaster: root` a `/etc/aliases`, ejecuta `sudo newaliases` y, como `pablo`, `echo marta > ~/.forward`."
+    ],
+    "solution_summary": "Cada alias es `nombre: destinos` en `/etc/aliases`. `newaliases` regenera `aliases.db` para que Postfix lo lea. `~/.forward` de `pablo` contiene `marta` y redirige su correo; debe pertenecer a `pablo`.",
+    "difficulty": "Intermedio",
+    "points": 190,
+    "estimated_min": 8,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "postfix",
+      "aliases",
+      "newaliases",
+      ".forward"
+    ],
+    "objetivos_lpi": [
+      "108.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [CORREO] · Hay que repartir el correo de soporte entre dos personas y redirigir el de un usuario.",
+    "preparar": "userdel -r marta 2>/dev/null || true; userdel -r pablo 2>/dev/null || true\nuseradd -m -s /bin/bash marta; useradd -m -s /bin/bash pablo\nsed -i '/^soporte:/d; /^webmaster:/d' /etc/aliases\nnewaliases\necho \"Postfix listo; /etc/aliases sin soporte ni webmaster\"",
+    "comprobar": "comprueba \"/etc/aliases tiene soporte: marta, pablo\" bash -c 'grep -Eq \"^soporte:[[:space:]]*(marta[[:space:]]*,[[:space:]]*pablo|pablo[[:space:]]*,[[:space:]]*marta)[[:space:]]*$\" /etc/aliases'\ncomprueba \"/etc/aliases tiene webmaster: root\" grep -Eq \"^webmaster:[[:space:]]*root[[:space:]]*$\" /etc/aliases\ncomprueba \"la base de alias ya conoce soporte (newaliases hecho)\" bash -c 'r=$(postalias -q soporte /etc/aliases) && echo \"$r\" | grep -q marta && echo \"$r\" | grep -q pablo'\ncomprueba \"la base de alias ya conoce webmaster\" bash -c '[ \"$(postalias -q webmaster /etc/aliases)\" = root ]'\ncomprueba \"/home/pablo/.forward es de pablo y reenvía a marta\" bash -c '[ \"$(stat -c %U /home/pablo/.forward)\" = pablo ] && grep -Eq \"^[[:space:]]*marta(@[^[:space:]]+)?[[:space:]]*$\" /home/pablo/.forward'"
+  },
+  {
+    "id": "lpic1-ssh-claves",
+    "reto": "r102-ssh-claves",
+    "title": "Claves SSH de alumno, permisos estrictos y bloque de configuración",
+    "briefing": "Te piden preparar el SSH de tu usuario `alumno`, que parte con un `~/.ssh` vacío:\n1. En `/home/alumno/.ssh`, genera un par de claves de tipo ed25519 llamado `id_ed25519`, sin contraseña.\n2. Fija los permisos estrictos que exige SSH: `/home/alumno/.ssh` con `700` y la clave privada `id_ed25519` con `600`.\n3. Copia el contenido de `id_ed25519.pub` a `/home/alumno/.ssh/authorized_keys` y dale permisos `600`.\n4. Crea `/home/alumno/.ssh/config` con permisos `600` y un bloque para el host `servidor-lab` con `HostName 10.0.0.50`, `User operador` y `Port 2222`.\nTu terminal se abre en el directorio del reto (`/home/alumno/retos/r102-ssh-claves`); los ficheros que se piden sin ruta van ahí.",
+    "hints": [
+      "SSH rechaza claves y ficheros con permisos demasiado abiertos. Son cuatro piezas: el par de claves, la carpeta, quién puede entrar y el atajo del cliente.",
+      "`ssh-keygen` pide el tipo, la frase y el fichero de salida por opciones. En `config` cada bloque empieza por `Host` y sus opciones van debajo, una por línea.",
+      "`ssh-keygen -t ed25519 -N \"\" -f ~/.ssh/id_ed25519`; `chmod 700 ~/.ssh`; `chmod 600` en la privada, en `authorized_keys` y en `config`; el bloque lleva `Host servidor-lab`, `HostName`, `User` y `Port`."
+    ],
+    "solution_summary": "`ssh-keygen -t ed25519 -N \"\" -f …/id_ed25519` crea el par. SSH exige `700` en `.ssh` y `600` en la privada, en `authorized_keys` y en `config`. La pública copiada en `authorized_keys` permite entrar con esa clave, y el bloque `Host servidor-lab` define destino, usuario y puerto.",
+    "difficulty": "Intermedio",
+    "points": 170,
+    "estimated_min": 7,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "tags": [
+      "ssh",
+      "ssh-keygen",
+      "authorized_keys",
+      "permisos"
+    ],
+    "objetivos_lpi": [
+      "110.3"
+    ],
+    "category": "LPIC-1 · 102-500",
+    "blind_alert": "PETICIÓN [ACCESO SSH] · Hay que dejar listas las claves de `alumno` con los permisos que exige SSH y un atajo al servidor del laboratorio.",
+    "preparar": "rm -rf /home/alumno/.ssh\nmkdir -p /home/alumno/.ssh\nchown alumno:alumno /home/alumno/.ssh\necho \"entorno ssh limpio\"",
+    "comprobar": "comprueba \"directorio ~/.ssh tiene permisos 700\" bash -c '[ \"$(stat -c %a /home/alumno/.ssh)\" = \"700\" ]'\ncomprueba \"clave privada id_ed25519 existe con permisos 600\" bash -c '[ -f /home/alumno/.ssh/id_ed25519 ] && [ \"$(stat -c %a /home/alumno/.ssh/id_ed25519)\" = \"600\" ]'\ncomprueba \"clave pública id_ed25519.pub es de tipo ed25519\" bash -c 'grep -q \"^ssh-ed25519 \" /home/alumno/.ssh/id_ed25519.pub'\ncomprueba \"authorized_keys contiene la clave pública y tiene permisos 600\" bash -c '[ \"$(stat -c %a /home/alumno/.ssh/authorized_keys)\" = \"600\" ] && grep -q \"^ssh-ed25519 \" /home/alumno/.ssh/authorized_keys'\ncomprueba \"config define el host servidor-lab con HostName, User y Port\" bash -c 'grep -qi \"Host servidor-lab\" /home/alumno/.ssh/config && grep -qi \"HostName 10.0.0.50\" /home/alumno/.ssh/config && grep -qi \"User operador\" /home/alumno/.ssh/config && grep -qi \"Port 2222\" /home/alumno/.ssh/config && [ \"$(stat -c %a /home/alumno/.ssh/config)\" = \"600\" ]'"
+  }
+]

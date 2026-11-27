@@ -27,6 +27,21 @@ def _set_winsize(fd: int, rows: int, cols: int) -> None:
     fcntl.ioctl(fd, termios.TIOCSWINSZ, winsize)
 
 
+def build_exec_cmd(node_info: dict[str, Any], ps1: str, exec_args: list[str]) -> list[str]:
+    """Comando `exec` de la terminal del jugador; abre en `workdir` si el nodo lo declara."""
+    cmd = [RUNTIME, "exec", "-it", "--user", node_info.get("default_user", "root")]
+    if node_info.get("workdir"):
+        cmd.extend(["-w", node_info["workdir"]])
+    cmd.extend([
+        "-e", "TERM=xterm-256color",
+        "-e", "COLORTERM=truecolor",
+        "-e", f"PS1={ps1}",
+        node_info["container"],
+        *exec_args,
+    ])
+    return cmd
+
+
 async def stream_container_pty(
     websocket: WebSocket,
     node_info: dict[str, Any],
@@ -50,21 +65,7 @@ async def stream_container_pty(
         ps1 = f"[chaos:{role}] \\w # "
         exec_args = [shell, "-i"]
 
-    cmd = [
-        RUNTIME,
-        "exec",
-        "-it",
-        "--user",
-        user,
-        "-e",
-        "TERM=xterm-256color",
-        "-e",
-        "COLORTERM=truecolor",
-        "-e",
-        f"PS1={ps1}",
-        container,
-        *exec_args,
-    ]
+    cmd = build_exec_cmd(node_info, ps1, exec_args)
 
     try:
         proc = subprocess.Popen(

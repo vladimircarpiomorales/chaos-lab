@@ -253,6 +253,8 @@ html, body {
 .badge-cat { background: var(--bg-3); color: var(--text-dim); }
 .badge-seed { background: var(--bg-3); color: var(--accent-2); font-family: var(--font-mono); }
 .badge-solved { background: var(--green-soft); color: var(--green); font-family: var(--font-mono); }
+.tipo-averia { background: var(--red-soft); color: var(--red); }
+.tipo-tarea { background: var(--accent-soft); color: var(--accent); }
 
 /* Historial */
 .history-drawer {

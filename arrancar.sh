@@ -29,7 +29,7 @@ parar() {
     curl -sf -X POST --max-time 4 "${URL}api/lab/stop" >/dev/null 2>&1 || true
     fuser -k "${PUERTO}/tcp" >/dev/null 2>&1 || pkill -f "chaos_lab\.server" 2>/dev/null || true
     "$RT" ps -aq --filter "name=^chaoslab-" 2>/dev/null | xargs -r "$RT" rm -f >/dev/null 2>&1 || true
-    "$RT" network rm chaoslab-net >/dev/null 2>&1 || true
+    "$RT" network ls --format '{{.Name}}' 2>/dev/null | grep '^chaoslab-' | xargs -r "$RT" network rm >/dev/null 2>&1 || true
 }
 
 ACCION="${1:-}"

@@ -10,6 +10,8 @@ import datetime
 import json
 import os
 import random
+import re
+import shlex
 import subprocess
 import threading
 import time
@@ -36,6 +38,10 @@ IMAGE_CANDIDATES: dict[str, list[str]] = {
         "localhost/chaos-debian:1",
         "docker.io/library/debian:trixie",
     ],
+    "lpic-debian": [
+        "localhost/chaos-lpic-debian:1",
+        "docker.io/library/debian:trixie",
+    ],
     "rocky": [
         "localhost/chaos-rocky:1",
         "docker.io/rockylinux/rockylinux:9",
@@ -54,13 +60,14 @@ IMAGE_CANDIDATES: dict[str, list[str]] = {
 }
 
 
-def _run_cmd(args: list[str], timeout: int = 30) -> tuple[int, str]:
+def _run_cmd(args: list[str], timeout: int = 30, input_text: str | None = None) -> tuple[int, str]:
     try:
         proc = subprocess.run(
             args,
             capture_output=True,
             text=True,
             timeout=timeout,
+            input=input_text,
         )
         out = (proc.stdout or "") + (proc.stderr or "")
         return proc.returncode, out.strip()
@@ -69,6 +76,126 @@ def _run_cmd(args: list[str], timeout: int = 30) -> tuple[int, str]:
     except Exception as exc:
         return 1, str(exc)
 
+
+
+# -------------------- Redes, IPs y corrector por script (funciones puras, fáciles de probar) --------------------
+
+NETWORK_PREFIX = "chaoslab-"
+
+# Preámbulo que se antepone a todo check_script
+CHECK_PREAMBLE = (
+    "ok()  { printf '✔ %s\\n' \"$1\"; }\n"
+    "mal() { printf '✘ %s\\n' \"$1\"; }\n"
+    "comprueba() { local d=\"$1\"; shift; if \"$@\" >/dev/null 2>&1; then ok \"$d\"; else mal \"$d\"; fi; }\n"
+)
+CHECK_SCRIPT_TIMEOUT = 60
+CHECK_EMPTY_LABEL = "El corrector no devolvió resultados"
+CHECK_NO_CWD_LABEL = "Falta el directorio de trabajo"
+
+
+def _env_name(text: str) -> str:
+    """Nombre de variable de entorno: mayúsculas y guiones -> _."""
+    return text.upper().replace("-", "_")
+
+
+def _plan_networks(inst: dict[str, Any]) -> tuple[list[str], dict[str, list[str]]]:
+    """Redes reales a crear y redes de cada nodo (nombres reales `chaoslab-<corto>`).
+
+    Sin `networks` en el escenario: comportamiento clásico (chaoslab-net si hay más de 1 nodo, ninguna con 1).
+    """
+    nodes = inst["nodes"]
+    declared = inst.get("networks")
+    if not declared:
+        if len(nodes) > 1:
+            return [NETWORK_NAME], {n["role"]: [NETWORK_NAME] for n in nodes}
+        return [], {n["role"]: [] for n in nodes}
+    nets = [f"{NETWORK_PREFIX}{short}" for short in declared]
+    per_node: dict[str, list[str]] = {}
+    for n in nodes:
+        wanted = n.get("networks") or [declared[0]]
+        per_node[n["role"]] = [f"{NETWORK_PREFIX}{short}" for short in wanted]
+    return nets, per_node
+
+
+def _build_run_cmd(n: dict[str, Any], cname: str, image: str, nets: list[str]) -> list[str]:
+    """Comando `run` de un nodo: arranca en su primera red; las demás se conectan después."""
+    role = n["role"]
+    cmd = [RUNTIME, "run", "-d", "--rm", "--user", "root", "--name", cname,
+           "--hostname", role, "--memory", "384m"]
+    if nets:
+        cmd.extend(["--network", nets[0], "--network-alias", role])
+    for cap in n.get("caps", []):
+        cmd.extend(["--cap-add", cap])
+    for sk, sv in (n.get("sysctls") or {}).items():
+        cmd.extend(["--sysctl", f"{sk}={sv}"])
+    cmd.extend([image, "sh", "-c", "trap : TERM INT; while true; do sleep 30; done"])
+    return cmd
+
+
+def _connect_cmds(role: str, cname: str, nets: list[str]) -> list[list[str]]:
+    """`network connect` para las redes adicionales (valen igual en Podman y Docker)."""
+    return [[RUNTIME, "network", "connect", "--alias", role, net, cname] for net in nets[1:]]
+
+
+def _parse_net_ips(inspect_json: str, nets: list[str]) -> dict[str, str]:
+    """IP del contenedor en cada red, a partir de `inspect -f {{json .NetworkSettings.Networks}}`.
+
+    Devuelve {nombre real de red: ip}. En Docker y Podman la clave es el nombre de la red; si por algún
+    motivo no coincide (p. ej. Podman con un id), se reparten por orden las IPs no asignadas.
+    """
+    try:
+        data = json.loads(inspect_json) or {}
+    except Exception:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    found: dict[str, str] = {}
+    for net in nets:
+        entry = data.get(net)
+        ip = (entry or {}).get("IPAddress") if isinstance(entry, dict) else None
+        if ip:
+            found[net] = ip
+    if len(found) < len(nets):
+        rest = [
+            v.get("IPAddress") for k, v in data.items()
+            if isinstance(v, dict) and k not in nets and v.get("IPAddress")
+        ]
+        for net in nets:
+            if net not in found and rest:
+                found[net] = rest.pop(0)
+    return found
+
+
+def _short_net(net: str) -> str:
+    return net[len(NETWORK_PREFIX):] if net.startswith(NETWORK_PREFIX) else net
+
+
+def _build_check_script(cs: dict[str, Any]) -> str:
+    """Texto completo que se pasa por stdin a `bash -s`: preámbulo + (cd) + script del escenario."""
+    parts = [CHECK_PREAMBLE, ". /etc/chaos_nodes.env 2>/dev/null\n"]
+    cwd = cs.get("cwd")
+    if cwd:
+        parts.append(f"cd {shlex.quote(cwd)} 2>/dev/null || {{ mal {shlex.quote(CHECK_NO_CWD_LABEL)}; exit 0; }}\n")
+    parts.append(cs.get("script", ""))
+    parts.append("\n")
+    return "".join(parts)
+
+
+def _parse_check_output(out: str, node: str) -> list[dict[str, Any]]:
+    """Líneas ✔/✘ en orden -> sondas c1, c2… Sin ninguna, una sonda fallida (nunca resuelto por vacío)."""
+    checks: list[dict[str, Any]] = []
+    for line in out.splitlines():
+        line = line.strip()
+        if line[:1] in ("✔", "✘"):
+            checks.append({
+                "id": f"c{len(checks) + 1}",
+                "label": line[1:].strip(),
+                "node": node,
+                "passed": line[0] == "✔",
+            })
+    if not checks:
+        checks.append({"id": "c1", "label": CHECK_EMPTY_LABEL, "node": node, "passed": False})
+    return checks
 
 
 def _public_topology(topo, blind: bool):
@@ -163,7 +290,14 @@ class ChaosEngine:
             names = [n.strip() for n in out.splitlines() if n.strip()]
             if names:
                 _run_cmd([RUNTIME, "rm", "-f", *names], timeout=20)
-        _run_cmd([RUNTIME, "network", "rm", "-f", NETWORK_NAME], timeout=10)
+        rc_n, out_n = _run_cmd([RUNTIME, "network", "ls", "--format", "{{.Name}}"], timeout=10)
+        nets = []
+        if rc_n == 0 and out_n:
+            nets = [n.strip() for n in out_n.splitlines() if n.strip().startswith(NETWORK_PREFIX)]
+        if NETWORK_NAME not in nets:
+            nets.append(NETWORK_NAME)
+        for net in nets:
+            _run_cmd([RUNTIME, "network", "rm", "-f", net], timeout=10)
 
     def stop_active(self) -> dict[str, Any]:
         with self._lock:
@@ -195,6 +329,7 @@ class ChaosEngine:
                         "tags": item["tags"],
                         "certs": item.get("certs", []),
                         "briefing": item["briefing"],
+                        "tipo": item.get("tipo", "averia"),
                         "node_count": len(sample["nodes"]),
                         "nodes": [n["role"] for n in sample["nodes"]],
                         "solved": bool(s_info),
@@ -224,7 +359,7 @@ class ChaosEngine:
             revealed_hints = inst["hints"][: act["hints_used"]]
 
             checks_view = []
-            for idx, chk in enumerate(inst["checks"], start=1):
+            for idx, chk in enumerate(inst.get("checks", []), start=1):
                 last_ok = act["last_check_map"].get(chk["id"], False)
                 checks_view.append(
                     {
@@ -243,6 +378,7 @@ class ChaosEngine:
                 "category": "Modo Guardia 3:00 AM" if blind else inst["category"],
                 "difficulty": inst["difficulty"],
                 "points": int(inst["points"] * 1.25) if act["blind_mode"] else inst["points"],
+                "tipo": inst.get("tipo", "averia"),
                 "blind_mode": act["blind_mode"],
                 "blind_masked": blind,
                 "seed": inst["seed"],
@@ -262,9 +398,15 @@ class ChaosEngine:
                         "distro": n["distro"],
                         "image": n["image"],
                         "ip": n.get("ip", "127.0.0.1"),
+                        "ips": n.get("ips", {}),
+                        "workdir": n.get("workdir"),
                         "shell": n["shell"],
                         "tools": n.get("tools", []),
-                        "cli_attach": f"{RUNTIME} exec -it --user {n['default_user']} {n['container']} {n['shell']}",
+                        "cli_attach": (
+                            f"{RUNTIME} exec -it --user {n['default_user']}"
+                            + (f" -w {shlex.quote(n['workdir'])}" if n.get("workdir") else "")
+                            + f" {n['container']} {n['shell']}"
+                        ),
                     }
                     for n in act["nodes_runtime"]
                 ],
@@ -303,12 +445,13 @@ class ChaosEngine:
             self._local_images(refresh=True)
 
             inst = instantiate_scenario(scenario_id, seed=seed)
-            multi_node = len(inst["nodes"]) > 1
+            all_nets, nets_by_role = _plan_networks(inst)
 
-            if multi_node:
-                rc_net, out_net = _run_cmd([RUNTIME, "network", "create", NETWORK_NAME], timeout=12)
+            for net in all_nets:
+                rc_net, out_net = _run_cmd([RUNTIME, "network", "create", net], timeout=12)
                 if rc_net != 0:
-                    return {"ok": False, "error": f"No se pudo crear la red {RUNTIME} ({NETWORK_NAME}): {out_net}"}
+                    self.cleanup_containers()
+                    return {"ok": False, "error": f"No se pudo crear la red {RUNTIME} ({net}): {out_net}"}
 
             nodes_runtime: list[dict[str, Any]] = []
             session_id = f"{int(time.time())}-{inst['seed']}"
@@ -318,35 +461,8 @@ class ChaosEngine:
                 cname = f"{CONTAINER_PREFIX}{role}"
                 image = self.resolve_image(n["distro"])
 
-                cmd = [
-                    RUNTIME,
-                    "run",
-                    "-d",
-                    "--rm",
-                    "--user",
-                    "root",
-                    "--name",
-                    cname,
-                    "--hostname",
-                    role,
-                    "--memory",
-                    "384m",
-                ]
-                if multi_node:
-                    cmd.extend(["--network", NETWORK_NAME, "--network-alias", role])
-                for cap in n.get("caps", []):
-                    cmd.extend(["--cap-add", cap])
-                for sk, sv in (n.get("sysctls") or {}).items():
-                    cmd.extend(["--sysctl", f"{sk}={sv}"])
-
-                cmd.extend(
-                    [
-                        image,
-                        "sh",
-                        "-c",
-                        "trap : TERM INT; while true; do sleep 30; done",
-                    ]
-                )
+                nets = nets_by_role.get(role, [])
+                cmd = _build_run_cmd(n, cname, image, nets)
 
                 rc_run, out_run = _run_cmd(cmd, timeout=35)
                 if rc_run != 0:
@@ -356,20 +472,31 @@ class ChaosEngine:
                         "error": f"Fallo al arrancar nodo '{role}' ({image}): {out_run[:260]}",
                     }
 
+                connect_err = None
+                for ccmd in _connect_cmds(role, cname, nets):
+                    rc_c, out_c = _run_cmd(ccmd, timeout=15)
+                    if rc_c != 0:
+                        connect_err = out_c
+                        break
+                if connect_err is not None:
+                    self.cleanup_containers()
+                    return {
+                        "ok": False,
+                        "error": f"No se pudo conectar el nodo '{role}' a sus redes: {connect_err[:260]}",
+                    }
+
                 ip_addr = "127.0.0.1"
-                if multi_node:
+                ips: dict[str, str] = {}
+                if nets:
                     rc_ip, out_ip = _run_cmd(
-                        [
-                            RUNTIME,
-                            "inspect",
-                            "-f",
-                            "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-                            cname,
-                        ],
+                        [RUNTIME, "inspect", "-f", "{{json .NetworkSettings.Networks}}", cname],
                         timeout=8,
                     )
-                    if rc_ip == 0 and out_ip.strip():
-                        ip_addr = out_ip.strip()
+                    if rc_ip == 0:
+                        by_net = _parse_net_ips(out_ip, nets)
+                        ips = {_short_net(net): ip for net, ip in by_net.items()}
+                        if nets[0] in by_net:
+                            ip_addr = by_net[nets[0]]
 
                 nodes_runtime.append(
                     {
@@ -380,15 +507,19 @@ class ChaosEngine:
                         "shell": n.get("shell", "/bin/sh"),
                         "default_user": n.get("default_user", "root"),
                         "ip": ip_addr,
+                        "ips": ips,
+                        "workdir": n.get("workdir"),
                         "setup_sh": n["setup_sh"],
                     }
                 )
 
             # Escribir /etc/chaos_nodes.env en cada contenedor y configurar prompt claro
-            env_lines = [
-                f"IP_{nr['role'].upper().replace('-', '_')}={nr['ip']}"
-                for nr in nodes_runtime
-            ]
+            env_lines = []
+            for nr in nodes_runtime:
+                base = f"IP_{_env_name(nr['role'])}"
+                env_lines.append(f"{base}={nr['ip']}")
+                for short, ip in nr.get("ips", {}).items():
+                    env_lines.append(f"{base}_{_env_name(short)}={ip}")
             env_payload = "\n".join(env_lines) + "\n"
 
             # Los escenarios SecOps instalan sshd/rsyslog con apt dentro del contenedor: más margen
@@ -421,6 +552,10 @@ class ChaosEngine:
                     }
                 nr["tools"] = self._probe_tools(nr["container"])
 
+            # Corrector por script: una primera ejecución para conocer las etiquetas (el jugador empieza en rojo)
+            if inst.get("check_script"):
+                inst["checks"] = self._run_check_script(inst["check_script"], nodes_runtime)
+
             self.active = {
                 "id": inst["id"],
                 "session_id": session_id,
@@ -432,7 +567,7 @@ class ChaosEngine:
                 "solved": False,
                 "solved_elapsed_s": 0,
                 "hints_used": 0,
-                "last_check_map": {c["id"]: False for c in inst["checks"]},
+                "last_check_map": {c["id"]: False for c in inst.get("checks", [])},
                 "transcript": [],  # comandos capturados para el mentor/post-mortem
                 "timeline": [],  # señales correlacionadas de la alerta (solo escenarios sec-* en Guardia)
             }
@@ -490,6 +625,19 @@ class ChaosEngine:
 
     # -------------------- Verificación Multi-Check --------------------
 
+    def _run_check_script(self, cs: dict[str, Any], nodes_runtime: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Ejecuta el corrector una vez (bash -s por stdin, como root) y devuelve las sondas con su estado."""
+        role = cs.get("node") or (nodes_runtime[0]["role"] if nodes_runtime else "")
+        nr = next((n for n in nodes_runtime if n["role"] == role), None)
+        if nr is None:
+            return [{"id": "c1", "label": CHECK_EMPTY_LABEL, "node": role, "passed": False}]
+        _rc, out = _run_cmd(
+            [RUNTIME, "exec", "-i", "--user", "root", nr["container"], "bash", "-s"],
+            timeout=CHECK_SCRIPT_TIMEOUT,
+            input_text=_build_check_script(cs),
+        )
+        return _parse_check_output(out, role)
+
     def verify(self) -> dict[str, Any]:
         with self._lock:
             if not self.active:
@@ -500,7 +648,13 @@ class ChaosEngine:
             node_by_role = {n["role"]: n for n in act["nodes_runtime"]}
 
             passed_count = 0
-            for chk in inst["checks"]:
+            if inst.get("check_script"):
+                # Se reejecuta el script: manda lo último (etiquetas y estados)
+                fresh = self._run_check_script(inst["check_script"], act["nodes_runtime"])
+                inst["checks"] = [{k: v for k, v in c.items() if k != "passed"} for c in fresh]
+                act["last_check_map"] = {c["id"]: c["passed"] for c in fresh}
+                passed_count = sum(1 for c in fresh if c["passed"])
+            for chk in ([] if inst.get("check_script") else inst.get("checks", [])):
                 nr = node_by_role[chk["node"]]
                 shell_bin = nr["shell"]
                 rc, _out = _run_cmd(
@@ -519,8 +673,8 @@ class ChaosEngine:
                 if is_ok:
                     passed_count += 1
 
-            total_checks = len(inst["checks"])
-            all_passed = passed_count == total_checks
+            total_checks = len(inst.get("checks", []))
+            all_passed = total_checks > 0 and passed_count == total_checks
 
             if all_passed and not act["solved"]:
                 elapsed = max(1, int(time.time() - act["started_at"]))

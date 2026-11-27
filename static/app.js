@@ -145,6 +145,8 @@ function renderScenarioList() {
     if (state.filter === "Intermedio" && sc.difficulty !== "Intermedio") return false;
     if (state.filter === "Avanzado" && !["Avanzado", "Experto"].includes(sc.difficulty)) return false;
     if (state.filter === "pending" && sc.solved) return false;
+    if (state.filter === "averia" && (sc.tipo || "averia") !== "averia") return false;
+    if (state.filter === "tarea" && sc.tipo !== "tarea") return false;
     if (state.category && sc.category !== state.category) return false;
     if (state.cert && !(sc.certs || []).includes(state.cert)) return false;
 
@@ -178,6 +180,7 @@ function renderScenarioList() {
         </div>
         <div class="sc-meta">
           <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(sc.difficulty)}</span>
+          <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${sc.tipo === "tarea" ? "📋 Tarea" : "🔧 Avería"}</span>
           <span>⚡ ${sc.points} XP</span>
           <span>·</span>
           <span>🖧 ${sc.node_count} ${sc.node_count > 1 ? "nodos" : "nodo"}</span>
@@ -428,26 +431,33 @@ function renderTopology(active) {
   const W = 190, H = 78, EW = 110, PAD = 6, TOP = 12;
   const gapFor = (txt) => Math.max(80, (txt || "").length * 6.7 + 24);
 
-  // Columnas: [entrada] → nodos en el orden del esquema
-  const cols = [];
-  let x = PAD;
+  // Colocación: una fila si hay hasta 4 nodos; con más, rejilla de varias filas (la entrada va en la primera)
+  const ROWGAP = 56;                       // hueco vertical entre filas (enlaces entre filas)
+  const perRow = roles.length > 4 ? Math.ceil(roles.length / Math.ceil(roles.length / 3)) : roles.length;
+  const rows = Math.max(1, Math.ceil(roles.length / perRow));
   const linkVia = {};
   (topo.links || []).forEach((l) => { linkVia[l.from + ">" + l.to] = l.via || ""; });
-  if (topo.entry) {
-    cols.push({ kind: "entry", x, w: EW });
-    x += EW + gapFor(topo.entry.via);
+  const cols = [];
+  let width = 0;
+  for (let r = 0; r < rows; r++) {
+    let x = PAD;
+    if (r === 0 && topo.entry) {
+      cols.push({ kind: "entry", x, w: EW });
+      x += EW + gapFor(topo.entry.via);
+    }
+    const rowRoles = roles.slice(r * perRow, (r + 1) * perRow);
+    rowRoles.forEach((role, i) => {
+      // La caja se ensancha si el texto de «qué corre» no cabe en el ancho base
+      const w = Math.max(W, Math.ceil(((topo.nodes[role] || {}).runs || "").length * 6.4 + 28));
+      cols.push({ kind: "node", role, x, w, row: r, y: TOP + r * (H + ROWGAP) });
+      const next = rowRoles[i + 1];
+      x += w + (next ? gapFor(linkVia[role + ">" + next]) : 0);
+    });
+    width = Math.max(width, x + PAD);
   }
-  roles.forEach((r, i) => {
-    // La caja se ensancha si el texto de «qué corre» no cabe en el ancho base
-    const w = Math.max(W, Math.ceil(((topo.nodes[r] || {}).runs || "").length * 6.4 + 28));
-    cols.push({ kind: "node", role: r, x, w });
-    const next = roles[i + 1];
-    x += w + (next ? gapFor(linkVia[r + ">" + next]) : 0);
-  });
-  const width = x + PAD;
   const pos = Object.fromEntries(cols.filter((c) => c.kind === "node").map((c) => [c.role, c]));
-  const hasBack = (topo.links || []).some((l) => pos[l.from] && pos[l.to] && pos[l.to].x <= pos[l.from].x);
-  const height = TOP + H + (hasBack ? 52 : 26);
+  const hasBack = (topo.links || []).some((l) => pos[l.from] && pos[l.to] && pos[l.from].row === pos[l.to].row && pos[l.to].x <= pos[l.from].x);
+  const height = TOP + rows * H + (rows - 1) * ROWGAP + (hasBack ? 52 : 26);
 
   const arrow = (x1, x2, y, via, st, key) => {
     const cls = st ? ` st-${st}` : "";
@@ -472,11 +482,22 @@ function renderTopology(active) {
     const a = pos[l.from], b = pos[l.to];
     if (!a || !b) return;
     const st = topoStatus(active, `link:${i}`);
-    if (b.x > a.x) {
-      svg += arrow(a.x + a.w, b.x, cy, l.via, st, `link:${i}`);
+    if (a.row !== b.row) {
+      // Enlace entre filas: línea recta del borde inferior/superior de una caja a la otra
+      const down = b.row > a.row;
+      const cls = st ? ` st-${st}` : "";
+      const x1 = a.x + a.w / 2, x2 = b.x + b.w / 2;
+      const y1 = down ? a.y + H : a.y, y2 = down ? b.y - 9 : b.y + H + 9;
+      const my = (y1 + y2) / 2, mx = (x1 + x2) / 2;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" class="topo-link${cls}" data-k="link:${i}"/>`;
+      svg += `<path d="M${x2 - 5},${down ? y2 - 2 : y2 + 2} L${x2},${down ? y2 + 9 : y2 - 9} L${x2 + 5},${down ? y2 - 2 : y2 + 2} Z" class="topo-arrow${cls}"/>`;
+      if (l.via) svg += svgText(mx + 6, my + 4, "topo-via", l.via, "start");
+      if (st) svg += svgText(mx - 6, my + 4, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗", "end");
+    } else if (b.x > a.x) {
+      svg += arrow(a.x + a.w, b.x, a.y + H / 2, l.via, st, `link:${i}`);
     } else {
       // Enlace hacia atrás (p. ej. dos clientes hacia el mismo servidor): curva por debajo con punta, texto y estado
-      const y0 = TOP + H, yb = TOP + H + 30;
+      const y0 = a.y + H, yb = a.y + H + 30;
       const cls = st ? ` st-${st}` : "";
       const x1 = a.x + 30, x2 = b.x + b.w - 30, mid = (x1 + x2) / 2;
       svg += `<path d="M${x1},${y0} C${x1},${yb} ${x2},${yb} ${x2},${y0 + 9}" class="topo-link${cls}" fill="none" data-k="link:${i}"/>`;
@@ -490,16 +511,16 @@ function renderTopology(active) {
     const st = topoStatus(active, `node:${c.role}`);
     const isActive = state.activeNodeRole === c.role;
     svg += `<g class="topo-node${st ? " st-" + st : ""}${isActive ? " is-active" : ""}" data-role="${escapeHtml(c.role)}">` +
-      `<rect x="${c.x}" y="${TOP}" width="${c.w}" height="${H}" rx="10" class="topo-box"/>` +
-      svgText(c.x + 14, TOP + 24, "topo-name", c.role, "start") +
-      svgText(c.x + 14, TOP + 42, "topo-ip", ipOf[c.role] || "", "start") +
-      (info.runs ? svgText(c.x + 14, TOP + 62, "topo-runs", info.runs, "start") : "") +
-      (st ? svgText(c.x + c.w - 14, TOP + 24, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗", "end") : "") +
+      `<rect x="${c.x}" y="${c.y}" width="${c.w}" height="${H}" rx="10" class="topo-box"/>` +
+      svgText(c.x + 14, c.y + 24, "topo-name", c.role, "start") +
+      svgText(c.x + 14, c.y + 42, "topo-ip", ipOf[c.role] || "", "start") +
+      (info.runs ? svgText(c.x + 14, c.y + 62, "topo-runs", info.runs, "start") : "") +
+      (st ? svgText(c.x + c.w - 14, c.y + 24, `topo-badge st-${st}`, st === "ok" ? "✓" : "✗", "end") : "") +
       `</g>`;
   });
 
   $("topo-body").innerHTML =
-    `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="xMinYMid meet" role="img" aria-label="Esquema de la topología">${svg}</svg>`;
+    `<svg viewBox="0 0 ${width} ${height}" style="max-height:${150 * rows}px" preserveAspectRatio="xMinYMid meet" role="img" aria-label="Esquema de la topología">${svg}</svg>`;
   $("topo-body").querySelectorAll(".topo-node").forEach((g) => {
     g.addEventListener("click", () => selectNodeTab(g.dataset.role));
   });

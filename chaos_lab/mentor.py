@@ -189,7 +189,7 @@ def build_postmortem_markdown(active: dict[str, Any]) -> str:
     )
     checks_md = "\n".join(
         f"- [{'x' if active['last_check_map'].get(c['id']) else ' '}] **{c['node']}**: {c['label']}"
-        for c in inst["checks"]
+        for c in inst.get("checks", [])
     )
     transcript = active.get("transcript", [])
     if transcript:
