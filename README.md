@@ -95,7 +95,7 @@ Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`, `chao
 
 - El servidor escucha **solo en `127.0.0.1`**. No lo expongas a la red: da una shell root dentro de los contenedores a quien abra la página.
 - Rechaza (403, o cierre 1008 en el WebSocket) las peticiones que llegan desde **otra web** abierta en tu navegador (cabecera `Origin` distinta) y las que traen un `Host` desconocido (DNS rebinding). Si de verdad necesitas entrar por otro nombre o IP (p. ej. Tailscale), añádelo en `CHAOS_ALLOWED_HOSTS`.
-- Los contenedores corren como **root dentro del contenedor** (rootless desde fuera con Podman; con Docker, según tu instalación) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red.
+- Los contenedores corren como **root dentro del contenedor** (rootless desde fuera con Podman; con Docker, según tu instalación) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red. Los routers del reto de OSPF piden además `SYS_ADMIN` (FRR lo exige para arrancar); con Podman rootless esa capacidad solo vale dentro del espacio de nombres del contenedor.
 - Los nodos con `sysctl_rw` (routers de los labs de redes) llevan `--security-opt systempaths=unconfined` para poder hacer `sysctl -w net.ipv4.ip_forward=1`: dejan `/proc/sys` escribible en ese contenedor (sin `--privileged`; `kernel.*` sigue denegado).
 - Todo ocurre en redes aisladas `chaoslab-*`; `--parar` borra contenedores y redes.
 - El usuario de prácticas `alumno` tiene la contraseña `alumno`: solo existe dentro de los contenedores.

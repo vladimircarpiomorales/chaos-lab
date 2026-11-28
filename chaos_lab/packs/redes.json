@@ -174,5 +174,611 @@
         "script": "comprueba \"en pc1, el nombre web.lab lleva al servidor srv\" bash -c '[ \"$(getent hosts web.lab | awk \"{print \\$1; exit}\")\" = 10.5.3.10 ]'\ncomprueba \"en pc1, curl http://web.lab devuelve «srv OK»\" bash -c 'curl -s -m5 http://web.lab | grep -qx \"srv OK\"'"
       }
     ]
+  },
+  {
+    "id": "red-rutas-basicas",
+    "reto": "red-rutas-basicas",
+    "title": "Dos LAN unidas por un router",
+    "briefing": "Configura el enrutamiento para que `cliente` pueda llegar al servidor web de `web` a través del router `r1`. La red `lan_c` (10.6.1.0/24) une `cliente` y `r1`; la red `lan_s` (10.6.2.0/24) une `r1` y `web`. Las direcciones ya están puestas, pero falta el reenvío y las rutas. Trabaja en los tres nodos como root: `cliente`, `r1` y `web`.",
+    "hints": [
+      "Sigue el camino de un paquete desde `cliente` a `web`: ¿sabe `cliente` a qué puerta de enlace enviar lo que no es de su red? ¿Tiene `r1` activado el reenvío entre sus interfaces? ¿Sabe `web` cómo devolver los paquetes a la red de `cliente`?",
+      "Mira en `cliente` y `web` la tabla de rutas (`ip route`, `ip route get`) y en `r1` el valor de `sysctl net.ipv4.ip_forward`. Las rutas entre redes se añaden con `ip route add <red> via <puerta>`; la puerta es la IP de `r1` en cada red.",
+      "En `r1`: `sysctl -w net.ipv4.ip_forward=1`. En `cliente`: `ip route add 10.6.2.0/24 via 10.6.1.1`. En `web`: `ip route add 10.6.1.0/24 via 10.6.2.1`."
+    ],
+    "solution_summary": "El kernel de Linux no reenvía paquetes entre interfaces si `ip_forward=0`, así que `r1` descarta lo que llega de una red y va a la otra. Cada host solo conoce su red local; para llegar a la otra red necesita una ruta explícita con el siguiente salto. Con el reenvío activado y las dos rutas, la ida y la vuelta funcionan.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 15,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-1"
+    ],
+    "objetivos_lpi": [
+      "109.3"
+    ],
+    "tags": [
+      "ip route",
+      "routing",
+      "ip_forward",
+      "sysctl"
+    ],
+    "category": "LPIC-1 · 102-500 · Redes",
+    "blind_alert": "PETICIÓN [RED] · Configurar enrutamiento entre dos LAN a través de un router Linux.",
+    "redes": [
+      "lan_c",
+      "lan_s"
+    ],
+    "red_modo": "manual",
+    "nodos": [
+      {
+        "role": "cliente",
+        "distro": "redes",
+        "redes": [
+          "lan_c"
+        ],
+        "ips": {
+          "lan_c": "10.6.1.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.6.1.10/24 dev eth0",
+        "runs": "Cliente · red lan_c",
+        "look": [
+          "la tabla de rutas",
+          "la caché ARP"
+        ]
+      },
+      {
+        "role": "r1",
+        "distro": "redes",
+        "redes": [
+          "lan_c",
+          "lan_s"
+        ],
+        "ips": {
+          "lan_c": "10.6.1.1",
+          "lan_s": "10.6.2.1"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "sysctl_rw": true,
+        "preparar": "ip addr add 10.6.1.1/24 dev eth0\nip addr add 10.6.2.1/24 dev eth1\nsysctl -w net.ipv4.ip_forward=0 >/dev/null",
+        "runs": "Router · une lan_c y lan_s",
+        "look": [
+          "el reenvío de paquetes",
+          "la tabla de rutas"
+        ]
+      },
+      {
+        "role": "web",
+        "distro": "redes",
+        "redes": [
+          "lan_s"
+        ],
+        "ips": {
+          "lan_s": "10.6.2.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.6.2.10/24 dev eth0\necho \"web OK\" > /var/www/html/index.html\nnginx",
+        "runs": "Servidor web (nginx) · red lan_s",
+        "look": [
+          "los sockets en escucha",
+          "la tabla de rutas"
+        ]
+      }
+    ],
+    "enlaces": [
+      {
+        "from": "cliente",
+        "to": "r1",
+        "via": "ethernet lan_c"
+      },
+      {
+        "from": "r1",
+        "to": "web",
+        "via": "ethernet lan_s"
+      }
+    ],
+    "comprobar": [
+      {
+        "node": "cliente",
+        "marca": "node:cliente",
+        "script": "comprueba \"cliente alcanza a r1, su vecino directo\" ping -c1 -W2 10.6.1.1\ncomprueba \"cliente sabe llegar a la red de web a través de r1\" bash -c 'ip route get 10.6.2.10 | grep -q \"via 10.6.1.1\"'"
+      },
+      {
+        "node": "r1",
+        "marca": "node:r1",
+        "script": "comprueba \"r1 reenvía paquetes entre sus interfaces\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 1 ]'"
+      },
+      {
+        "node": "web",
+        "marca": "node:web",
+        "script": "comprueba \"web sabe devolver los paquetes a cliente a través de r1\" bash -c 'ip route get 10.6.1.10 | grep -q \"via 10.6.2.1\"'"
+      },
+      {
+        "node": "cliente",
+        "marca": "link:1",
+        "script": "comprueba \"ida y vuelta: cliente hace ping a web\" ping -c1 -W2 10.6.2.10\ncomprueba \"cliente descarga la página de web\" bash -c 'curl -s -m5 http://10.6.2.10/ | grep -qx \"web OK\"'"
+      }
+    ]
+  },
+  {
+    "id": "red-nat-nftables",
+    "reto": "red-nat-nftables",
+    "title": "NAT y firewall con nftables",
+    "briefing": "Configura en `fw` un NAT de salida (masquerade) hacia la red `wan` y un firewall que solo permita el tráfico HTTP saliente desde `pc1`; el ping ICMP debe quedar bloqueado. `pc1` está en `lan` (10.7.1.0/24), `fw` une `lan` y `wan` (10.7.2.0/24), y `ext` es el servidor web en `wan`. Las direcciones y el reenvío ya están puestos. Trabaja en `fw` y comprueba desde `pc1`.",
+    "hints": [
+      "El tráfico de `pc1` hacia `ext` sale de `fw` con el origen de la LAN privada; `ext` no sabe devolverlo. Hay que traducir el origen al salir por `wan` y dejar que conntrack siga la conexión.",
+      "Con nftables: tabla `ip nat` con cadena `postrouting` (type nat hook postrouting priority srcnat) y regla `oifname \"eth1\" masquerade`. Después, tabla `inet filtro` con cadena `forward` (policy drop), regla `ct state established,related accept` y regla para TCP destino 80 desde `lan` a `wan`. Con iptables: `iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE`, `iptables -P FORWARD DROP`, `iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT`, `iptables -A FORWARD -i eth0 -o eth1 -p tcp --dport 80 -j ACCEPT`.",
+      "Comandos concretos con nftables: `nft add table ip nat; nft add chain ip nat postrouting '{ type nat hook postrouting priority srcnat; }'; nft add rule ip nat postrouting oifname \"eth1\" masquerade; nft add table inet filtro; nft add chain inet filtro forward '{ type filter hook forward priority filter; policy drop; }'; nft add rule inet filtro forward ct state established,related accept; nft add rule inet filtro forward iifname \"eth0\" oifname \"eth1\" tcp dport 80 accept`."
+    ],
+    "solution_summary": "Sin NAT, `ext` recibe paquetes con origen 10.7.1.10 y no tiene ruta de vuelta; la masquerade cambia el origen a 10.7.2.1, de modo que `ext` responde a `fw` y conntrack deshace la traducción. El firewall con política drop en forward solo deja pasar las conexiones ya establecidas y el HTTP saliente, bloqueando el ping ICMP.",
+    "difficulty": "Intermedio",
+    "points": 220,
+    "estimated_min": 20,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-2"
+    ],
+    "objetivos_lpi": [
+      "212.1"
+    ],
+    "tags": [
+      "nftables",
+      "iptables",
+      "NAT",
+      "masquerade",
+      "firewall"
+    ],
+    "category": "LPIC-2 · 202-450 · Redes",
+    "blind_alert": "PETICIÓN [RED] · Configurar NAT y firewall para que una LAN salga a Internet solo por HTTP.",
+    "redes": [
+      "lan",
+      "wan"
+    ],
+    "red_modo": "manual",
+    "nodos": [
+      {
+        "role": "pc1",
+        "distro": "redes",
+        "redes": [
+          "lan"
+        ],
+        "ips": {
+          "lan": "10.7.1.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.7.1.10/24 dev eth0\nip route add 10.7.2.0/24 via 10.7.1.1",
+        "runs": "Puesto de trabajo · red lan",
+        "look": [
+          "la tabla de rutas",
+          "el curl hacia ext"
+        ]
+      },
+      {
+        "role": "fw",
+        "distro": "redes",
+        "redes": [
+          "lan",
+          "wan"
+        ],
+        "ips": {
+          "lan": "10.7.1.1",
+          "wan": "10.7.2.1"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "sysctl_rw": true,
+        "preparar": "ip addr add 10.7.1.1/24 dev eth0\nip addr add 10.7.2.1/24 dev eth1\nsysctl -w net.ipv4.ip_forward=1 >/dev/null",
+        "runs": "Firewall/router · une lan y wan",
+        "look": [
+          "las reglas nftables/iptables",
+          "la tabla de rutas"
+        ]
+      },
+      {
+        "role": "ext",
+        "distro": "redes",
+        "redes": [
+          "wan"
+        ],
+        "ips": {
+          "wan": "10.7.2.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.7.2.10/24 dev eth0\necho \"ext OK\" > /var/www/html/index.html\nnginx",
+        "runs": "Servidor web externo · red wan",
+        "look": [
+          "el log de nginx",
+          "los sockets en escucha"
+        ]
+      }
+    ],
+    "enlaces": [
+      {
+        "from": "pc1",
+        "to": "fw",
+        "via": "ethernet lan"
+      },
+      {
+        "from": "fw",
+        "to": "ext",
+        "via": "ethernet wan"
+      }
+    ],
+    "comprobar": [
+      {
+        "node": "pc1",
+        "marca": "node:pc1",
+        "script": "comprueba \"pc1 alcanza a fw, su puerta de enlace\" ping -c1 -W2 10.7.1.1"
+      },
+      {
+        "node": "fw",
+        "marca": "node:fw",
+        "script": "comprueba \"fw reenvía paquetes entre sus interfaces\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 1 ]'"
+      },
+      {
+        "node": "pc1",
+        "marca": "link:0",
+        "script": "comprueba \"pc1 consigue descargar la web de ext\" bash -c 'curl -s -m5 http://10.7.2.10/ | grep -qx \"ext OK\"'"
+      },
+      {
+        "node": "ext",
+        "marca": "node:ext",
+        "script": "comprueba \"ext ve llegar la petición con la IP de fw (masquerade), no con la de pc1\" bash -c 'grep -q \"^10.7.2.1 \" /var/log/nginx/access.log'"
+      },
+      {
+        "node": "pc1",
+        "marca": "link:1",
+        "script": "comprueba \"con el firewall levantado, el ping de pc1 a ext no pasa\" bash -c 'curl -s -m5 -o /dev/null http://10.7.2.10/ && ! ping -c1 -W2 10.7.2.10 >/dev/null 2>&1'"
+      }
+    ]
+  },
+  {
+    "id": "red-ospf-frr",
+    "reto": "red-ospf-frr",
+    "title": "OSPF con FRR entre tres routers",
+    "briefing": "Configura OSPF en los routers `r1`, `r2` y `r3` (área 0) para que las LAN de `h1` (10.8.1.0/24) y `h3` (10.8.3.0/24) se vean entre sí. Las direcciones y el enrutamiento de los hosts ya están puestos; los routers tienen las interfaces y el reenvío, pero no conocen las rutas a las LAN remotas. FRR está instalado pero parado; debes configurarlo y arrancarlo. Trabaja en los routers en modo `vtysh` o editando `/etc/frr/frr.conf`; usa `h1` y `h3` para probar.",
+    "hints": [
+      "OSPF necesita que `ospfd` esté activo en `/etc/frr/daemons` y que la configuración (`/etc/frr/frr.conf`) declare las redes en el área 0. Cada router debe anunciar sus redes directamente conectadas.",
+      "En `vtysh`: `conf t`, `router ospf`, `network <red> area 0`, `passive-interface` en las LAN hacia hosts. Reinicia con `/usr/lib/frr/frrinit.sh start`. Para comprobar, `show ip ospf neighbor` debe mostrar estado `Full` y `show ip route ospf` las rutas con código `O`.",
+      "Configuración mínima: en `r1`, redes 10.8.1.0/24, 10.8.12.0/30, 10.8.13.0/30; en `r2`, 10.8.12.0/30, 10.8.23.0/30; en `r3`, 10.8.3.0/24, 10.8.13.0/30, 10.8.23.0/30. Todas en área 0; en r1 y r3, `passive-interface` en la interfaz de la LAN de host (eth0 en r1, eth2 en r3)."
+    ],
+    "solution_summary": "OSPF propaga las rutas mediante el intercambio de LSAs: si los tres routers declaran sus redes directamente conectadas en el área 0, establecen vecindades (estado Full) y cada uno calcula el camino más corto. Las LAN de los hosts se anuncian de forma pasiva (sin Hello en esa interfaz). Los hosts no participan en OSPF; solo necesitan su ruta local al router.",
+    "difficulty": "Avanzado",
+    "points": 280,
+    "estimated_min": 25,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-2"
+    ],
+    "objetivos_lpi": [
+      "212.1"
+    ],
+    "tags": [
+      "OSPF",
+      "FRR",
+      "vtysh",
+      "routing dinámico",
+      "area 0"
+    ],
+    "category": "LPIC-2 · 202-450 · Redes",
+    "blind_alert": "PETICIÓN [RED] · Configurar OSPF en tres routers para que las LAN converjan.",
+    "redes": [
+      "lan_h1",
+      "lan_h3",
+      "tr12",
+      "tr23",
+      "tr13"
+    ],
+    "red_modo": "manual",
+    "nodos": [
+      {
+        "role": "h1",
+        "distro": "redes",
+        "redes": [
+          "lan_h1"
+        ],
+        "ips": {
+          "lan_h1": "10.8.1.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.8.1.10/24 dev eth0\nip route add 10.8.3.0/24 via 10.8.1.1",
+        "runs": "Host · LAN h1",
+        "look": [
+          "la tabla de rutas",
+          "el ping hacia h3"
+        ]
+      },
+      {
+        "role": "r1",
+        "distro": "redes",
+        "redes": [
+          "lan_h1",
+          "tr12",
+          "tr13"
+        ],
+        "ips": {
+          "lan_h1": "10.8.1.1",
+          "tr12": "10.8.12.1",
+          "tr13": "10.8.13.1"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW",
+          "SYS_ADMIN"
+        ],
+        "sysctl_rw": true,
+        "preparar": "ip addr add 10.8.1.1/24 dev eth0\nip addr add 10.8.12.1/30 dev eth1\nip addr add 10.8.13.1/30 dev eth2\nsysctl -w net.ipv4.ip_forward=1 >/dev/null",
+        "runs": "Router · une h1 con la red OSPF",
+        "look": [
+          "la configuración FRR",
+          "los vecinos OSPF"
+        ]
+      },
+      {
+        "role": "r2",
+        "distro": "redes",
+        "redes": [
+          "tr12",
+          "tr23"
+        ],
+        "ips": {
+          "tr12": "10.8.12.2",
+          "tr23": "10.8.23.1"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW",
+          "SYS_ADMIN"
+        ],
+        "sysctl_rw": true,
+        "preparar": "ip addr add 10.8.12.2/30 dev eth0\nip addr add 10.8.23.1/30 dev eth1\nsysctl -w net.ipv4.ip_forward=1 >/dev/null",
+        "runs": "Router · núcleo OSPF",
+        "look": [
+          "la configuración FRR",
+          "los vecinos OSPF"
+        ]
+      },
+      {
+        "role": "r3",
+        "distro": "redes",
+        "redes": [
+          "tr13",
+          "tr23",
+          "lan_h3"
+        ],
+        "ips": {
+          "tr13": "10.8.13.2",
+          "tr23": "10.8.23.2",
+          "lan_h3": "10.8.3.1"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW",
+          "SYS_ADMIN"
+        ],
+        "sysctl_rw": true,
+        "preparar": "ip addr add 10.8.13.2/30 dev eth0\nip addr add 10.8.23.2/30 dev eth1\nip addr add 10.8.3.1/24 dev eth2\nsysctl -w net.ipv4.ip_forward=1 >/dev/null",
+        "runs": "Router · une h3 con la red OSPF",
+        "look": [
+          "la configuración FRR",
+          "los vecinos OSPF"
+        ]
+      },
+      {
+        "role": "h3",
+        "distro": "redes",
+        "redes": [
+          "lan_h3"
+        ],
+        "ips": {
+          "lan_h3": "10.8.3.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.8.3.10/24 dev eth0\nip route add 10.8.1.0/24 via 10.8.3.1\necho \"h3 OK\" > /var/www/html/index.html\nnginx",
+        "runs": "Host · LAN h3 y servidor web",
+        "look": [
+          "la página web",
+          "la tabla de rutas"
+        ]
+      }
+    ],
+    "enlaces": [
+      {
+        "from": "h1",
+        "to": "r1",
+        "via": "ethernet lan_h1"
+      },
+      {
+        "from": "r1",
+        "to": "r2",
+        "via": "ethernet tr12"
+      },
+      {
+        "from": "r1",
+        "to": "r3",
+        "via": "ethernet tr13"
+      },
+      {
+        "from": "r2",
+        "to": "r3",
+        "via": "ethernet tr23"
+      },
+      {
+        "from": "r3",
+        "to": "h3",
+        "via": "ethernet lan_h3"
+      }
+    ],
+    "comprobar": [
+      {
+        "node": "h1",
+        "marca": "node:h1",
+        "script": "comprueba \"h1 alcanza a r1, su puerta de enlace\" ping -c1 -W2 10.8.1.1"
+      },
+      {
+        "node": "r1",
+        "marca": "node:r1",
+        "script": "comprueba \"r1 reenvía paquetes\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 1 ]'"
+      },
+      {
+        "node": "r1",
+        "marca": "node:r1",
+        "script": "for i in $(seq 1 40); do\n  pgrep -x ospfd >/dev/null || break  # sin OSPF arrancado no hay nada que esperar\n  if timeout 5 vtysh -c \"show ip route ospf\" 2>/dev/null | grep -q \"10.8.3.0/24\"; then break; fi\n  sleep 1\ndone\ncomprueba \"r1 ve a sus vecinos OSPF en estado Full\" bash -c 'timeout 5 vtysh -c \"show ip ospf neighbor\" | grep -q \"Full\"'\ncomprueba \"r1 aprende la ruta a la LAN de h3 por OSPF\" bash -c 'timeout 5 vtysh -c \"show ip route ospf\" | grep -q \"10.8.3.0/24\"'"
+      },
+      {
+        "node": "h1",
+        "marca": "node:h1",
+        "script": "comprueba \"h1 hace ping a h3\" ping -c1 -W2 10.8.3.10\ncomprueba \"h1 descarga la web de h3\" bash -c 'curl -s -m5 http://10.8.3.10/ | grep -qx \"h3 OK\"'"
+      }
+    ]
+  },
+  {
+    "id": "red-otra-interfaz",
+    "reto": "red-otra-interfaz",
+    "title": "Llegar a un servicio por otra interfaz",
+    "briefing": "El equipo de sistemas dice que las métricas de `app` (puerto 9100) escuchan solo en la IP de gestión (10.9.2.10) y por eso desde la red corporativa no se puede llegar. Tú estás en `dev`, en la red corporativa (10.9.1.0/24). Configura en `dev` lo necesario para que `curl http://10.9.2.10:9100/metrics` devuelva las métricas, sin tocar `app` ni `mon`. `dev` ya tiene su IP y puede ver `app` por su IP corporativa 10.9.1.10; `mon` está en 10.9.2.20.",
+    "hints": [
+      "El kernel de Linux entrega un paquete a una IP local aunque entre por otra interfaz (weak host model). El problema es que `dev` no tiene ruta para llegar a 10.9.2.10. Hay que añadir una ruta hacia la IP de gestión de `app` usando como siguiente salto la IP corporativa de `app`.",
+      "Mira en `dev` la ruta elegida con `ip route get 10.9.2.10`; para un solo equipo se añade una ruta /32 con `ip route add <ip>/32 via <ip_corporativa_de_app>`. La puerta de enlace debe estar en la misma red que `dev`.",
+      "Orden concreta en `dev`: `ip route add 10.9.2.10/32 via 10.9.1.10`. Luego `curl http://10.9.2.10:9100/metrics` debe devolver las métricas."
+    ],
+    "solution_summary": "El weak host model de Linux (RFC 1122) hace que el kernel considere sus IP como propias del equipo, no de cada interfaz. Al añadir en `dev` una ruta /32 hacia la IP de gestión de `app` usando como siguiente salto su IP corporativa, el paquete llega a `app` por su interfaz corporativa y, como el destino es local, se entrega al proceso que escucha en 10.9.2.10:9100. No hace falta activar `ip_forward` en `app`.",
+    "difficulty": "Intermedio",
+    "points": 200,
+    "estimated_min": 15,
+    "tipo": "tarea",
+    "certs": [
+      "LPIC-2"
+    ],
+    "objetivos_lpi": [
+      "205.1"
+    ],
+    "tags": [
+      "weak host model",
+      "ip route",
+      "routing /32",
+      "curl"
+    ],
+    "category": "LPIC-2 · 201-450 · Redes",
+    "blind_alert": "PETICIÓN [RED] · Hacer accesible un servicio que solo escucha en la IP de gestión desde la red corporativa.",
+    "redes": [
+      "corp",
+      "gestion"
+    ],
+    "red_modo": "manual",
+    "nodos": [
+      {
+        "role": "dev",
+        "distro": "redes",
+        "redes": [
+          "corp"
+        ],
+        "ips": {
+          "corp": "10.9.1.20"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.9.1.20/24 dev eth0",
+        "runs": "Puesto de trabajo · red corp",
+        "look": [
+          "la tabla de rutas",
+          "el curl al servicio de gestión"
+        ]
+      },
+      {
+        "role": "app",
+        "distro": "redes",
+        "redes": [
+          "corp",
+          "gestion"
+        ],
+        "ips": {
+          "corp": "10.9.1.10",
+          "gestion": "10.9.2.10"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.9.1.10/24 dev eth0\nip addr add 10.9.2.10/24 dev eth1\nsysctl -w net.ipv4.ip_forward=0 >/dev/null\nmkdir -p /srv/web /srv/metrics\necho \"web corporativa OK\" > /srv/web/index.html\nprintf 'node_load1 0.42\\n' > /srv/metrics/metrics\ncat > /etc/nginx/conf.d/lab.conf <<'EOF'\nserver {\n  listen 10.9.1.10:80;\n  root /srv/web;\n}\nserver {\n  listen 10.9.2.10:9100;\n  root /srv/metrics;\n  default_type text/plain;\n}\nEOF\nnginx -t >/dev/null 2>&1 && nginx",
+        "runs": "Servidor con web corporativa y métricas en gestión",
+        "look": [
+          "los sockets en escucha",
+          "la tabla de rutas"
+        ],
+        "sysctl_rw": true
+      },
+      {
+        "role": "mon",
+        "distro": "redes",
+        "redes": [
+          "gestion"
+        ],
+        "ips": {
+          "gestion": "10.9.2.20"
+        },
+        "caps": [
+          "NET_ADMIN",
+          "NET_RAW"
+        ],
+        "preparar": "ip addr add 10.9.2.20/24 dev eth0",
+        "runs": "Monitor · red de gestión",
+        "look": []
+      }
+    ],
+    "enlaces": [
+      {
+        "from": "dev",
+        "to": "app",
+        "via": "ethernet corp"
+      },
+      {
+        "from": "app",
+        "to": "mon",
+        "via": "ethernet gestion"
+      }
+    ],
+    "comprobar": [
+      {
+        "node": "dev",
+        "marca": "node:dev",
+        "script": "comprueba \"dev alcanza a app por su IP corporativa\" ping -c1 -W2 10.9.1.10\ncomprueba \"dev tiene una ruta a la IP de gestión de app por el siguiente salto corporativo\" bash -c 'ip route get 10.9.2.10 | grep -q \"via 10.9.1.10 dev eth0\"'"
+      },
+      {
+        "node": "dev",
+        "marca": "node:dev",
+        "script": "comprueba \"dev descarga las métricas de app por la red de gestión\" bash -c 'curl -s -m3 http://10.9.2.10:9100/metrics | grep -q node_load1'\ncomprueba \"la web corporativa de app sigue cargando desde dev\" bash -c 'curl -s -m3 http://10.9.1.10/ | grep -q \"web corporativa OK\"'"
+      },
+      {
+        "node": "app",
+        "marca": "node:app",
+        "script": "comprueba \"app sigue sin reenviar (ip_forward=0)\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 0 ]'"
+      }
+    ]
   }
 ]
