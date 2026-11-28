@@ -4,7 +4,7 @@ FROM docker.io/library/debian:trixie
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
-      iproute2 iputils-ping traceroute tcpdump nmap netcat-openbsd nftables \
+      iproute2 iputils-ping traceroute tcpdump nmap netcat-openbsd nftables iptables net-tools \
       curl wget ca-certificates dnsutils nginx frr procps nano vim-tiny less \
  && rm -rf /var/lib/apt/lists/* \
  && ln -sf /usr/bin/vim.tiny /usr/local/bin/vim \
