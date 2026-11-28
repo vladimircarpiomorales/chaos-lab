@@ -1021,6 +1021,20 @@ function bindEvents() {
 
   $("btn-toggle-history").addEventListener("click", () => $("history-drawer").classList.remove("hidden"));
   $("btn-close-history").addEventListener("click", () => $("history-drawer").classList.add("hidden"));
+  $("btn-import-progress").addEventListener("click", () => $("input-import-progress").click());
+  $("input-import-progress").addEventListener("change", async (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    ev.target.value = "";
+    if (!file) return;
+    if (!confirm(`¿Sustituir tu progreso actual por el de «${file.name}»?\n(El actual se guarda como copia en data/.)`)) return;
+    try {
+      const r = await api("/api/progress/import", { method: "POST", body: await file.text() });
+      await refreshCatalog();
+      alert(`Progreso importado: ${r.solved} escenarios resueltos, ${r.total_xp} XP.`);
+    } catch (err) {
+      alert(`No se pudo importar: ${err.message}`);
+    }
+  });
 
   $("btn-verify").addEventListener("click", runVerify);
 

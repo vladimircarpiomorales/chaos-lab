@@ -264,6 +264,71 @@ def _map_checks_to_topology(inst: dict[str, Any]) -> None:
         topo["checks"] = marks
 
 
+# -------------------- Progreso exportable --------------------
+
+PROGRESS_FORMAT = "chaos-lab-progress"
+_RANKS = {"S+", "S", "A", "B", "C"}
+_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,80}$")
+_MAX_HISTORY = 100
+
+
+def _int_ge0(v: Any, limit: int = 10**9) -> int:
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        raise ValueError("número no válido")
+    n = int(v)
+    if n < 0 or n > limit:
+        raise ValueError("número fuera de rango")
+    return n
+
+
+def _short_str(v: Any, limit: int = 200) -> str:
+    if not isinstance(v, str):
+        raise ValueError("texto no válido")
+    return v[:limit]
+
+
+def sanitize_progress(data: Any) -> dict[str, Any]:
+    """Valida un fichero de progreso exportado y devuelve solo los campos conocidos, con sus tipos.
+    Acepta también un `state.json` copiado tal cual (sin `format`). Lanza ValueError si no vale."""
+    if not isinstance(data, dict):
+        raise ValueError("El fichero no es un progreso de Chaos Lab.")
+    if "format" in data and data["format"] != PROGRESS_FORMAT:
+        raise ValueError("El fichero no es un progreso de Chaos Lab.")
+    if not isinstance(data.get("solved", {}), dict) or not isinstance(data.get("history", []), list):
+        raise ValueError("El fichero no es un progreso de Chaos Lab.")
+    try:
+        solved: dict[str, Any] = {}
+        for sid, rec in data.get("solved", {}).items():
+            if not isinstance(sid, str) or not _ID_RE.match(sid) or not isinstance(rec, dict):
+                raise ValueError(f"escenario no válido: {str(sid)[:40]}")
+            rank = rec.get("best_rank", "C")
+            solved[sid] = {
+                "best_time_s": _int_ge0(rec.get("best_time_s", 0)),
+                "best_rank": rank if rank in _RANKS else "C",
+                "count": max(1, _int_ge0(rec.get("count", 1))),
+                "last_solved": _short_str(rec.get("last_solved", ""), 40),
+            }
+        history = []
+        for h in data.get("history", [])[-_MAX_HISTORY:]:
+            if not isinstance(h, dict) or not _ID_RE.match(str(h.get("id", ""))):
+                raise ValueError("entrada de historial no válida")
+            rank = h.get("rank", "C")
+            history.append({
+                "id": h["id"],
+                "title": _short_str(h.get("title", h["id"])),
+                "blind_mode": bool(h.get("blind_mode", False)),
+                "elapsed_s": _int_ge0(h.get("elapsed_s", 0)),
+                "rank": rank if rank in _RANKS else "C",
+                "xp": _int_ge0(h.get("xp", 0), 100000),
+                "hints_used": _int_ge0(h.get("hints_used", 0), 100),
+                "at": _short_str(h.get("at", ""), 40),
+            })
+        total_xp = _int_ge0(data.get("total_xp", 0))
+    except (ValueError, TypeError) as e:
+        raise ValueError(f"Progreso no válido: {e}") from None
+    return {"solved": solved, "history": history, "total_xp": total_xp}
+
+
 def _parse_check_output(out: str, node: str, start: int = 0, empty_label: str = CHECK_EMPTY_LABEL) -> list[dict[str, Any]]:
     """Líneas ✔/✘ en orden -> sondas c<start+1>, … Sin ninguna, una sonda fallida (nunca resuelto por vacío)."""
     checks: list[dict[str, Any]] = []
@@ -338,6 +403,31 @@ class ChaosEngine:
         tmp = STATE_FILE.with_suffix(".tmp")
         tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
         tmp.replace(STATE_FILE)
+
+    # -------------------- Exportar / importar el progreso --------------------
+
+    def export_progress(self) -> dict[str, Any]:
+        with self._lock:
+            state = self._load_state()
+        return {
+            "format": PROGRESS_FORMAT,
+            "version": 1,
+            "exported_at": datetime.datetime.now().isoformat(timespec="seconds"),
+            "solved": state["solved"],
+            "history": state["history"],
+            "total_xp": state["total_xp"],
+        }
+
+    def import_progress(self, data: Any) -> dict[str, Any]:
+        """Sustituye el progreso por el de un fichero exportado. Valida y limpia todo; guarda copia del actual."""
+        clean = sanitize_progress(data)  # ValueError si no es un fichero de progreso válido
+        with self._lock:
+            if STATE_FILE.exists():
+                stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                backup = STATE_FILE.with_name(f"state.antes-de-importar-{stamp}.json")
+                backup.write_text(STATE_FILE.read_text(encoding="utf-8"), encoding="utf-8")
+            self._save_state(clean)
+        return {"solved": len(clean["solved"]), "history": len(clean["history"]), "total_xp": clean["total_xp"]}
 
     # -------------------- Imágenes (Podman o Docker) --------------------
 

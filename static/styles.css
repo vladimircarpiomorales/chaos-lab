@@ -682,3 +682,5 @@ html, body {
   border-radius: 4px; padding: 1px 5px; margin: 3px 4px 0 0;
   color: var(--text-2);
 }
+.history-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
+.history-actions a.btn-ghost-sm, .history-actions a.btn-ghost-sm:hover { text-decoration: none !important; }

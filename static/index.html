@@ -93,6 +93,12 @@
           <button id="btn-close-history" class="btn-ghost-sm">✕</button>
         </div>
         <div id="history-list" class="history-list"></div>
+        <div class="history-actions">
+          <a id="btn-export-progress" class="btn-ghost-sm" href="/api/progress/export" download title="Descargar tu progreso en un fichero JSON">⬇ Exportar progreso</a>
+          <button id="btn-import-progress" class="btn-ghost-sm" title="Cargar un progreso exportado (sustituye el actual; se guarda copia)">⬆ Importar</button>
+          <input type="file" id="input-import-progress" accept="application/json,.json" hidden />
+        </div>
+        <p class="muted-note">Tu progreso solo vive en este equipo (<code>data/state.json</code>).</p>
       </div>
     </aside>
 
@@ -349,6 +355,6 @@
   <script src="/static/vendor/xterm.js"></script>
   <script src="/static/vendor/addon-fit.js"></script>
   <script src="/static/vendor/cytoscape.min.js"></script>
-  <script src="/static/app.js?v=11"></script>
+  <script src="/static/app.js?v=12"></script>
 </body>
 </html>

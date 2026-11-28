@@ -203,6 +203,35 @@ async def api_export_vault() -> JSONResponse:
     return JSONResponse({"ok": True, "filename": fname, "path": str(fpath)})
 
 
+@app.get("/api/progress/export")
+async def api_progress_export() -> JSONResponse:
+    import datetime as _dt
+
+    name = f"chaos-lab-progreso-{_dt.date.today().isoformat()}.json"
+    return JSONResponse(
+        engine.export_progress(), headers={"Content-Disposition": f'attachment; filename="{name}"'}
+    )
+
+
+MAX_PROGRESS_BYTES = 1_000_000
+
+
+@app.post("/api/progress/import")
+async def api_progress_import(request: Request) -> JSONResponse:
+    import json as _json
+
+    body = await request.body()
+    if len(body) > MAX_PROGRESS_BYTES:
+        return JSONResponse({"ok": False, "error": "El fichero es demasiado grande."}, status_code=413)
+    try:
+        data = _json.loads(body)
+        summary = engine.import_progress(data)
+    except (ValueError, UnicodeDecodeError) as e:
+        msg = str(e) if str(e).startswith(("El fichero", "Progreso")) else "El fichero no es un JSON válido."
+        return JSONResponse({"ok": False, "error": msg}, status_code=400)
+    return JSONResponse({"ok": True, **summary})
+
+
 @app.websocket("/ws/terminal/{role}")
 async def ws_terminal(websocket: WebSocket, role: str) -> None:
     # El middleware http no pasa por los WebSocket: misma comprobación aquí, antes de aceptar.
