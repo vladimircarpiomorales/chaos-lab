@@ -99,6 +99,8 @@ Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`, `chao
 - Los nodos con `sysctl_rw` (routers de los labs de redes) llevan `--security-opt systempaths=unconfined` para poder hacer `sysctl -w net.ipv4.ip_forward=1`: dejan `/proc/sys` escribible en ese contenedor (sin `--privileged`; `kernel.*` sigue denegado).
 - Todo ocurre en redes aisladas `chaoslab-*`; `--parar` borra contenedores y redes.
 - El usuario de prácticas `alumno` tiene la contraseña `alumno`: solo existe dentro de los contenedores.
+- **Sin cuentas ni telemetría**: el progreso se guarda en `data/state.json` en tu equipo y no se envía a ningún sitio (el mentor IA es opcional y usa tu Ollama local).
+- Cada cambio pasa por las pruebas, **CodeQL** (análisis estático de Python y JavaScript) y **Dependabot** (dependencias con vulnerabilidades conocidas).
 
 ## Desarrollo
 
