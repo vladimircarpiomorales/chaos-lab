@@ -50,7 +50,6 @@
           "NET_ADMIN",
           "NET_RAW"
         ],
-        "sysctl_rw": true,
         "preparar": "ip addr add 10.5.1.10/24 dev eth0\nip route add 10.5.0.0/16 via 10.5.1.254\necho \"10.5.3.100 web.lab\" >> /etc/hosts",
         "runs": "Puesto de trabajo (cliente) · lan",
         "look": [
@@ -117,7 +116,6 @@
           "NET_ADMIN",
           "NET_RAW"
         ],
-        "sysctl_rw": true,
         "preparar": "ip addr add 10.5.3.10/24 dev eth0\nip route add 10.5.0.0/16 via 10.5.3.1\necho \"srv OK\" > /var/www/html/index.html\nnginx\nnft add table inet filtro\nnft add chain inet filtro input '{ type filter hook input priority filter; }'\nnft add rule inet filtro input iifname eth0 tcp dport 80 drop",
         "runs": "Servidor web (nginx) · dmz",
         "look": [
@@ -147,19 +145,33 @@
     "comprobar": [
       {
         "node": "pc1",
-        "script": "comprueba \"pc1 alcanza con ping a r1, su vecino directo\" ping -c1 -W2 10.5.1.1\ncomprueba \"pc1 tiene una ruta utilizable hacia la red de srv\" bash -c 'ip route get 10.5.3.10 | grep -q \"via 10.5.1.1 \"'"
+        "marca": "link:0",
+        "script": "comprueba \"pc1 alcanza con ping a r1, su vecino directo\" ping -c1 -W2 10.5.1.1"
       },
       {
         "node": "r1",
+        "marca": "link:1",
         "script": "comprueba \"r1 alcanza con ping a srv\" ping -c1 -W2 10.5.3.10"
       },
       {
         "node": "pc1",
-        "script": "comprueba \"ida y vuelta: pc1 hace ping a srv\" ping -c1 -W2 10.5.3.10\ncomprueba \"el puerto web de srv contesta a pc1 cuando se le llama por su IP\" curl -s -m5 -o /dev/null http://10.5.3.10/\ncomprueba \"en pc1, el nombre web.lab lleva al servidor srv\" bash -c '[ \"$(getent hosts web.lab | awk \"{print \\$1; exit}\")\" = 10.5.3.10 ]'\ncomprueba \"en pc1, curl http://web.lab devuelve «srv OK»\" bash -c 'curl -s -m5 http://web.lab | grep -qx \"srv OK\"'"
+        "marca": "link:2",
+        "script": "comprueba \"ida y vuelta: pc1 hace ping a srv\" ping -c1 -W2 10.5.3.10"
+      },
+      {
+        "node": "pc1",
+        "marca": "node:srv",
+        "script": "comprueba \"el puerto web de srv contesta a pc1 cuando se le llama por su IP\" curl -fs -m5 -o /dev/null http://10.5.3.10/"
       },
       {
         "node": "srv",
+        "marca": "node:srv",
         "script": "comprueba \"nginx sigue sirviendo la página en el propio srv\" bash -c 'curl -s -m5 http://127.0.0.1/ | grep -qx \"srv OK\"'"
+      },
+      {
+        "node": "pc1",
+        "marca": "node:pc1",
+        "script": "comprueba \"en pc1, el nombre web.lab lleva al servidor srv\" bash -c '[ \"$(getent hosts web.lab | awk \"{print \\$1; exit}\")\" = 10.5.3.10 ]'\ncomprueba \"en pc1, curl http://web.lab devuelve «srv OK»\" bash -c 'curl -s -m5 http://web.lab | grep -qx \"srv OK\"'"
       }
     ]
   }

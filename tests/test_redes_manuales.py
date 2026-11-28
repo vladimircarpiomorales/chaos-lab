@@ -34,7 +34,7 @@ def test_docker_vacia_direcciones_y_rutas_de_cada_interfaz():
     cmd = _manual_prep_cmd("c1", ["chaoslab-a", "chaoslab-b"], "docker")
     assert cmd[:5] == ["docker", "exec", "--user", "root", "c1"]
     for i in (0, 1):
-        assert f"ip addr flush dev eth{i}" in cmd[-1] and f"ip route flush dev eth{i}" in cmd[-1]
+        assert f"ip -4 addr flush dev eth{i}" in cmd[-1] and f"ip -4 route flush dev eth{i}" in cmd[-1]
     assert "eth2" not in cmd[-1]
 
 
@@ -122,3 +122,28 @@ def test_setup_usa_la_interfaz_que_toca(sid):
         for red, ip in n["design_ips"].items():
             i = n["networks"].index(red)
             assert re.search(rf"ip addr add {re.escape(ip)}/\d+ dev eth{i}\b", n["setup_sh"]), (n["role"], red)
+
+
+def test_marca_de_bloque_pinta_el_esquema():
+    """Packs: las sondas de un bloque con `marca` quedan en topology.checks (verde/rojo tras Verificar)."""
+    from chaos_lab.engine import _map_checks_to_topology
+    from chaos_lab.scenarios import SCENARIOS_BY_ID, instantiate_scenario
+
+    assert "red-averias-4saltos" in SCENARIOS_BY_ID
+    inst = instantiate_scenario("red-averias-4saltos", seed=1)
+    assert all(b.get("marca") for b in inst["check_script"])
+    inst["checks"] = [{"id": "c1", "target": "link:0"}, {"id": "c2", "target": "node:srv"}, {"id": "c3"}]
+    _map_checks_to_topology(inst)
+    assert inst["topology"]["checks"] == {"c1": "link:0", "c2": "node:srv"}
+    links = inst["topology"]["links"]
+    for target in {b["marca"] for b in inst["check_script"]}:
+        kind, _, ref = target.partition(":")
+        assert (kind == "node" and ref in inst["topology"]["nodes"]) or (kind == "link" and int(ref) < len(links))
+
+
+def test_sysctl_rw_solo_en_routers():
+    import json
+    from pathlib import Path
+
+    sc = json.loads(Path("chaos_lab/packs/redes.json").read_text(encoding="utf-8"))[0]
+    assert {n["role"] for n in sc["nodos"] if n.get("sysctl_rw")} == {"r1", "r2"}

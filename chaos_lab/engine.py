@@ -162,7 +162,7 @@ def _manual_prep_cmd(cname: str, nets: list[str], runtime: str | None = None) ->
     Podman con `--ipam-driver none` no necesita nada (devuelve None). Hace falta NET_ADMIN en el nodo."""
     if (runtime or RUNTIME) == "podman" or not nets:
         return None
-    script = "; ".join(f"ip addr flush dev eth{i}; ip route flush dev eth{i}" for i in range(len(nets)))
+    script = "; ".join(f"ip -4 addr flush dev eth{i}; ip -4 route flush dev eth{i} 2>/dev/null || true" for i in range(len(nets)))
     return [runtime or RUNTIME, "exec", "--user", "root", cname, "sh", "-c", script]
 
 
@@ -253,6 +253,15 @@ def _check_blocks(cs: dict[str, Any] | list[dict[str, Any]]) -> list[dict[str, A
     """Bloques de corrector de un escenario: `check_script` puede ser un dict (un nodo) o una lista de dicts
     {node, cwd, script} (un bloque por nodo; las sondas se unen en el orden de la lista)."""
     return [cs] if isinstance(cs, dict) else list(cs or [])
+
+
+def _map_checks_to_topology(inst: dict[str, Any]) -> None:
+    """Corrector por script: las sondas de un bloque con `marca` (node:<rol>, link:<n>, entry) pintan ese
+    elemento del esquema tras «Verificar». Sin marcas no cambia nada."""
+    marks = {c["id"]: c["target"] for c in inst.get("checks", []) if c.get("target")}
+    topo = inst.get("topology")
+    if marks and isinstance(topo, dict):
+        topo["checks"] = marks
 
 
 def _parse_check_output(out: str, node: str, start: int = 0, empty_label: str = CHECK_EMPTY_LABEL) -> list[dict[str, Any]]:
@@ -673,6 +682,7 @@ class ChaosEngine:
             # Corrector por script: una primera ejecución para conocer las etiquetas (el jugador empieza en rojo)
             if inst.get("check_script"):
                 inst["checks"] = self._run_check_script(inst["check_script"], nodes_runtime)
+                _map_checks_to_topology(inst)
 
             self.active = {
                 "id": inst["id"],
@@ -764,7 +774,11 @@ class ChaosEngine:
             if multi and not re.search(r"\b(comprueba|ok|mal)\b", blk.get("script", "")):
                 # Bloque auxiliar (p. ej. vaciar la caché de sssd antes de las sondas de otro nodo): no da sondas
                 continue
-            checks.extend(_parse_check_output(out, role, len(checks), empty))
+            parsed = _parse_check_output(out, role, len(checks), empty)
+            if blk.get("marca"):
+                for c in parsed:
+                    c["target"] = blk["marca"]
+            checks.extend(parsed)
         if not checks:
             checks = _parse_check_output("", blocks[0].get("node", "") if blocks else "", 0)
         return checks
@@ -783,6 +797,7 @@ class ChaosEngine:
                 # Se reejecuta el script: manda lo último (etiquetas y estados)
                 fresh = self._run_check_script(inst["check_script"], act["nodes_runtime"])
                 inst["checks"] = [{k: v for k, v in c.items() if k != "passed"} for c in fresh]
+                _map_checks_to_topology(inst)
                 act["last_check_map"] = {c["id"]: c["passed"] for c in fresh}
                 passed_count = sum(1 for c in fresh if c["passed"])
             for chk in ([] if inst.get("check_script") else inst.get("checks", [])):

@@ -116,6 +116,8 @@ def _builder_multi(item: dict[str, Any]) -> Callable[[random.Random], dict[str, 
             b = {"node": blk["node"], "script": "set -u\n" + blk["script"]}
             if blk.get("cwd"):
                 b["cwd"] = blk["cwd"]
+            if blk.get("marca"):
+                b["marca"] = blk["marca"]
             blocks.append(b)
         extra: dict[str, Any] = {}
         if item.get("redes"):
