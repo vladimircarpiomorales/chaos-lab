@@ -95,7 +95,7 @@
       <div class="history-drawer hidden" id="history-drawer">
         <div class="history-header">
           <h3 data-i18n="hist.drawerTitle">Últimas guardias resueltas</h3>
-          <button id="btn-close-history" class="btn-ghost-sm">✕</button>
+          <button id="btn-close-history" class="btn-ghost-sm" aria-label="Cerrar" data-i18n-aria-label="aria.close">✕</button>
         </div>
         <div id="history-list" class="history-list"></div>
         <div class="history-actions">
@@ -167,7 +167,7 @@
               <div class="incident-badges">
                 <span class="badge" id="active-diff-badge">Intermedio</span>
                 <span class="badge badge-cat" id="active-cat-badge">Categoría</span>
-                <span class="badge badge-seed" id="active-seed-badge" title="Semilla del Chaos Mutator">Seed #000000</span>
+                <span class="badge badge-seed" id="active-seed-badge" title="Semilla del Chaos Mutator" data-i18n-title="seed.tip">Seed #000000</span>
               </div>
               <h2 id="active-title">Título del Incidente</h2>
             </div>
@@ -361,7 +361,7 @@
   <script src="/static/vendor/xterm.js"></script>
   <script src="/static/vendor/addon-fit.js"></script>
   <script src="/static/vendor/cytoscape.min.js"></script>
-  <script src="/static/i18n.js?v=2"></script>
-  <script src="/static/app.js?v=14"></script>
+  <script src="/static/i18n.js?v=3"></script>
+  <script src="/static/app.js?v=15"></script>
 </body>
 </html>

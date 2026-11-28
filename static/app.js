@@ -63,7 +63,7 @@ async function api(path, opts = {}) {
   });
   const data = await res.json();
   if (!res.ok || data.ok === false) {
-    throw new Error(data.error || data.detail || `Error HTTP ${res.status}`);
+    throw new Error(data.error || data.detail || `HTTP ${res.status}`);
   }
   return data;
 }

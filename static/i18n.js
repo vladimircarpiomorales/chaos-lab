@@ -69,6 +69,8 @@
     "type.averia": "🔧 Avería",
     "btn.deploy": "▶ Desplegar",
     "btn.close": "✕ Cerrar",
+    "aria.close": "Cerrar",
+    "seed.tip": "Semilla del Chaos Mutator",
     "btn.blind": "🎲 A ciegas",
 
     /* ---- Vista previa ---- */
@@ -258,9 +260,11 @@
     "type.averia": "🔧 Fault",
     "btn.deploy": "▶ Deploy",
     "btn.close": "✕ Close",
+    "aria.close": "Close",
+    "seed.tip": "Chaos Mutator seed",
     "btn.blind": "🎲 Blind",
 
-    "pv.task": "📋 The assignment",
+    "pv.task": "📋 The task",
     "pv.issue": "🔧 The incident",
     "pv.topo": "🗺 Topology",
     "pv.machines": "🖧 Machines",
@@ -274,7 +278,7 @@
     "feat.multi.t": "Multi-Node Topologies",
     "feat.multi.d": "Real PTY tabs per server (`edge-proxy`, `api`, `redis`, IPv4 routers).",
     "feat.chaos.t": "Chaos Mutator",
-    "feat.chaos.d": "Random seeds so you actually diagnose instead of memorising commands.",
+    "feat.chaos.d": "Random seeds so you actually diagnose instead of memorizing commands.",
     "feat.blind.t": "3:00 AM On-Call Mode",
     "feat.blind.d": "PagerDuty-style blind incident with no hints in the title or the probes.",
     "feat.pm.t": "Post-Mortem & SRE Mentor",
@@ -324,7 +328,7 @@
     "howto.a2": "<strong>Follow the path.</strong> Go node by node, in the order of the arrows.",
     "howto.a3": "<strong>At each hop, ask yourself:</strong> is the service up? Is it listening on the right IP and port? Does the config point to the right place? Is a firewall dropping it?",
     "howto.a4": "<strong>Fix one thing at a time and hit Verify.</strong> The diagram turns green where things already work.",
-    "howto.t1": "<strong>Read the whole assignment.</strong> Note the exact names it asks for: users, paths, files.",
+    "howto.t1": "<strong>Read the full task.</strong> Note the exact names it asks for: users, paths, files.",
     "howto.t2": "<strong>Look before you touch.</strong> Check the current configuration and the command's manual (<code>man</code>, <code>--help</code>).",
     "howto.t3": "<strong>Go step by step.</strong> If you need root, use <code>sudo</code>.",
     "howto.t4": "<strong>Hit Verify whenever you like.</strong> Every green probe is a requirement already met.",
@@ -344,7 +348,7 @@
     "mentor.ask": "Ask",
     "mentor.intro": "Reviews the commands you've tried in the terminal and suggests where to dig next, without giving away the final command.",
     "mentor.started": "Lab is up. Investigate from the console and press “Ask” if you want Socratic guidance.",
-    "mentor.analyzing": "Analysing your commands…",
+    "mentor.analyzing": "Analyzing your commands…",
     "mentor.error": "Error: {msg}",
 
     "load.default": "Deploying containers and injecting chaos…",

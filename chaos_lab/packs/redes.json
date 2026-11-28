@@ -375,7 +375,7 @@
         "runs": "Puesto de trabajo · red lan",
         "look": [
           "la tabla de rutas",
-          "el curl hacia ext"
+          "la conectividad HTTP hacia la red wan"
         ]
       },
       {
@@ -414,7 +414,7 @@
           "NET_ADMIN",
           "NET_RAW"
         ],
-        "preparar": "ip addr add 10.7.2.10/24 dev eth0\necho \"ext OK\" > /var/www/html/index.html\nnginx",
+        "preparar": "ip addr add 10.7.2.10/24 dev eth0\necho \"ext OK\" > /var/www/html/index.html\ncat > /etc/nginx/conf.d/admin.conf <<'EOF'\nserver {\n  listen 8080;\n  location / { return 200 \"admin\\n\"; }\n}\nEOF\nnginx",
         "runs": "Servidor web externo · red wan",
         "look": [
           "el log de nginx",
@@ -446,6 +446,10 @@
         "script": "comprueba \"fw reenvía paquetes entre sus interfaces\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 1 ]'"
       },
       {
+        "node": "ext",
+        "script": ": > /var/log/nginx/access.log  # auxiliar: el registro empieza vacío antes del curl de pc1"
+      },
+      {
         "node": "pc1",
         "marca": "link:0",
         "script": "comprueba \"pc1 consigue descargar la web de ext\" bash -c 'curl -s -m5 http://10.7.2.10/ | grep -qx \"ext OK\"'"
@@ -453,12 +457,12 @@
       {
         "node": "ext",
         "marca": "node:ext",
-        "script": "comprueba \"ext ve llegar la petición con la IP de fw (masquerade), no con la de pc1\" bash -c 'grep -q \"^10.7.2.1 \" /var/log/nginx/access.log'"
+        "script": "comprueba \"ext ve llegar la petición con la IP de fw (masquerade), no con la de pc1\" bash -c 'grep -q \"^10.7.2.1 \" /var/log/nginx/access.log'\ncomprueba \"ext sigue sin ruta propia hacia la lan (la respuesta vuelve por el NAT de fw)\" bash -c '[ -z \"$(ip route list 10.7.1.0/24)\" ] && [ -z \"$(ip route list default)\" ]'"
       },
       {
         "node": "pc1",
         "marca": "link:1",
-        "script": "comprueba \"con el firewall levantado, el ping de pc1 a ext no pasa\" bash -c 'curl -s -m5 -o /dev/null http://10.7.2.10/ && ! ping -c1 -W2 10.7.2.10 >/dev/null 2>&1'"
+        "script": "comprueba \"con el firewall levantado, el ping de pc1 a ext no pasa\" bash -c 'curl -s -m5 -o /dev/null http://10.7.2.10/ && ! ping -c1 -W2 10.7.2.10 >/dev/null 2>&1'\ncomprueba \"desde pc1 solo sale la web: otros servicios de ext no responden\" bash -c '! curl -s -m4 -o /dev/null http://10.7.2.10:8080/'"
       }
     ]
   },
@@ -478,11 +482,10 @@
     "estimated_min": 25,
     "tipo": "tarea",
     "certs": [
-      "LPIC-2"
+      "CCNA",
+      "CCNP"
     ],
-    "objetivos_lpi": [
-      "212.1"
-    ],
+    "objetivos_lpi": [],
     "tags": [
       "OSPF",
       "FRR",
@@ -490,7 +493,7 @@
       "routing dinámico",
       "area 0"
     ],
-    "category": "LPIC-2 · 202-450 · Redes",
+    "category": "Redes y routing",
     "blind_alert": "PETICIÓN [RED] · Configurar OSPF en tres routers para que las LAN converjan.",
     "redes": [
       "lan_h1",
@@ -518,7 +521,7 @@
         "runs": "Host · LAN h1",
         "look": [
           "la tabla de rutas",
-          "el ping hacia h3"
+          "la conectividad hacia la otra LAN"
         ]
       },
       {
@@ -659,7 +662,12 @@
       {
         "node": "r1",
         "marca": "node:r1",
-        "script": "for i in $(seq 1 40); do\n  pgrep -x ospfd >/dev/null || break  # sin OSPF arrancado no hay nada que esperar\n  if timeout 5 vtysh -c \"show ip route ospf\" 2>/dev/null | grep -q \"10.8.3.0/24\"; then break; fi\n  sleep 1\ndone\ncomprueba \"r1 ve a sus vecinos OSPF en estado Full\" bash -c 'timeout 5 vtysh -c \"show ip ospf neighbor\" | grep -q \"Full\"'\ncomprueba \"r1 aprende la ruta a la LAN de h3 por OSPF\" bash -c 'timeout 5 vtysh -c \"show ip route ospf\" | grep -q \"10.8.3.0/24\"'"
+        "script": "for i in $(seq 1 40); do\n  pgrep -x ospfd >/dev/null || break  # sin OSPF arrancado no hay nada que esperar\n  if timeout 5 vtysh -c \"show ip route ospf\" 2>/dev/null | grep -q \"10.8.3.0/24\" && [ \"$(timeout 5 vtysh -c \"show ip ospf neighbor\" 2>/dev/null | grep -c Full)\" -ge 2 ]; then break; fi\n  sleep 1\ndone\ncomprueba \"r1 ve a sus dos vecinos OSPF (r2 y r3) en estado Full\" bash -c '[ \"$(timeout 5 vtysh -c \"show ip ospf neighbor\" | grep -c Full)\" -ge 2 ]'\ncomprueba \"r1 aprende la ruta a la LAN de h3 por OSPF\" bash -c 'timeout 5 vtysh -c \"show ip route ospf\" | grep -q \"10.8.3.0/24\"'"
+      },
+      {
+        "node": "r2",
+        "marca": "node:r2",
+        "script": "comprueba \"r2 también participa en OSPF: ve a r1 y r3 en estado Full\" bash -c '[ \"$(timeout 5 vtysh -c \"show ip ospf neighbor\" 2>/dev/null | grep -c Full)\" -ge 2 ]'\ncomprueba \"r2 aprende por OSPF las dos LAN de los hosts\" bash -c 'r=$(timeout 5 vtysh -c \"show ip route ospf\" 2>/dev/null); echo \"$r\" | grep -q \"10.8.1.0/24\" && echo \"$r\" | grep -q \"10.8.3.0/24\"'"
       },
       {
         "node": "h1",
@@ -674,7 +682,7 @@
     "title": "Llegar a un servicio por otra interfaz",
     "briefing": "El equipo de sistemas dice que las métricas de `app` (puerto 9100) escuchan solo en la IP de gestión (10.9.2.10) y por eso desde la red corporativa no se puede llegar. Tú estás en `dev`, en la red corporativa (10.9.1.0/24). Configura en `dev` lo necesario para que `curl http://10.9.2.10:9100/metrics` devuelva las métricas, sin tocar `app` ni `mon`. `dev` ya tiene su IP y puede ver `app` por su IP corporativa 10.9.1.10; `mon` está en 10.9.2.20.",
     "hints": [
-      "El kernel de Linux entrega un paquete a una IP local aunque entre por otra interfaz (weak host model). El problema es que `dev` no tiene ruta para llegar a 10.9.2.10. Hay que añadir una ruta hacia la IP de gestión de `app` usando como siguiente salto la IP corporativa de `app`.",
+      "En Linux una IP pertenece al equipo, no a la interfaz: el kernel acepta un paquete para cualquiera de sus IPs locales aunque entre por otra tarjeta (weak host model). Pregúntate entonces por qué los paquetes de `dev` hacia la IP de gestión ni siquiera salen hacia `app`.",
       "Mira en `dev` la ruta elegida con `ip route get 10.9.2.10`; para un solo equipo se añade una ruta /32 con `ip route add <ip>/32 via <ip_corporativa_de_app>`. La puerta de enlace debe estar en la misma red que `dev`.",
       "Orden concreta en `dev`: `ip route add 10.9.2.10/32 via 10.9.1.10`. Luego `curl http://10.9.2.10:9100/metrics` debe devolver las métricas."
     ],
@@ -687,7 +695,8 @@
       "LPIC-2"
     ],
     "objetivos_lpi": [
-      "205.1"
+      "205.1",
+      "205.3"
     ],
     "tags": [
       "weak host model",
@@ -720,7 +729,7 @@
         "runs": "Puesto de trabajo · red corp",
         "look": [
           "la tabla de rutas",
-          "el curl al servicio de gestión"
+          "la respuesta del puerto de métricas"
         ]
       },
       {
@@ -790,7 +799,7 @@
       {
         "node": "app",
         "marca": "node:app",
-        "script": "comprueba \"app sigue sin reenviar (ip_forward=0)\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 0 ]'"
+        "script": "comprueba \"app sigue sin reenviar (ip_forward=0)\" bash -c '[ \"$(cat /proc/sys/net/ipv4/ip_forward)\" = 0 ]'\ncomprueba \"app conserva su IP de gestión en la interfaz de gestión\" bash -c 'ip -4 -o addr show dev eth1 | grep -q \" 10.9.2.10/24\" && ! ip -4 -o addr show dev eth0 | grep -q \" 10.9.2.10/\"'\ncomprueba \"las métricas de app siguen escuchando solo en la IP de gestión\" bash -c 's=$(ss -H -ltn \"sport = :9100\" | awk \"{print \\$4}\"); [ -n \"$s\" ] && [ \"$(echo \"$s\" | sort -u)\" = \"10.9.2.10:9100\" ]'"
       }
     ]
   }
