@@ -233,6 +233,21 @@ def ask_socratic_mentor(active: dict[str, Any], user_question: str = "", lang: s
     }
 
 
+_CAT_EN = {
+    "Incidente mayor": "Major incident",
+    "Redes y routing": "Networking & routing",
+    "Seguridad (Blue Team)": "Security (Blue Team)",
+    "Servicios web y TLS": "Web services & TLS",
+    "Sistema y permisos": "System & permissions",
+}
+_DIFF_EN = {"Básico": "Basic", "Intermedio": "Intermediate", "Avanzado": "Advanced", "Experto": "Expert"}
+
+
+def category_en(c: str) -> str:
+    """Mismo criterio que catName() en static/app.js."""
+    return _CAT_EN.get(c) or (c[: -len(" · Redes")] + " · Networking" if c.endswith(" · Redes") else c)
+
+
 def build_postmortem_markdown(active: dict[str, Any], lang: str = "es") -> str:
     inst = active["instance"]
     en = lang == "en"
@@ -286,7 +301,7 @@ def build_postmortem_markdown(active: dict[str, Any], lang: str = "es") -> str:
 
 - **{T("Date", "Fecha")}:** {now_str}
 - **{T("Scenario ID", "ID Escenario")}:** `{inst['id']}` ({T("mutation seed", "Semilla de mutación")} `{inst['seed']}`)
-- **{T("Category / Level", "Categoría / Nivel")}:** {inst['category']} · {inst['difficulty']}
+- **{T("Category / Level", "Categoría / Nivel")}:** {category_en(inst['category']) if en else inst['category']} · {_DIFF_EN.get(inst['difficulty'], inst['difficulty']) if en else inst['difficulty']}
 - **{T("3:00 AM On-Call Mode", "Modo Guardia 3:00 AM")}:** {T("Yes", "Sí") if active["blind_mode"] else "No"}
 - **{T("Status", "Estado")}:** **{status_str}** · {T("Time", "Tiempo")} `{mins}m {secs:02d}s` · {T("Rank", "Rango")} `{active.get('rank') or '-'}` · {T("Hints used", "Pistas usadas")} `{active['hints_used']}/{len(inst['hints'])}`
 

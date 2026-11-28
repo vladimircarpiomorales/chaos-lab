@@ -1,0 +1,483 @@
+{
+  "lpic1-cron-at": {
+    "title": "An at reminder and a weekly cron cleanup",
+    "briefing": "You are asked to schedule two tasks for your user:\n1. Use `at` to schedule a job 2 hours from now that writes the word `recordatorio` to `recordatorio.txt` (in your challenge directory). Save only the job number assigned by `at` to `at-id.txt`.\n2. Schedule a similar job for 3 hours from now and cancel it with `atrm`. Only the first job should remain in the queue.\n3. Save the output of `atq` to `atq.txt`: a single line, for the first job.\n4. Add to your crontab, without deleting anything already there, a five-field line that runs the script `limpia.sh` from your challenge directory (with the full path) every Sunday at 04:00.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-cron-at`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [SCHEDULING] · Need to set up a one-time reminder and a weekly cleanup for your user.",
+    "hints": [
+      "`at` reads the command from standard input and responds with a job number. The queue is checked and cleared with two other commands of the same family.",
+      "Try `echo 'command' | at now + 2 hours` and check the queue with `atq`. For the crontab, `crontab -l` shows what's there and `crontab -e` edits it; Sunday is 0 in the day-of-week field.",
+      "Something like: `echo 'echo recordatorio > PATH/recordatorio.txt' | at now + 2 hours`, write the number to `at-id.txt`; repeat with `3 hours` and remove that one with `atrm NUM`; then `atq > atq.txt`. The cron line starts with `0 4 * * 0`."
+    ],
+    "solution_summary": "With `at` you schedule by piping the command to stdin (`echo '…' | at now + 2 hours`); the printed number goes to `at-id.txt`. Cancel the second job with `atrm`, and `atq > atq.txt` saves the queue with only one job. In the crontab (`crontab -e`), the line `0 4 * * 0 /path/limpia.sh` means minute 0, hour 4, any day of month, any month, Sunday.",
+    "checks": {
+      "at-id.txt contiene solo el número de un trabajo": "at-id.txt contains only the job number",
+      "el trabajo de at-id.txt es de alumno y sigue en la cola": "the job in at-id.txt belongs to alumno and is still queued",
+      "ese trabajo ejecutará un comando que escribe recordatorio.txt": "that job will run a command that writes recordatorio.txt",
+      "solo queda un trabajo de alumno en la cola (el otro está cancelado)": "only one alumno job remains in the queue (the other is canceled)",
+      "atq.txt tiene una sola línea: el trabajo de alumno del paso 1": "atq.txt has a single line: the alumno job from step 1",
+      "el crontab de alumno ejecuta limpia.sh los domingos a las 04:00": "alumno's crontab runs limpia.sh on Sundays at 04:00"
+    }
+  },
+  "lpic1-gpg-simetrico": {
+    "title": "GnuPG: password encryption, key pair, and message for a recipient",
+    "briefing": "You are asked to work with GnuPG without touching your `~/.gnupg`. Before starting, in the terminal:\n`export GNUPGHOME=/home/alumno/retos/r102-gpg-simetrico/gnupg`\n1. Encrypt `secreto.txt` with the password `clave-reto` (without `gpg` prompting) and save the result to `secreto.txt.gpg`.\n2. Generate a key pair with the default values (ed25519 with an encryption subkey), no passphrase and no expiry, for `Alumno LPI <alumno@lpi.example>`, with no interactive questions.\n3. Export the public key in ASCII format to `publica.asc`.\n4. Encrypt `mensaje.txt` for `alumno@lpi.example` (output `mensaje.txt.gpg`) and decrypt it to `mensaje-recuperado.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-gpg-simetrico`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [ENCRYPTION] · Need to deliver a password-encrypted file and another encrypted for a recipient, with a separate keyring.",
+    "hints": [
+      "They are two different types of encryption: one with a shared password and another with someone's public key. To make `gpg` not ask anything, batch mode is required.",
+      "Useful options: `--batch --pinentry-mode loopback --passphrase ...`, `--symmetric`, `--quick-generate-key`, `--armor --export`, `--encrypt -r`, and `-d`. Use `-o` to choose the output file.",
+      "`gpg --batch --pinentry-mode loopback --passphrase clave-reto --symmetric -o secreto.txt.gpg secreto.txt`; the key with `--quick-generate-key 'Alumno LPI <alumno@lpi.example>' default default never` (empty passphrase); then `--armor --export`, `--encrypt -r`, and `-d -o`."
+    ],
+    "solution_summary": "Symmetric encryption uses `--symmetric` with the passphrase in loopback mode. `--quick-generate-key 'NAME <email>' default default never` creates the ed25519 key without expiry. `--armor --export` gives the public key in ASCII. `--encrypt -r email` encrypts for the recipient, and `gpg -d -o` recovers the original with the keyring's private key.",
+    "checks": {
+      "secreto.txt.gpg está cifrado con contraseña (symkey)": "secreto.txt.gpg is encrypted with a passphrase (symkey)",
+      "secreto.txt.gpg se descifra con clave-reto y da el texto original": "secreto.txt.gpg decrypts with clave-reto and yields the original text",
+      "existe la clave ed25519 de Alumno LPI, sin caducidad": "the ed25519 key for Alumno LPI exists, with no expiration",
+      "publica.asc es la clave pública en ASCII de alumno@lpi.example": "publica.asc is the ASCII-armored public key for alumno@lpi.example",
+      "mensaje.txt.gpg va cifrado para la clave pública del destinatario": "mensaje.txt.gpg is encrypted to the recipient's public key",
+      "mensaje-recuperado.txt es el mensaje original, descifrado": "mensaje-recuperado.txt is the original message, decrypted"
+    }
+  },
+  "lpic1-shell-entorno3": {
+    "title": "A shell environment that loads automatically in every session",
+    "briefing": "You are asked to make your environment work in any new shell. Everything must be placed in `~/.bashrc`; writing it only in the current shell will not work.\n1. Create the folder `~/bin` with an executable script `saluda` that writes `hola desde ~/bin`. Add `~/bin` to the beginning of `PATH` in `~/.bashrc`.\n2. Define a function `fyi` that writes three lines: the username, home directory, and hostname.\n3. Define an alias `carpeta` that runs `pwd` and then `ls -la`, in that order.\nTo test it, open another shell with `bash` and run `saluda`, `fyi`, and `carpeta`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-shell-entorno3`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [ENVIRONMENT] · Every time you open a new shell you lose your utilities. They need to be made permanent in the user's configuration.",
+    "hints": [
+      "A script is only found by name if it's in a directory on `PATH`. And what you want to persist goes in the file that `bash` reads when starting an interactive shell.",
+      "Add to `~/.bashrc` an `export PATH=...` that puts `$HOME/bin` first, a function like `name() { ...; }`, and an `alias name='cmd1; cmd2'`. For the data: `id -un`, `$HOME`, and `uname -n`.",
+      "Write in `~/.bashrc`: `export PATH=\"$HOME/bin:$PATH\"`, `fyi() { echo ...; echo ...; echo ...; }`, and `alias carpeta='pwd; ls -la'`. Create `~/bin/saluda` with `#!/bin/bash` and run `chmod +x`."
+    ],
+    "solution_summary": "`~/.bashrc` is read in each new interactive shell, so it's where to put `export PATH=\"$HOME/bin:$PATH\"`, the `fyi` function (with `id -un`, `$HOME`, and `uname -n`), and the alias `carpeta='pwd; ls -la'`. The `~/bin/saluda` script needs a shebang and execute permission to be found via `PATH`.",
+    "checks": {
+      "existe ~/bin/saluda y es ejecutable": "~/bin/saluda exists and is executable",
+      "en una shell nueva, saluda escribe «hola desde ~/bin» (PATH de ~/bin en .bashrc)": "in a new shell, saluda prints «hola desde ~/bin» (PATH includes ~/bin from .bashrc)",
+      "en una shell nueva, fyi existe como función": "in a new shell, fyi exists as a function",
+      "fyi escribe el usuario, /home/alumno y el nombre del equipo": "fyi prints the user, /home/alumno, and the hostname",
+      "el alias carpeta ejecuta pwd y después ls": "the alias carpeta runs pwd and then ls"
+    }
+  },
+  "lpic1-sudo": {
+    "title": "Custom sudo permissions for the support user",
+    "briefing": "You are asked to give `soporte` only two permissions with `sudo`. Create the file `/etc/sudoers.d/soporte` with these rules (use `sudo`, you are `alumno`):\n1. `soporte` can run as root, without a password, `/usr/bin/ls /root` and `/usr/bin/id` (the latter with any arguments).\n2. `soporte` can run `/usr/bin/whoami` as the user `www-data`, also without a password.\n3. The file is owned by root and has permissions `440`.\n4. Check the syntax with `sudo visudo -cf` and save its output to `visudo.txt`.\nTo test it: `sudo su - soporte -c 'sudo -l'`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-sudo`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [PRIVILEGES] · The user `soporte` needs two specific sudo permissions and nothing else.",
+    "hints": [
+      "Each sudoers rule specifies who, from where, as which user, whether a password is required, and which commands. A file in `sudoers.d` is best edited with the tool that validates syntax.",
+      "Format: `user ALL=(target) NOPASSWD: /path/cmd args, /path/other`. For the second case you need another line with `(www-data)`. Then `chmod 440` and `visudo -cf FILE`.",
+      "Two lines: `soporte ALL=(root) NOPASSWD: /usr/bin/ls /root, /usr/bin/id` and `soporte ALL=(www-data) NOPASSWD: /usr/bin/whoami`. Save them with `sudo visudo -f /etc/sudoers.d/soporte` and redirect `sudo visudo -cf /etc/sudoers.d/soporte` to `visudo.txt`."
+    ],
+    "solution_summary": "The rules `user ALL=(target) NOPASSWD: command` limit what `soporte` can run and as whom. A command without arguments in sudoers allows any; with arguments it requires exactly those. The file must be `root:root` and `0440`, and `visudo -cf` confirms it parsed correctly.",
+    "checks": {
+      "soporte puede ejecutar ls /root e id como root sin contraseña (y no cat /etc/shadow)": "soporte can run ls /root and id as root without a password (and not cat /etc/shadow)",
+      "soporte puede ejecutar whoami como www-data (y no como root)": "soporte can run whoami as www-data (and not as root)",
+      "/etc/sudoers.d/soporte es de root con permisos 440": "/etc/sudoers.d/soporte is owned by root with mode 440",
+      "visudo -cf da el fichero por bueno y visudo.txt lo recoge": "visudo -cf validates the file and visudo.txt captures that"
+    }
+  },
+  "lpic1-limites": {
+    "title": "Persistent resource limits for the interns group",
+    "briefing": "You are asked to limit what the interns can do. There is a group `alumnos` and a user `becario` who belongs to it.\nCreate the file `/etc/security/limits.d/90-alumnos.conf` (same format as `/etc/security/limits.conf`: domain, type, item, value) with these limits:\n1. For the entire group `alumnos`: soft limit of locked memory (`memlock`) of 2048.\n2. For the group `alumnos`: hard limit of `memlock` of 4096.\n3. Only for the user `becario`: hard limit on file size (`fsize`) of 10240.\nTo see it: `sudo su - becario -c 'ulimit -Sl; ulimit -Hl; ulimit -Hf'`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-limites`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [RESOURCES] · The interns are using more than they should. Their limits need to be set permanently.",
+    "hints": [
+      "Per-user or per-group limits are applied by PAM at login, reading a config file with one line per limit. There is a `.d` directory for adding your own.",
+      "Each line is `domain type item value`. A group is written with a symbol before the name; types are `soft` and `hard`. You need `sudo` to write to `/etc/security/limits.d/`.",
+      "Three lines: `@alumnos soft memlock 2048`, `@alumnos hard memlock 4096`, and `becario hard fsize 10240`. Test with `su -`, which does open a PAM session."
+    ],
+    "solution_summary": "In `limits.d` each line is `domain type item value`; the `@` prefix indicates a group. The three lines set soft and hard `memlock` for `@alumnos` and hard `fsize` for `becario`. They are applied by `pam_limits` at login, so they show up with `su -` and not in an already-open shell.",
+    "checks": {
+      "en una sesión de becario el límite flexible de memlock es 2048": "in a becario session, the soft memlock limit is 2048",
+      "el límite estricto de memlock es 4096 (y se aplica al grupo, con @alumnos)": "the hard memlock limit is 4096 (and applies to the group via @alumnos)",
+      "el límite estricto de fsize de becario es 10240": "becario's hard fsize limit is 10240"
+    }
+  },
+  "lpic1-claves-ssh": {
+    "title": "Key-based access: ed25519 pair, authorized_keys, and a Host entry in ssh_config",
+    "briefing": "You are asked to set up key-based access for the user `root` to the account `ina` (which already exists). You need root privileges (`sudo -i`).\n1. As root, generate an ed25519 key pair without a passphrase at `/root/.ssh/lab_ed25519`, with the comment `root@lpi-lab`.\n2. Create `/home/ina/.ssh` (owned by `ina`, permissions `700`) and inside it `authorized_keys` (owned by `ina`, permissions `600`) containing your public key.\n3. Add to `/root/.ssh/config` a `Host servidor-lab` block with `HostName 127.0.0.1`, `User ina`, `Port 2222`, and `IdentityFile ~/.ssh/lab_ed25519`.\nTo view it without connecting: `ssh -G servidor-lab | grep -E '^(hostname|user|port|identityfile) '`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-claves-ssh`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [SSH ACCESS] · Need to set up key-based access from `root` to the account `ina`.",
+    "hints": [
+      "Three pieces: the key, who accepts it, and how the client uses it. SSH is very strict about ownership and permissions of `.ssh` and `authorized_keys`.",
+      "`ssh-keygen` has options for type (`-t`), passphrase (`-N`), comment (`-C`), and file (`-f`). `install -d -m 700 -o ina -g ina` creates the directory with owner and mode in one step.",
+      "`ssh-keygen -t ed25519 -N '' -C root@lpi-lab -f /root/.ssh/lab_ed25519`; then `cat` the `.pub` into `authorized_keys`, `chown ina:ina`, and `chmod 600`. The `Host` block goes in `/root/.ssh/config` with one option per line."
+    ],
+    "solution_summary": "The private key stays in `/root/.ssh`, and the public key is added to `ina`'s `authorized_keys`, which must be owned by `ina` with mode `600` inside a `.ssh` directory with mode `700`. The `Host servidor-lab` block in `~/.ssh/config` sets alias, destination, user, port, and key; `ssh -G` shows the resulting configuration without connecting.",
+    "checks": {
+      "/home/ina/.ssh (700) y authorized_keys (600) son de ina y tienen tu clave pública": "/home/ina/.ssh (700) and authorized_keys (600) are owned by ina and contain your public key",
+      "ssh -G servidor-lab: 127.0.0.1, usuario ina, puerto 2222 y la clave lab_ed25519": "ssh -G servidor-lab shows 127.0.0.1, user ina, port 2222, and key lab_ed25519"
+    }
+  },
+  "lpic1-xvfb": {
+    "title": "A virtual X server protected with an xauth cookie",
+    "briefing": "You are asked to start a virtual X server that draws in memory. Use display `:7`.\n1. Use `xauth` to create a cookie for display `:7` in the file `cookie` (in your challenge directory).\n2. Start `Xvfb` in the background on display `:7`, using that cookie (`-auth`) and a screen `0` of `800x600x24`.\n3. With `DISPLAY` and `XAUTHORITY` set correctly, save the output of `xdpyinfo` to `pantalla.txt`.\nWithout the cookie the server must reject you: test with `XAUTHORITY=/dev/null xdpyinfo`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-xvfb`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [GRAPHICS] · A service needs an X server without a physical display, and it must only accept authorized clients.",
+    "hints": [
+      "The X server accepts only clients that present a cookie it knows. There's a tool to create that cookie in a file and environment variables so clients can find it.",
+      "`xauth -f FILE add :7 . KEY` creates the entry; `mcookie` generates a random key. The server is started with `Xvfb :7 -auth FILE -screen 0 AxBxP &`. Clients need `DISPLAY` and `XAUTHORITY`.",
+      "`xauth -f cookie add :7 . $(mcookie)`; `Xvfb :7 -auth \"$PWD/cookie\" -screen 0 800x600x24 &`; `export DISPLAY=:7 XAUTHORITY=\"$PWD/cookie\"` and `xdpyinfo > pantalla.txt` (wait a moment for the server to start)."
+    ],
+    "solution_summary": "`xauth -f cookie add :7 . $(mcookie)` stores the MIT-MAGIC-COOKIE for display `:7`. `Xvfb :7 -auth cookie -screen 0 800x600x24` starts the server requiring it. With `DISPLAY=:7` and `XAUTHORITY` pointing to the cookie, `xdpyinfo` responds; without it, the server rejects it.",
+    "checks": {
+      "cookie tiene una entrada de xauth para el display :7": "cookie has an xauth entry for display :7",
+      "el servidor X :7 responde con la cookie y su pantalla es de 800x600": "the X server :7 responds with the cookie and its screen is 800x600",
+      "el servidor rechaza a quien no tiene la cookie": "the server rejects anyone without the cookie",
+      "pantalla.txt tiene la salida de xdpyinfo del display :7": "pantalla.txt has the xdpyinfo output for display :7"
+    }
+  },
+  "lpic1-localizacion": {
+    "title": "Date format and encoding according to locale",
+    "briefing": "You are asked to control the locale on a per-command basis.\n1. Using the fixed date in `fecha.txt`, get the month name in English and save it to `mes.txt`.\n2. Make only that command use the locale `C`.\n3. Save the character encoding of the locale `C.UTF-8` to `codificacion.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-localizacion`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [LOCALE] · A report shows the month in another language. Need to control the locale for a single command.",
+    "hints": [
+      "The environment variables `LC_*` and `LANG` decide language and format. They can be placed before a command to affect only that one.",
+      "`date -d` accepts a date as text and `+%B` gives the month name. To find the encoding, there's the `locale` command with an option that prints only the character set.",
+      "`LC_ALL=C date -d \"$(cat fecha.txt)\" +%B > mes.txt` and `LC_ALL=C.UTF-8 locale charmap > codificacion.txt`."
+    ],
+    "solution_summary": "`LC_ALL=C` placed before a command only affects that process; `date -d \"$(cat fecha.txt)\" +%B` prints `January`. `locale charmap` shows the encoding of the active locale, which with `LC_ALL=C.UTF-8` is `UTF-8`.",
+    "checks": {
+      "el comando usó el mes inglés esperado": "the command used the expected English month",
+      "se guardó la codificación": "the encoding was saved"
+    }
+  },
+  "lpic1-subredes": {
+    "title": "IPv4 subnets calculated by hand and verified",
+    "briefing": "You are asked to first calculate by hand and then check with `ipcalc`. One item per line, nothing else:\n1. In `red-a.txt`, for `10.0.45.200` with mask `255.255.240.0`, four lines in this order: the CIDR prefix (just the number), the network address, the broadcast address, and the number of usable hosts.\n2. In `red-b.txt`, for `192.168.100.130/26`, four lines in this order: the dotted-decimal mask, the network address, the broadcast address, and the number of hosts.\n3. In `binario.txt`, the address `192.168.100.130` in binary: four groups of 8 bits separated by dots.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-subredes`); the files requested without a path go there.",
+    "blind_alert": "REQUEST [ADDRESSING] · Need to document two networks: prefix, network, broadcast, and usable hosts.",
+    "hints": [
+      "The prefix is the number of 1 bits in the mask. Each subnet's blocks grow by a regular amount in the octet where the boundary falls.",
+      "Usable hosts = 2^(32 - prefix) - 2. Octet bit values: 128 64 32 16 8 4 2 1. `ipcalc ADDRESS/PREFIX` shows the result for cross-checking.",
+      "With `/20` the third octet increments by 16 (network `10.0.32.0`); with `/26` the fourth by 64 (network `192.168.100.128`). Convert each octet of the address to 8 bits."
+    ],
+    "solution_summary": "A mask `255.255.240.0` is 20 bits of 1 (`/20`); the block size in the third octet is 16, so the network is `10.0.32.0`, broadcast `10.0.47.255`, and there are 4094 hosts. With `/26` the mask is `255.255.255.192`, blocks of 64: network `.128`, broadcast `.191`, 62 hosts. `ipcalc` confirms the calculations.",
+    "checks": {
+      "red-a.txt: prefijo CIDR correcto": "red-a.txt has the correct CIDR prefix",
+      "red-a.txt: red, broadcast y número de hosts correctos": "red-a.txt has correct network, broadcast, and host count",
+      "red-b.txt: máscara en decimal correcta": "red-b.txt has the correct dotted-decimal mask",
+      "red-b.txt: red, broadcast y número de hosts correctos": "red-b.txt has correct network, broadcast, and host count",
+      "binario.txt: la dirección en binario, 4 octetos de 8 bits": "binario.txt has the address in binary, 4 octets of 8 bits"
+    }
+  },
+  "lpic1-puertos-ipv6": {
+    "title": "Ports from /etc/services and IPv6 address abbreviation",
+    "briefing": "You are asked to look up `/etc/services` (using `getent services` or `grep`) and abbreviate two IPv6 addresses.\n1. In `puertos.txt`, one per line and in this order, the port number for: `ssh`, `smtp`, `domain` (DNS), `imaps`, and `ldaps`.\n2. In `servicio.txt`, two lines: the name `/etc/services` gives to port `995/tcp` and the name for port `514/udp` (note: `514/tcp` is a different service).\n3. In `ipv6.txt`, two lines with the shortest form of these addresses (`0000` groups as `0` and `::` only once):\n   `fd42:abcd:1234:0000:0000:0000:0000:5678`\n   `2001:dead:0000:0000:beef:0000:0000:cafe`\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-puertos-ipv6`); files requested without a path go there.",
+    "blind_alert": "REQUEST [DOCUMENTATION] · Known service ports and two IPv6 addresses must be written in their short form.",
+    "hints": [
+      "`/etc/services` maps name, port, and protocol. In IPv6 you can remove leading zeros from each group and replace one run of zero groups with a double colon.",
+      "`getent services NOMBRE` or `getent services PUERTO/PROTOCOLO` query the table. `grep -w 514 /etc/services` shows you both protocols for 514.",
+      "`::` may appear only once: in the second address there are two runs of zeros and both are the same length; compressing either one is fine. The first has a single long run."
+    ],
+    "solution_summary": "`getent services ssh` gives 22/tcp, `smtp` 25, `domain` 53, `imaps` 993, and `ldaps` 636. Port 995/tcp is `pop3s` and 514/udp is `syslog`. In IPv6, `fd42:abcd:1234::5678` compresses the single run; in the second address, compress one run of zeros and write the others as `0`.",
+    "checks": {
+      "puertos.txt: los 5 puertos en el orden pedido": "puertos.txt: the 5 ports in the requested order",
+      "servicio.txt, línea 1: el servicio de 995/tcp": "servicio.txt, line 1: the service for 995/tcp",
+      "servicio.txt, línea 2: el servicio de 514/udp": "servicio.txt, line 2: the service for 514/udp",
+      "ipv6.txt, línea 1: la primera dirección bien abreviada": "ipv6.txt, line 1: the first address correctly abbreviated",
+      "ipv6.txt, línea 2: la segunda dirección bien abreviada": "ipv6.txt, line 2: the second address correctly abbreviated"
+    }
+  },
+  "lpic1-resolucion": {
+    "title": "Name resolution order, lab hosts, and search domain",
+    "briefing": "Someone changed how this machine resolves names and two lab servers are missing. You are asked to:\n1. Fix `/etc/nsswitch.conf`: the `hosts` line must check local files (`files`) first and then DNS (`dns`).\n2. Add two machines to `/etc/hosts`, each with its fully qualified name and short alias: `192.168.50.10` `servidor.lab.local` (alias `servidor`) and `192.168.50.20` `backup.lab.local` (alias `backup`).\n3. Save the output of `getent hosts backup` in `backup.txt`.\n4. In `/etc/resolv.conf`, add the domain `lab.local` to the search list (`search`) without removing existing ones and WITHOUT touching the `nameserver` lines. Note: the container mounts this file, so `sed -i` doesn't work; use an editor or `>>`.\nYou need `sudo` to edit these files.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-resolucion`); files requested without a path go there.",
+    "blind_alert": "INCIDENT [RESOLUTION] · Lab names don't resolve as they should since someone touched the client configuration.",
+    "hints": [
+      "There are three separate pieces: the order of name sources, the local table, and the search domains of the DNS client. `getent` queries just like any application would.",
+      "Look at the `hosts` line in `/etc/nsswitch.conf`. In `/etc/hosts` each line is IP, fully qualified name, and alias. In `resolv.conf` only the last `search` line counts. Edit with `sudo nano` or use `sudo tee -a`.",
+      "Set `hosts: files dns`. Add `192.168.50.10 servidor.lab.local servidor` and `192.168.50.20 backup.lab.local backup`. Add a `search` line at the end of `resolv.conf` with the domains that were already there plus `lab.local`."
+    ],
+    "solution_summary": "`nsswitch.conf` had `dns files`; it must be `hosts: files dns` so the local table wins. In `/etc/hosts` the format is `IP nombre-completo alias`. In `resolv.conf` only the last `search` line matters, so repeat it with the previous domains plus `lab.local` without touching the `nameserver` lines.",
+    "checks": {
+      "nsswitch.conf: hosts consulta files antes que dns": "nsswitch.conf: hosts checks files before dns",
+      "/etc/hosts: servidor y servidor.lab.local son 192.168.50.10": "/etc/hosts: servidor and servidor.lab.local are 192.168.50.10",
+      "/etc/hosts: backup y backup.lab.local son 192.168.50.20": "/etc/hosts: backup and backup.lab.local are 192.168.50.20",
+      "backup.txt tiene la salida de getent hosts backup": "backup.txt contains the output of getent hosts backup",
+      "resolv.conf: la búsqueda (última línea search) incluye lab.local": "resolv.conf: the search (last search line) includes lab.local",
+      "resolv.conf: las líneas nameserver siguen igual (el DNS funciona)": "resolv.conf: the nameserver lines remain unchanged (DNS works)",
+      "resolv.conf: los dominios de búsqueda que ya había siguen ahí": "resolv.conf: the existing search domains are still there"
+    }
+  },
+  "lpic1-networkd": {
+    "title": "Laptop networking with systemd-networkd .network files and WPA",
+    "briefing": "You are asked to write out the network configuration for a laptop. There is no systemd in the container, so you only create the files (use `sudo`):\n1. `/etc/systemd/network/30-lan.network`: must apply to ALL ethernet interfaces (using a wildcard), with static IP `192.168.0.100/24`, gateway `192.168.0.1`, and DNS server `192.168.0.1`.\n2. `/etc/systemd/network/40-wifi.network`: for the `wlo1` interface, request only the IPv4 address via DHCP.\n3. Using `wpa_passphrase`, create `/etc/wpa_supplicant/wpa_supplicant-wlo1.conf` for the network `MyWifi` with the password `MyPassword`. Then delete the commented line from that file that contains the clear-text password.\n4. Save in `servicio.txt` the full name of the systemd unit that file would use to connect `wlo1`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-networkd`); files requested without a path go there.",
+    "blind_alert": "REQUEST [NETWORK] · A laptop's wired and Wi-Fi network must be prepared via configuration files.",
+    "hints": [
+      "`.network` files have one section that says which interfaces they apply to and another with the parameters. Ethernet interfaces all start the same.",
+      "Sections `[Match]` (`Name=`) and `[Network]` (`Address=`, `Gateway=`, `DNS=`, `DHCP=`). Create the directories with `sudo mkdir -p`. `wpa_passphrase SSID CONTRASEÑA` prints the block to the screen. The WPA unit is a template with `@`.",
+      "`Name=en*` for ethernet and `DHCP=ipv4` for Wi-Fi. `wpa_passphrase MyWifi MyPassword | sudo tee /etc/wpa_supplicant/wpa_supplicant-wlo1.conf`, then delete the line `#psk=`. The unit is `wpa_supplicant@INTERFAZ.service`."
+    ],
+    "solution_summary": "`[Match] Name=en*` matches all ethernet interfaces and `[Network]` sets address, gateway, and DNS. For Wi-Fi, `DHCP=ipv4` is enough. `wpa_passphrase` generates the `psk` hash and leaves the clear-text key in a `#psk=` comment that must be deleted. The unit that connects `wlo1` is the template `wpa_supplicant@wlo1.service`.",
+    "checks": {
+      "30-lan.network: vale para todas las interfaces ethernet": "30-lan.network: applies to all ethernet interfaces",
+      "30-lan.network: [Network] Address=192.168.0.100/24": "30-lan.network: [Network] Address=192.168.0.100/24",
+      "30-lan.network: [Network] Gateway=192.168.0.1 y DNS=192.168.0.1": "30-lan.network: [Network] Gateway=192.168.0.1 and DNS=192.168.0.1",
+      "40-wifi.network: wlo1 por DHCP solo IPv4": "40-wifi.network: wlo1 uses DHCP for IPv4 only",
+      "wpa_supplicant-wlo1.conf: la red MyWifi con la clave cifrada (hash)": "wpa_supplicant-wlo1.conf: the MyWifi network with the encrypted (hashed) key",
+      "wpa_supplicant-wlo1.conf: ya no está la contraseña en claro": "wpa_supplicant-wlo1.conf: the clear-text password is gone",
+      "servicio.txt: la unidad de systemd que conecta wlo1": "servicio.txt: the systemd unit that connects wlo1"
+    }
+  },
+  "lpic1-ip-rutas": {
+    "title": "Reading interfaces, default route, and addresses with ip",
+    "briefing": "You are asked to document this container's network using the `ip` command (read-only; you cannot change addresses or routes). One item per file, nothing else:\n1. In `mtu.txt`, the MTU of the loopback interface `lo`.\n2. In `puerta.txt`, the IP of the default route gateway. If there is no default route, write `ninguna`.\n3. In `interfaz.txt`, the name of the interface through which that default route exits (or `ninguna`).\n4. In `direccion.txt`, the IPv4 address of that interface with its prefix, for example `192.168.1.20/24` (or `ninguna`).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-ip-rutas`); files requested without a path go there.",
+    "blind_alert": "REQUEST [INVENTORY] · The network data of this machine must be recorded without changing anything.",
+    "hints": [
+      "`ip` has subcommands for links, addresses, and routes. Each requested item comes from a different one.",
+      "`ip link show lo` for the MTU, `ip route` for the default route (`default via … dev …`), and `ip -4 address show dev INTERFAZ` for the address with its prefix.",
+      "Extract each field with `awk` from the output of `ip route show default` (the IP follows `via`, the interface follows `dev`) and the address from `ip -4 -o address show dev INTERFAZ`."
+    ],
+    "solution_summary": "`ip link show lo` gives the MTU (65536 on a typical loopback). `ip route show default` shows `default via PUERTA dev INTERFAZ`, from which the gateway and interface are taken. `ip -4 -o address show dev INTERFAZ` gives the IPv4 address with prefix. If there is no default route, write `ninguna`.",
+    "checks": {
+      "puerta.txt: la puerta de enlace por defecto": "puerta.txt: the default gateway",
+      "interfaz.txt: la interfaz de la ruta por defecto": "interfaz.txt: the interface of the default route",
+      "direccion.txt: ninguna": "direccion.txt: none"
+    }
+  },
+  "lpic1-ss-nc": {
+    "title": "Locating a hidden service with ss and talking to it with nc",
+    "briefing": "While setting up the challenge, a TCP service was started that listens only on `127.0.0.1`, on a high port between `20000` and `29999` that we won't tell you. You are asked to:\n1. Find it with `ss` and save the port number in `puerto.txt`.\n2. Save in `programa.txt` the name of the program listening on that port.\n3. Connect with `nc`: it replies with a sentence ending in a key word. Save only that word in `clave.txt`.\n4. Stop the service with `kill` and verify with `ss` that it is no longer listening.\nThe service runs as root: to see its process and stop it you need `sudo`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-ss-nc`); files requested without a path go there.",
+    "blind_alert": "INCIDENT [UNKNOWN SERVICE] · A process listens on an undocumented high local port. It must be identified and stopped.",
+    "hints": [
+      "A listening service is a TCP socket in LISTEN state. `ss` lists them and can show which process owns each one, but you can see other users' processes only if you have privileges.",
+      "Use `sudo ss` with the TCP, listening, numeric, and process options. You'll see something like `users:((\"nombre\",pid=N,…))`. To talk to the port, use `nc 127.0.0.1 PUERTO`.",
+      "`sudo ss -tlnp` and look for the port between 20000 and 29999 on `127.0.0.1`. Connect with `nc 127.0.0.1 PUERTO < /dev/null`, take the last word of the reply, and stop the PID with `sudo kill`."
+    ],
+    "solution_summary": "`sudo ss -tlnp` lists listening sockets with their process; the high port on `127.0.0.1` belongs to `socat`. `nc 127.0.0.1 PUERTO` returns a sentence whose last word is the key. `sudo kill PID` (the PID appears in `ss`) stops the service and `ss` confirms the port no longer appears.",
+    "checks": {
+      "puerto.txt: el puerto del servicio": "puerto.txt: the service's port",
+      "programa.txt: el programa que escucha en ese puerto": "programa.txt: the program listening on that port",
+      "clave.txt: la palabra clave que devuelve el servicio": "clave.txt: the keyword returned by the service",
+      "el servicio ya no escucha en ese puerto": "the service is no longer listening on that port"
+    }
+  },
+  "lpic1-variables": {
+    "title": "Variables and aliases that survive every session",
+    "briefing": "You are asked to configure the environment for user `alumno`:\n1. Add to `~/.bashrc` an exported variable `PRACTICA` with the value `lpi`.\n2. Also add an alias `ll` that expands to `ls -l`.\n3. Save the current value of the `PATH` variable in `ruta.txt`.\nTo test it, open another shell with `bash` and check `echo $PRACTICA` and `alias ll`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-variables`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ENVIRONMENT] · A user loses a variable and a shortcut every time a new terminal is opened.",
+    "hints": [
+      "What you type in the terminal disappears when you close it. What must persist goes in the startup file for your user's `bash`.",
+      "`export` makes the variable visible to child programs. An alias is defined with `alias nombre='comando'`. To append lines to a file without deleting it, use `>>`.",
+      "`echo 'export PRACTICA=lpi' >> ~/.bashrc`, `echo \"alias ll='ls -l'\" >> ~/.bashrc`, and `echo \"$PATH\" > ruta.txt`."
+    ],
+    "solution_summary": "`~/.bashrc` is loaded in every interactive shell: that's where `export PRACTICA=lpi` and `alias ll='ls -l'` go. `export` makes the variable reach child processes. `echo \"$PATH\" > ruta.txt` saves the current value of `PATH`.",
+    "checks": {
+      "una shell nueva ve PRACTICA=lpi": "a new shell sees PRACTICA=lpi",
+      "PRACTICA se exporta (la ve un programa hijo)": "PRACTICA is exported (a child program sees it)",
+      "el alias ll es ls -l": "the ll alias is ls -l",
+      "ruta.txt tiene un PATH (con /usr/bin)": "ruta.txt has a PATH (with /usr/bin)"
+    }
+  },
+  "lpic1-script": {
+    "title": "A script with arguments, a condition, and exit codes",
+    "briefing": "You are asked to write `cuenta.sh` (executable) in your challenge directory, with this behavior:\n1. If it receives no arguments, it writes `uso: cuenta.sh FICHERO...` and exits with code 1.\n2. If it receives arguments, it writes how many there are (just the number) and exits with code 0.\nExample: `./cuenta.sh a b c` writes `3`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-script`); files requested without a path go there.",
+    "blind_alert": "REQUEST [AUTOMATION] · A utility that counts arguments and warns when none are received is missing.",
+    "hints": [
+      "A script needs to say which interpreter runs it and have execute permission. The shell stores the number of arguments in a special variable.",
+      "`$#` is the number of arguments. Use `if [ ... ]; then ... fi` for the no-arguments case, and `exit` with the appropriate code.",
+      "First line `#!/bin/bash`; `if [ $# -eq 0 ]; then echo 'uso: cuenta.sh FICHERO...'; exit 1; fi`; then `echo $#`. Finish with `chmod +x cuenta.sh`."
+    ],
+    "solution_summary": "The shebang `#!/bin/bash` selects the interpreter and `chmod +x` makes it executable. `$#` counts the arguments: with 0 the usage message is printed and it exits with `exit 1`; otherwise `echo $#` prints the total and the script ends with 0.",
+    "checks": {
+      "cuenta.sh existe y es ejecutable": "cuenta.sh exists and is executable",
+      "empieza por #! (shebang)": "starts with #! (shebang)",
+      "./cuenta.sh a b c escribe 3": "./cuenta.sh a b c writes 3",
+      "./cuenta.sh x escribe 1 y sale con 0": "./cuenta.sh x writes 1 and exits with 0",
+      "sin argumentos sale con código 1": "with no arguments exits with code 1",
+      "sin argumentos explica el uso": "with no arguments explains usage"
+    }
+  },
+  "lpic1-usuarios": {
+    "title": "Creating a user with a group, expiration, and locked password",
+    "briefing": "You are asked to create an account (you need `sudo`):\n1. Create the group `desarrollo`.\n2. Create the user `ana` with a home directory (`/home/ana`), shell `/bin/bash`, and `desarrollo` as a secondary group.\n3. Make the `ana` account expire on `2027-12-31`.\n4. Lock the `ana` password, so they cannot log in with a password until you unlock it.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-usuarios`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ACCOUNTS] · A new member joins the development team and must be added under certain conditions.",
+    "hints": [
+      "There are four account operations, each with its own command: groups, users, expiration, and locking. All require privileges.",
+      "`useradd` has options to create the home directory, set the shell, and add secondary groups. Expiration is managed with `chage`; locking, with `passwd` or `usermod`.",
+      "`sudo groupadd desarrollo`; `sudo useradd -m -s /bin/bash -G desarrollo ana`; `sudo chage -E 2027-12-31 ana`; `sudo passwd -l ana`."
+    ],
+    "solution_summary": "`groupadd` creates the group; `useradd -m -s /bin/bash -G desarrollo ana` creates the user, home, shell, and secondary group. `chage -E` sets the account expiration date. `passwd -l` prepends `!` to the hash in `/etc/shadow`, which locks the password.",
+    "checks": {
+      "existe el grupo desarrollo": "the group desarrollo exists",
+      "existe el usuario ana": "the user ana exists",
+      "ana tiene /home/ana creada": "ana has /home/ana created",
+      "la shell de ana es /bin/bash": "ana's shell is /bin/bash",
+      "ana está en desarrollo": "ana is in desarrollo",
+      "la cuenta caduca el 2027-12-31": "the account expires on 2027-12-31",
+      "la contraseña de ana está bloqueada": "ana's password is locked"
+    }
+  },
+  "lpic1-cron": {
+    "title": "A daily backup as root in /etc/cron.d",
+    "briefing": "You are asked to make `/home/alumno/retos/r102-cron/copia.sh` run as root every day at 02:30.\nDo it with a system file: create (using `sudo`) `/etc/cron.d/copia` with the correct cron line (in `/etc/cron.d` the user is specified, unlike `crontab -e`).\nAlso, save in `campos.txt` what each of the first 5 fields means, one per line and in this order: `minuto`, `hora`, `dia`, `mes`, `semana`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-cron`); files requested without a path go there.",
+    "blind_alert": "REQUEST [BACKUPS] · A backup script must run unattended every night with root privileges.",
+    "hints": [
+      "Files in `/etc/cron.d` use the same format as a crontab, with one extra column. The first five fields are time.",
+      "Format: five time fields, the user, and the command with its full path. You need `sudo` to write there, for example with `sudo tee`.",
+      "The line is `30 2 * * * root /home/alumno/retos/r102-cron/copia.sh`. `campos.txt` has the five words, one per line."
+    ],
+    "solution_summary": "In `/etc/cron.d` each line is `m h dom mon dow usuario comando`. Daily 02:30 is `30 2 * * *`, with `root` as the user. The five time fields are minute, hour, day of month, month, and day of week.",
+    "checks": {
+      "existe /etc/cron.d/copia": "the file /etc/cron.d/copia exists",
+      "la línea es: 30 2 * * * root .../copia.sh": "the line is: 30 2 * * * root .../copia.sh",
+      "campos.txt: minuto hora dia mes semana": "campos.txt: minute hour day month week"
+    }
+  },
+  "lpic1-suid": {
+    "title": "SUID file audit",
+    "briefing": "An auditor asks you for two things:\n1. Save to `suid.txt` the list of SUID files inside `/usr/bin` (paths only, one per line, sorted).\n2. In the `sospechoso/` directory there is a program called `copia-de-bash` with SUID that shouldn't have it. Remove the SUID without changing the rest of its permissions.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-suid`); files requested without a path go there.",
+    "blind_alert": "AUDIT [PERMISSIONS] · A program copied from the system keeps the SUID bit and shouldn't.",
+    "hints": [
+      "The SUID bit makes a program run with its owner's privileges. `find` knows how to search by permissions.",
+      "`find /usr/bin -perm -MODO -type f` with the SUID mode, and `sort` to sort. To remove only that bit, `chmod` with `u-s`.",
+      "`find /usr/bin -perm -4000 -type f | sort > suid.txt` and `chmod u-s sospechoso/copia-de-bash`. If you use a numeric mode, be careful to leave `755`."
+    ],
+    "solution_summary": "`find /usr/bin -perm -4000 -type f | sort > suid.txt` lists the files with SUID (`-4000` requires that bit, regardless of the rest). `chmod u-s` removes only that bit and leaves the `755` mode intact.",
+    "checks": {
+      "suid.txt: la lista completa y ordenada de ficheros SUID de /usr/bin": "the complete sorted list of SUID files from /usr/bin",
+      "suid.txt no está vacío": "suid.txt is not empty",
+      "copia-de-bash ya no tiene SUID": "copia-de-bash no longer has SUID",
+      "y conserva el resto de sus permisos": "and it keeps the rest of its permissions"
+    }
+  },
+  "lpic1-cuenta-shadow": {
+    "title": "Secure an account: lock, no expiration, and shadow review",
+    "briefing": "They ask you to secure the `lpi-shadow` account (you need `sudo`):\n1. Lock the `lpi-shadow` account.\n2. Remove its expiration date.\n3. Verify that `/etc/passwd` uses the `x` marker and that the password is in `/etc/shadow`, and that this last file has no permissions for other users.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-cuenta-shadow`); files requested without a path go there.",
+    "blind_alert": "REQUEST [SECURITY] · The `lpi-shadow` account must be left locked and without expiration, and you need to check where its password lives.",
+    "hints": [
+      "There is a command to lock the password and another to manage the account expiration. Then, check two system files.",
+      "`passwd -l` locks. With `chage` you remove expiration using a special value. Check the account line in `/etc/passwd` and the permissions of `/etc/shadow` with `stat`.",
+      "`sudo passwd -l lpi-shadow` and `sudo chage -E -1 lpi-shadow`. Check with `grep '^lpi-shadow:' /etc/passwd` and `stat -c %a /etc/shadow`."
+    ],
+    "solution_summary": "`passwd -l` locks the password (adds `!` in `/etc/shadow`) and `chage -E -1` leaves the account without expiration. The `x` in `/etc/passwd` indicates the hash lives in `/etc/shadow`, which must remain with no permissions for others (for example `640`).",
+    "checks": {
+      "la contraseña de la cuenta está bloqueada": "the account password is locked",
+      "/etc/passwd usa x como marcador": "/etc/passwd uses x as marker",
+      "la cuenta no tiene fecha de caducidad": "the account has no expiration date",
+      "otros usuarios no pueden leer /etc/shadow": "other users cannot read /etc/shadow"
+    }
+  },
+  "lpic1-zonahoraria": {
+    "title": "Time zone without timedatectl and dates with date",
+    "briefing": "The container has no `timedatectl` (no systemd), so you'll do it by hand. You need `sudo`:\n1. Change the system time zone to `America/Bogota`: `/etc/localtime` must be a symbolic link to its file under `/usr/share/zoneinfo`.\n2. Without changing the system zone, save to `tokio.txt` the abbreviation of the `Asia/Tokyo` zone (the one given by `date +%Z`, with the `TZ` variable set only for that command).\n3. Save to `epoch.txt` the UTC date, in `AAAA-MM-DD` format, of the instant `1564013011` (seconds since the epoch).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-zonahoraria`); files requested without a path go there.",
+    "blind_alert": "REQUEST [TIME] · The server must switch to Bogotá time and two date conversions must be documented.",
+    "hints": [
+      "The system zone is a link to a file in the time zone database. An environment variable lets you test another zone without touching the system.",
+      "The files live under `/usr/share/zoneinfo`. With `ln -sf` you replace the link. `date -u -d @SEGUNDOS` reads an epoch; `+%F` gives the date with hyphens.",
+      "`sudo ln -sf /usr/share/zoneinfo/America/Bogota /etc/localtime`; `TZ=Asia/Tokyo date +%Z > tokio.txt`; `date -u -d @1564013011 +%F > epoch.txt`."
+    ],
+    "solution_summary": "`/etc/localtime` is a link to `/usr/share/zoneinfo/America/Bogota`, which `ln -sf` replaces. `TZ=Asia/Tokyo date +%Z` applies the zone only to that command and returns `JST`. `date -u -d @1564013011 +%F` converts the epoch to a UTC date (2019-07-25).",
+    "checks": {
+      "/etc/localtime es un enlace simbólico": "/etc/localtime is a symbolic link",
+      "el enlace apunta a zoneinfo/America/Bogota": "the link points to zoneinfo/America/Bogota",
+      "date ya muestra la hora de Bogotá (-05)": "date now shows Bogotá time (-05)",
+      "tokio.txt: la abreviatura de la zona de Tokio": "tokio.txt: the abbreviation of the Tokyo zone",
+      "epoch.txt: la fecha UTC de ese instante": "epoch.txt: the UTC date of that instant"
+    }
+  },
+  "lpic1-chrony": {
+    "title": "chrony with NTP servers from Spain",
+    "briefing": "They ask you to synchronize time with servers from Spain instead of the Debian pool. Edit `/etc/chrony/chrony.conf` (on RHEL it would be `/etc/chrony.conf`) with `sudo`:\n1. Comment (or delete) the `pool` line that Debian provides.\n2. Add two servers, `0.es.pool.ntp.org` and `1.es.pool.ntp.org`, both with the `iburst` option.\n3. Change `makestep` so the clock is stepped if the difference exceeds 0.5 seconds, but only during the first 5 updates.\n4. Verify that `chronyd` accepts the file with `sudo chronyd -p` (prints the config and exits, without starting anything) and save its output to `config.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-chrony`); files requested without a path go there.",
+    "blind_alert": "REQUEST [SYNCHRONIZATION] · The company wants to use Spanish NTP servers instead of the pool shipped by the distribution.",
+    "hints": [
+      "`chronyd` reads a file with one directive per line. `pool` and `server` are two ways to specify time sources.",
+      "`server NOMBRE iburst` adds a source. `makestep UMBRAL LÍMITE` allows stepping only at startup. `chronyd -p` validates and shows the effective configuration.",
+      "Comment the `pool` line, add the two `server …es.pool.ntp.org iburst` lines, leave a single `makestep 0.5 5` and run `sudo chronyd -p > config.txt` (`chronyd` is in `/usr/sbin`)."
+    ],
+    "solution_summary": "`pool` is replaced by two `server X iburst` lines. `makestep 0.5 5` steps the clock if the offset exceeds 0.5 s, but only during the first 5 updates. `chronyd -p` loads the file, prints the effective configuration and validates the syntax without starting the daemon.",
+    "checks": {
+      "no queda ninguna línea pool activa": "no active pool line remains",
+      "0.es.pool.ntp.org configurado como servidor con iburst": "0.es.pool.ntp.org configured as server with iburst",
+      "1.es.pool.ntp.org configurado como servidor con iburst": "1.es.pool.ntp.org configured as server with iburst",
+      "una sola línea makestep y es makestep 0.5 5": "a single makestep line and it is makestep 0.5 5",
+      "chronyd -p acepta el fichero": "chronyd -p accepts the file",
+      "config.txt tiene la salida de chronyd -p con tus servidores": "config.txt has the output of chronyd -p with your servers"
+    }
+  },
+  "lpic1-rsyslog": {
+    "title": "rsyslog rules for application logs",
+    "briefing": "Your application logs with the `local5` facility. The `rsyslogd` daemon is stopped at the start. You are asked (with `sudo`):\n1. Create `/etc/rsyslog.d/60-app.conf` with two rules: all `local5` messages to `/var/log/app.log`, and only those with priority exactly `err` from `local5` to `/var/log/app-err.log`.\n2. Check the syntax with `rsyslogd -N1` and start `rsyslogd` by hand (the container has no `systemctl`).\n3. Using `logger` and the `app` tag, send three `local5` messages: `arranque correcto` with priority `info`, `fallo de disco` with `err`, and `temperatura alta` with `crit`.\nAt the end `app.log` must have all three and `app-err.log` only `fallo de disco`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-rsyslog`); files requested without a path go there.",
+    "blind_alert": "REQUEST [LOGS] · An application writes with the local5 facility and its messages must be separated by priority.",
+    "hints": [
+      "A syslog rule is a `facilidad.prioridad` selector followed by a destination. There is a way to choose an exact priority instead of \"that one and the more severe ones\".",
+      "`local5.*` matches any priority; with an `=` sign before the priority it matches only it. `rsyslogd -N1` validates, `rsyslogd` starts the daemon, and `logger -t ETIQ -p facilidad.prioridad \"texto\"` sends messages.",
+      "Two lines: `local5.* /var/log/app.log` and `local5.=err /var/log/app-err.log`. Start `sudo rsyslogd` before using `logger -t app -p local5.info …`, `local5.err …` and `local5.crit …`."
+    ],
+    "solution_summary": "`local5.*` sends everything from that facility to `app.log`; `local5.=err` sends only the `err` priority to `app-err.log` (without `=` it would also include the more severe ones). After validating with `rsyslogd -N1` and starting the daemon, `logger -t app -p local5.PRIO` generates the three messages and each rule filters its own.",
+    "checks": {
+      "existe /etc/rsyslog.d/60-app.conf": "/etc/rsyslog.d/60-app.conf exists",
+      "regla: todo local5 va a /var/log/app.log": "rule: all local5 goes to /var/log/app.log",
+      "regla: solo err exacto de local5 va a /var/log/app-err.log": "rule: only exact err from local5 goes to /var/log/app-err.log",
+      "rsyslogd -N1 no da errores": "rsyslogd -N1 gives no errors",
+      "app.log tiene los tres mensajes con la etiqueta app": "app.log has the three messages with the app tag",
+      "app-err.log tiene «fallo de disco»": "app-err.log has “fallo de disco”",
+      "app-err.log no tiene ni info ni crit": "app-err.log has neither info nor crit"
+    }
+  },
+  "lpic1-logrotate": {
+    "title": "Weekly rotation of shop logs with logrotate",
+    "briefing": "The online shop writes its logs to `/var/log/tienda/` (`acceso.log` and `errores.log`). You are asked, with `sudo`:\n1. Create `/etc/logrotate.d/tienda` for `/var/log/tienda/*.log` with: weekly rotation, 4 copies, compression delayed one cycle (`compress` and `delaycompress`), don't fail if the file is missing, don't rotate empty files, and create the new file with `640` permissions, owner `root`, and group `adm`.\n2. Simulate the rotation with `logrotate -d /etc/logrotate.d/tienda` and verify that it gives no errors.\n3. Force a real rotation with `logrotate -f`. There should remain `acceso.log.1` (still uncompressed) and a new empty `acceso.log` with `640` permissions and group `adm`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-logrotate`); files requested without a path go there.",
+    "blind_alert": "REQUEST [LOGS] · The online shop logs grow uncontrolled. They need to be rotated with a specific policy.",
+    "hints": [
+      "A `logrotate.d` file is a block with the log path and one directive per line. There are options for frequency, number of copies, compression, and permissions of the new file.",
+      "Directives: `weekly`, `rotate N`, `compress`, `delaycompress`, `missingok`, `notifempty` and `create MODO DUEÑO GRUPO`. `logrotate -d` simulates; `-f` forces.",
+      "Block: `/var/log/tienda/*.log { weekly rotate 4 compress delaycompress missingok notifempty create 640 root adm }`, each directive on its own line. Then `sudo logrotate -d …` and `sudo logrotate -f …`."
+    ],
+    "solution_summary": "The `/var/log/tienda/*.log { … }` block combines `weekly`, `rotate 4`, `compress`, `delaycompress`, `missingok`, `notifempty` and `create 640 root adm`. `-d` only simulates; `-f` rotates even if it isn't due. With `delaycompress` the `.1` copy remains uncompressed and the new file is created with the specified mode, owner, and group.",
+    "checks": {
+      "existe /etc/logrotate.d/tienda para /var/log/tienda/*.log": "/etc/logrotate.d/tienda exists for /var/log/tienda/*.log",
+      "se guardan 4 copias": "4 copies are kept",
+      "el fichero nuevo se crea con 640, root y grupo adm": "the new file is created with 640, root, and group adm",
+      "logrotate -d no da errores": "logrotate -d gives no errors",
+      "existe acceso.log.1 sin comprimir con las líneas antiguas": "acceso.log.1 exists uncompressed with the old lines",
+      "no hay acceso.log.1.gz (delaycompress)": "there is no acceso.log.1.gz (delaycompress)",
+      "acceso.log nuevo, vacío, con permisos 640 y grupo adm": "acceso.log is new, empty, with 640 permissions and group adm"
+    }
+  },
+  "lpic1-diario": {
+    "title": "Querying another machine's journal copy with journalctl",
+    "briefing": "In `diario/` you have a copy of the systemd journal from machine `web01`. Read it with `journalctl -D diario` (without touching the container journal) and save only the message text, one per line (`-o cat`):\n1. In `errores.txt`, the messages from the `copias` tag with priority `err` or more severe.\n2. In `avisos.txt`, messages from any tag with priority exactly `warning` (neither more nor less severe).\n3. In `ultimas.txt`, the 3 most recent entries from `sshd`, starting with the newest.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-diario`); files requested without a path go there.",
+    "blind_alert": "REQUEST [DIAGNOSTICS] · The systemd journal from `web01` has been brought and three specific listings must be extracted.",
+    "hints": [
+      "`journalctl` can read another journal directory and filter by tag, priority and order. With a simple output format you'll only see the text.",
+      "`-D DIR` selects the journal, `-t ETIQUETA` filters by identifier, `-p` by priority (it supports a `desde..hasta` range), `-r` reverses the order and `-n N` limits the number of lines.",
+      "`journalctl -D diario -t copias -p err -o cat`; for exact `warning` use the `warning..warning` range; for the latest from `sshd`, `-t sshd -r -n 3`. Redirect each output to its file."
+    ],
+    "solution_summary": "`-p err` includes `err` and everything more severe; `-p warning..warning` limits to that single priority. `-t` filters by tag, `-r -n 3` gives the three most recent in reverse order and `-o cat` prints only the message. `-D diario` reads the copied journal without touching the system one.",
+    "checks": {
+      "errores.txt: disco lleno y copia abortada": "errores.txt: disk full and copy aborted",
+      "avisos.txt: los tres warning, en orden": "avisos.txt: the three warnings, in order",
+      "ultimas.txt: las 3 últimas de sshd, de la más nueva a la más vieja": "ultimas.txt: the 3 latest from sshd, from newest to oldest"
+    }
+  },
+  "lpic1-aliases": {
+    "title": "Mail aliases in /etc/aliases and personal forwarding with ~/.forward",
+    "briefing": "The server has Postfix (local mail only) and users `marta` and `pablo`. You are asked (with `sudo`):\n1. In `/etc/aliases` add the `soporte` alias, which distributes mail between `marta` and `pablo`, and the `webmaster` alias, which sends it to `root`.\n2. Make the MTA see the changes: rebuild the alias database.\n3. As user `pablo` (`sudo su - pablo`), create their `~/.forward` so their mail is forwarded to `marta`.\nTo check: `postalias -q soporte /etc/aliases`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-aliases`); files requested without a path go there.",
+    "blind_alert": "REQUEST [MAIL] · Support mail must be distributed between two people and one user's mail must be redirected.",
+    "hints": [
+      "Aliases are a text table that the MTA queries from a binary database; editing the text is not enough. Personal forwarding is a file in each user's home.",
+      "Format: `nombre: destino1, destino2`. To rebuild the database there is a command that starts with `new`. The `.forward` only contains the destination address.",
+      "Add `soporte: marta, pablo` and `webmaster: root` to `/etc/aliases`, run `sudo newaliases`, and as `pablo`, `echo marta > ~/.forward`."
+    ],
+    "solution_summary": "Each alias is `nombre: destinos` in `/etc/aliases`. `newaliases` regenerates `aliases.db` so Postfix reads it. `pablo`'s `~/.forward` contains `marta` and redirects their mail; it must belong to `pablo`.",
+    "checks": {
+      "/etc/aliases tiene soporte: marta, pablo": "/etc/aliases has soporte: marta, pablo",
+      "/etc/aliases tiene webmaster: root": "/etc/aliases has webmaster: root",
+      "la base de alias está regenerada y ya conoce soporte": "the alias database is rebuilt and already knows soporte",
+      "la base de alias ya conoce webmaster": "the alias database already knows webmaster",
+      "/home/pablo/.forward es de pablo y reenvía a marta": "/home/pablo/.forward is pablo's and forwards to marta"
+    }
+  },
+  "lpic1-ssh-claves": {
+    "title": "SSH keys for alumno, strict permissions, and configuration block",
+    "briefing": "They ask you to prepare SSH for your user `alumno`, which starts with an empty `~/.ssh`:\n1. In `/home/alumno/.ssh`, generate an ed25519 key pair called `id_ed25519`, without a passphrase.\n2. Set the strict permissions SSH requires: `/home/alumno/.ssh` with `700` and the private key `id_ed25519` with `600`.\n3. Copy the contents of `id_ed25519.pub` to `/home/alumno/.ssh/authorized_keys` and give it `600` permissions.\n4. Create `/home/alumno/.ssh/config` with `600` permissions and a block for host `servidor-lab` with `HostName 10.0.0.50`, `User operador`, and `Port 2222`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-ssh-claves`); files requested without a path go there.",
+    "blind_alert": "REQUEST [SSH ACCESS] · The keys for `alumno` must be left ready with the permissions SSH requires and a shortcut to the lab server.",
+    "hints": [
+      "SSH rejects keys and files with permissions that are too open. There are four pieces: the key pair, the folder, who can get in, and the client shortcut.",
+      "`ssh-keygen` takes the type, passphrase and output file via options. In `config` each block starts with `Host` and its options go below, one per line.",
+      "`ssh-keygen -t ed25519 -N \"\" -f ~/.ssh/id_ed25519`; `chmod 700 ~/.ssh`; `chmod 600` on the private key, on `authorized_keys` and on `config`; the block has `Host servidor-lab`, `HostName`, `User` and `Port`."
+    ],
+    "solution_summary": "`ssh-keygen -t ed25519 -N \"\" -f …/id_ed25519` creates the pair. SSH requires `700` on `.ssh` and `600` on the private key, on `authorized_keys` and on `config`. The public key copied to `authorized_keys` allows access with that key, and the `Host servidor-lab` block defines destination, user, and port.",
+    "checks": {
+      "directorio ~/.ssh tiene permisos 700": "~/.ssh directory has permissions 700",
+      "clave privada id_ed25519 existe con permisos 600": "private key id_ed25519 exists with permissions 600",
+      "clave pública id_ed25519.pub es de tipo ed25519": "public key id_ed25519.pub is of type ed25519",
+      "authorized_keys contiene la clave pública y tiene permisos 600": "authorized_keys contains the public key and has permissions 600",
+      "config define el host servidor-lab con HostName, User y Port": "config defines host servidor-lab with HostName, User, and Port",
+      "~/.ssh y sus ficheros son de alumno (no de root)": "~/.ssh and its files belong to alumno (not root)"
+    }
+  }
+}

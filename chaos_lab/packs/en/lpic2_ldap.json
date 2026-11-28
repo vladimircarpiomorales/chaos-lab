@@ -1,0 +1,364 @@
+{
+  "lpic2-ldap-busqueda": {
+    "title": "Query the directory with a filter",
+    "briefing": "The LDAP directory on `ldap-srv` (base `dc=lpic,dc=lab`) stores people in `ou=personas`. Using an anonymous search (simple bind), get the users whose `uidNumber` is 10003 or greater and save the output to `uids.txt`, which must contain, for each entry, only the `uid` attribute (the `dn` may appear) and no comments. The filter must be applied in the query itself. Your `ldap-srv` terminal opens in `/root/retos/ldap01`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · The list of users above a certain uidNumber needs to be extracted from the LDAP directory.",
+    "hints": [
+      "`ldapsearch` accepts a parenthesized filter as an argument and a list of attributes to return at the end; there is an option to remove comments from the LDIF.",
+      "For anonymous simple bind, use `-x`; specify the base with `-b`, and `-LLL` leaves the LDIF without comments or version. The filter supports comparisons such as `>=`.",
+      "`ldapsearch -x -LLL -b ou=personas,dc=lpic,dc=lab '(uidNumber>=10003)' uid > uids.txt`"
+    ],
+    "solution_summary": "`ldapsearch -x -LLL` performs an anonymous search and suppresses comments; the filter `(uidNumber>=10003)` is evaluated on the server, and specifying `uid` at the end limits the attributes returned, so only those lines end up in `uids.txt`.",
+    "checks": {
+      "uids.txt existe y no está vacío": "uids.txt exists and is not empty",
+      "uids.txt lista a todos los usuarios que cumplen el filtro": "uids.txt lists all users that match the filter",
+      "uids.txt no incluye a los que no lo cumplen": "uids.txt does not include those that do not match",
+      "uids.txt solo trae el atributo uid": "uids.txt contains only the uid attribute",
+      "uids.txt no contiene comentarios ni otros atributos de la entrada": "uids.txt contains no comments or other entry attributes"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-nuevo-usuario": {
+    "title": "Add a user with ldapadd and log in via ssh",
+    "briefing": "The LDAP directory on `ldap-srv` (base `dc=lpic,dc=lab`) stores people in `ou=personas`. Create an LDIF file with the user `sara` in `ou=personas` (objectClass `inetOrgPerson` and `posixAccount`; `uidNumber` 10010, `gidNumber` 10000, `homeDirectory` /home/sara, `loginShell` /bin/bash), add it with `ldapadd` as `cn=admin,dc=lpic,dc=lab` (password `admin`), and set the password `sara` with `ldappasswd`. Verify from `ldap-srv` that `sara` can log in via ssh to `ldap-cli` and that `/home/sara` is created. Your `ldap-srv` terminal opens in `/root/retos/ldap02`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · A user needs to be created and allowed to log in via ssh.",
+    "hints": [
+      "`ldapadd` adds entries from an LDIF specified with `-f`; `ldappasswd` changes a user's password. Both use simple bind with `-x` and the directory administrator.",
+      "The administrator bind is `-D cn=admin,dc=lpic,dc=lab -w admin`. With `ldappasswd`, use `-s sara` to set the password. The `sssd` client may remember for a few seconds that the user did not exist; if the first attempt fails, run `sss_cache -E` on `ldap-cli` and retry.",
+      "On `ldap-srv`: `cat > sara.ldif <<'L' ... L` with the dn and attributes, then `ldapadd -x -D cn=admin,dc=lpic,dc=lab -w admin -f sara.ldif` and `ldappasswd -x -D cn=admin,dc=lpic,dc=lab -w admin -s sara uid=sara,ou=personas,dc=lpic,dc=lab`. On `ldap-cli`: `sss_cache -E`. And from `ldap-srv`: `sshpass -p sara ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10 sara@ldap-cli true`."
+    ],
+    "solution_summary": "The LDIF declares the sara entry and `ldapadd` inserts it by authenticating as admin. `ldappasswd` sets the password so sara's bind works. When validating the login via ssh, `sssd` and `pam_mkhomedir` create the home directory on `ldap-cli`; if the `sssd` cache takes time to refresh, `sss_cache -E` forces the update.",
+    "checks": {
+      "sara existe en el directorio con los atributos pedidos": "sara exists in the directory with the requested attributes",
+      "el cliente resuelve la cuenta de sara": "the client resolves sara's account",
+      "sara entra por ssh desde ldap-srv": "sara logs in via ssh from ldap-srv",
+      "se ha creado el directorio personal de sara en el cliente": "sara's home directory has been created on the client"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-grupo": {
+    "title": "Add a user to a group with ldapmodify",
+    "briefing": "The LDAP directory on `ldap-srv` (base `dc=lpic,dc=lab`) stores groups in `ou=grupos`. Using `ldapmodify` as `cn=admin,dc=lpic,dc=lab` (password `admin`), add `pedro` to the group `cn=admins,ou=grupos` (attribute `memberUid`). Verify from `ldap-cli` that `id pedro` shows the `admins` group. Your `ldap-srv` terminal opens in `/root/retos/ldap03`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · A user needs to be added to an existing group.",
+    "hints": [
+      "`ldapmodify` applies changes described in an LDIF; to add a value to a multivalued attribute, use `changetype: modify` and `add: memberUid`, followed by the line with the value.",
+      "The administrator bind is `-x -D cn=admin,dc=lpic,dc=lab -w admin`. The target dn is `cn=admins,ou=grupos,dc=lpic,dc=lab`.",
+      "`ldapmodify -x -D cn=admin,dc=lpic,dc=lab -w admin <<'L'\ndn: cn=admins,ou=grupos,dc=lpic,dc=lab\nchangetype: modify\nadd: memberUid\nmemberUid: pedro\nL`"
+    ],
+    "solution_summary": "The LDIF modifies the group `admins` by adding `memberUid: pedro` without touching the existing values. The `sssd` client needs to refresh its cache with `sss_cache -E` for `id pedro` to reflect the new group.",
+    "checks": {
+      "pedro figura como miembro del grupo admins en el directorio": "pedro appears as a member of the admins group in the directory",
+      "los miembros anteriores del grupo admins se conservan": "the previous members of the admins group are preserved",
+      "id pedro incluye admins en el cliente": "id pedro includes admins on the client"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-clave": {
+    "title": "Change a password with ldappasswd",
+    "briefing": "In the LDAP directory on `ldap-srv` (base `dc=lpic,dc=lab`), change the password for user `luis` to `Nueva123` using `ldappasswd` as `cn=admin,dc=lpic,dc=lab` (password `admin`). Then `ldapwhoami` with `luis` and the new password must succeed, and with the old password (`luis`) it must fail. Your `ldap-srv` terminal opens in `/root/retos/ldap04`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · A user's LDAP password needs to be changed.",
+    "hints": [
+      "`ldappasswd` changes the `userPassword` attribute of an entry; you can authenticate as the administrator to change another user's password.",
+      "For simple bind, use `-x -D cn=admin,dc=lpic,dc=lab -w admin -s Nueva123 uid=luis,ou=personas,dc=lpic,dc=lab`.",
+      "`ldappasswd -x -D cn=admin,dc=lpic,dc=lab -w admin -s Nueva123 uid=luis,ou=personas,dc=lpic,dc=lab`"
+    ],
+    "solution_summary": "`ldappasswd` authenticated as admin updates `userPassword` for luis, so the bind with the new password succeeds and the old password is rejected. The test with `ldapwhoami` verifies the authenticated identity.",
+    "checks": {
+      "luis puede autenticarse con la clave nueva": "luis can authenticate with the new password",
+      "luis ya no puede autenticarse con la clave antigua": "luis can no longer authenticate with the old password",
+      "ana sigue pudiendo autenticarse con su clave": "ana can still authenticate with her password"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-indice": {
+    "title": "Add an index for mail in cn=config",
+    "briefing": "On the LDAP server `ldap-srv`, using `ldapmodify -Y EXTERNAL -H ldapi:///`, modify the database `olcDatabase={1}mdb,cn=config` and add an equality index (`eq`) for the `mail` attribute (`olcDbIndex`). Verify with `ldapsearch` on `cn=config` that this index appears and that the previous indexes remain present. Your `ldap-srv` terminal opens in `/root/retos/ldap05`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · An equality index for mail needs to be added to the LDAP database.",
+    "hints": [
+      "`ldapmodify -Y EXTERNAL -H ldapi:///` allows modifying the `cn=config` database; indexes are stored in the multivalued attribute `olcDbIndex`.",
+      "The target dn is `olcDatabase={1}mdb,cn=config`; the change is `add: olcDbIndex` followed by `olcDbIndex: mail eq`.",
+      "`ldapmodify -Q -Y EXTERNAL -H ldapi:/// <<'L'\ndn: olcDatabase={1}mdb,cn=config\nchangetype: modify\nadd: olcDbIndex\nolcDbIndex: mail eq\nL`"
+    ],
+    "solution_summary": "Adds `olcDbIndex: mail eq` to the mdb database; OpenLDAP will start maintaining an equality index for the `mail` attribute without removing the existing indexes because `add` does not replace. Verification on `cn=config` and a search by `mail` confirm the change.",
+    "checks": {
+      "existe el índice de igualdad para mail": "the equality index for mail exists",
+      "los índices anteriores de la base se conservan": "the previous indexes of the database are preserved",
+      "las búsquedas por mail devuelven la entrada": "searches by mail return the entry"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-slapcat": {
+    "title": "Backup with slapcat and slapd stopped",
+    "briefing": "On `ldap-srv`, stop `slapd` with `slapd-ctl stop` (this container has no `systemctl`), export the `dc=lpic,dc=lab` database with `slapcat` to `/root/retos/ldap06/copia.ldif`, and start `slapd` again with `slapd-ctl start`. Verify that it responds. Your `ldap-srv` terminal opens in `/root/retos/ldap06`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · An LDIF copy of the directory must be made with the service stopped.",
+    "hints": [
+      "This container uses `slapd-ctl` instead of systemd; the basic operations are `stop`, `start`, `restart`, and `status`.",
+      "`slapcat` must be run with the service stopped and accepts `-b` for the base and `-l` for the output file.",
+      "`slapd-ctl stop && slapcat -b dc=lpic,dc=lab -l /root/retos/ldap06/copia.ldif && slapd-ctl start`"
+    ],
+    "solution_summary": "With `slapd` stopped, `slapcat` dumps the indicated database in LDIF format consistently. Then the service is started again so it keeps responding. The check validates that the file contains the expected entries and that the server is running again.",
+    "checks": {
+      "existe copia.ldif y no está vacío": "copia.ldif exists and is not empty",
+      "la copia contiene todas las entradas de personas": "the copy contains all the person entries",
+      "la copia contiene las entradas de grupos": "the copy contains the group entries",
+      "copia.ldif es un volcado completo de slapcat": "copia.ldif is a complete slapcat dump",
+      "slapd vuelve a estar en marcha": "slapd is running again"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-tls": {
+    "title": "Query with StartTLS (-ZZ) and with ldaps://",
+    "briefing": "On `ldap-srv`, run two queries and save their output: with StartTLS (option `-ZZ`) get `carol`'s `mail` and save it to `/root/retos/ldap07/starttls.txt`; with `ldaps://` get `ana`'s `dn` and save it to `/root/retos/ldap07/ldaps.txt`. Also save the Subject of the server certificate to `/root/retos/ldap07/cert.txt` (use `openssl s_client` on port 636). Your `ldap-srv` terminal opens in `/root/retos/ldap07`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · The directory needs to be queried using StartTLS and LDAPS, and the certificate extracted.",
+    "hints": [
+      "`ldapsearch` accepts `-ZZ` to require StartTLS and `-H ldaps://ldap-srv` for LDAPS; in both cases `-x` performs a simple bind.",
+      "For the certificate, `openssl s_client -connect ldap-srv:636 </dev/null 2>/dev/null | openssl x509 -noout -subject` extracts the Subject.",
+      "`ldapsearch -x -LLL -ZZ -H ldap://ldap-srv \"(uid=carol)\" mail > /root/retos/ldap07/starttls.txt` · `ldapsearch -x -LLL -H ldaps://ldap-srv \"(uid=ana)\" dn > /root/retos/ldap07/ldaps.txt` · `openssl s_client -connect ldap-srv:636 </dev/null 2>/dev/null | openssl x509 -noout -subject > /root/retos/ldap07/cert.txt`"
+    ],
+    "solution_summary": "The server has StartTLS and LDAPS configured with its certificate. `ldapsearch -ZZ` forces StartTLS and `-H ldaps://` uses encrypted port 636; both return only what was requested, and the output is redirected to the files. `openssl s_client` shows the certificate and `openssl x509 -subject` extracts the CN.",
+    "checks": {
+      "starttls.txt contiene el dn y el mail de carol": "starttls.txt contains carol's dn and mail",
+      "ldaps.txt contiene el dn de ana": "ldaps.txt contains ana's dn",
+      "cert.txt contiene el Subject real del certificado del servidor": "cert.txt contains the actual Subject of the server certificate",
+      "StartTLS funciona en el servidor": "StartTLS works on the server",
+      "LDAPS funciona en el servidor": "LDAPS works on the server"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-acl": {
+    "title": "An ACL: mail only for authenticated users",
+    "briefing": "On `ldap-srv`, any anonymous client can currently read the `mail` attribute. Using `ldapmodify -Y EXTERNAL -H ldapi:///`, modify `olcDatabase={1}mdb,cn=config` and add an `olcAccess` rule that allows reading `mail` only to authenticated users (`by users read`) and nothing to the rest (`by * none`). It must be FIRST (`{0}`). Then, without `-D/-w` the `mail` of `carol` must not be visible; with `ana/ana` it must be. And `userPassword` remains protected for that user. Your `ldap-srv` terminal opens in `/root/retos/ldap08`; `ldap-cli` is the client for the same directory.",
+    "blind_alert": "REQUEST [DIRECTORY] · Mail reading needs to be restricted so that only authenticated users can do it.",
+    "hints": [
+      "OpenLDAP ACLs are managed in `cn=config` with `olcAccess`; order matters and `{0}` places the rule at the beginning.",
+      "The target dn is `olcDatabase={1}mdb,cn=config`; the rule is `olcAccess: {0}to attrs=mail by users read by * none`.",
+      "`ldapmodify -Q -Y EXTERNAL -H ldapi:/// <<'L'\ndn: olcDatabase={1}mdb,cn=config\nchangetype: modify\nadd: olcAccess\nolcAccess: {0}to attrs=mail by users read by * none\nL`"
+    ],
+    "solution_summary": "By adding the ACL `{0}to attrs=mail by users read by * none`, rules are evaluated in order and this one is first: it grants `mail` only to authenticated users and denies the rest. The previous rules (`userPassword` protected and general reading) remain active, so authenticated `ana` sees `carol`'s `mail` but not her `userPassword`.",
+    "checks": {
+      "la regla de mail es la primera ACL ({0}) de la base mdb": "the mail rule is the first ACL ({0}) of the mdb database",
+      "un cliente anónimo no ve el mail de carol": "an anonymous client does not see carol's mail",
+      "un cliente anónimo sigue viendo el uid de carol": "an anonymous client still sees carol's uid",
+      "ana autenticada ve el mail de carol": "authenticated ana sees carol's mail",
+      "ana no puede leer la clave de carol": "ana cannot read carol's password"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-pam-access": {
+    "title": "PAM on the client: only the admins group can log in via ssh",
+    "briefing": "On `ldap-cli` (as root), using `pam_access` you must allow only `root` and the `admins` group to log in via ssh; everyone else must be rejected. Enable `pam_access` in the sshd account stack (`/etc/pam.d/sshd`, line `account required pam_access.so`) and in `/etc/security/access.conf` add allow rules for `root` and `(admins)` before a deny-all rule. Result: `ana` (admins) logs in via ssh; `luis` (not admins) is rejected even if the password is correct. To test access, use `sshpass` from `ldap-srv` against `ldap-cli`. Your `ldap-cli` terminal opens in `/root`; `ldap-srv` is the directory server.",
+    "blind_alert": "REQUEST [DIRECTORY] · SSH access with PAM needs to be configured so that only the admins group can log in.",
+    "hints": [
+      "`pam_access` is enabled by adding `account required pam_access.so` to `/etc/pam.d/sshd`; the rules go in `/etc/security/access.conf`.",
+      "Access rules are written as `+:` (allow) and `-:` (deny). A group is indicated with parentheses: `+:(admins):ALL`.",
+      "In `/etc/security/access.conf` add `+:root:ALL`, `+:(admins):ALL`, and `-:ALL:ALL`. In `/etc/pam.d/sshd`, insert `account required pam_access.so` before `@include common-account` if it is not there."
+    ],
+    "solution_summary": "With `pam_access` active in the sshd account stack, the `access.conf` rules are evaluated in order: first root and the admins group are allowed, then everyone is denied. Since `ana` is a member of admins, her ssh access works, while `luis` receives the denial. The rule order prevents the deny rule from blocking the allowed ones.",
+    "checks": {
+      "pam_access está activo en /etc/pam.d/sshd": "pam_access is active in /etc/pam.d/sshd",
+      "access.conf permite a root y al grupo admins antes de denegar al resto": "access.conf allows root and the admins group before denying everyone else",
+      "ana (admins) entra por ssh desde ldap-srv": "ana (admins) logs in via ssh from ldap-srv",
+      "luis (no admins) es rechazado por ssh": "luis (not admins) is rejected by ssh"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the manual for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the manual for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  },
+  "lpic2-ldap-mkhomedir": {
+    "title": "PAM: create home directories with 750 permissions (pam_mkhomedir)",
+    "briefing": "On `ldap-cli`, the home directories created by `pam_mkhomedir` currently come out with mode 700. Edit `/etc/pam.d/common-session` and configure `pam_mkhomedir` with the `umask=0027` option so that new home directories get mode 750. Log in for the first time as `marta` (password `marta`) from `ldap-srv` using `sshpass` so that `/home/marta` is created; it must end up with mode 750. Your `ldap-cli` terminal opens in `/root`; `ldap-srv` is the directory server.",
+    "blind_alert": "REQUEST [DIRECTORY] · Configure pam_mkhomedir so home directories are created with 750 permissions.",
+    "hints": [
+      "`pam_mkhomedir.so` accepts the `umask=0027` option, which yields `0777 - 0027 = 0750`.",
+      "The line to modify is in `/etc/pam.d/common-session`; use `sed` to add `umask=0027` to `pam_mkhomedir.so`.",
+      "On `ldap-cli`: `sed -i 's/^\\(session[[:space:]]\\+optional[[:space:]]\\+pam_mkhomedir.so\\).*/\\1 umask=0027/' /etc/pam.d/common-session`. Then, from `ldap-srv`: `sshpass -p marta ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=10 marta@ldap-cli true`."
+    ],
+    "solution_summary": "The `umask=0027` option of `pam_mkhomedir` makes the directory be created with `0777 & ~0027 = 0750`. When `marta` logs in over ssh, PAM creates her home directory with those permissions. The check validates the configuration and the directory properties.",
+    "checks": {
+      "pam_mkhomedir está configurado con la máscara pedida en common-session": "pam_mkhomedir is configured with the requested umask in common-session",
+      "existe /home/marta": "/home/marta exists",
+      "/home/marta tiene modo 750": "/home/marta has mode 750",
+      "/home/marta pertenece a marta": "/home/marta belongs to marta",
+      "/home/marta fue poblado desde /etc/skel con grupo alumnos": "/home/marta was populated from /etc/skel with group alumnos"
+    },
+    "nodes": {
+      "ldap-srv": {
+        "runs": "OpenLDAP (slapd) · dc=lpic,dc=lab",
+        "look": [
+          "the server logs and configuration",
+          "the man pages for the ldap* tools"
+        ]
+      },
+      "ldap-cli": {
+        "runs": "sssd + PAM + sshd · directory client",
+        "look": [
+          "the sssd configuration",
+          "the man pages for the ldap* tools"
+        ]
+      }
+    },
+    "links": [
+      "LDAP with StartTLS (sssd)"
+    ]
+  }
+}

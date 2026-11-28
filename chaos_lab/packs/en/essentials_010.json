@@ -1,0 +1,254 @@
+{
+  "lpie-ayuda": {
+    "title": "Shell builtin or external program, and locating a lost file",
+    "briefing": "You are asked to resolve three day-to-day queries (you need `sudo` for the last one):\n1. Use the shell itself to find out what `cd` is and save the complete answer in `tipo-cd.txt`.\n2. Do the same with `mkdir` and save it in `tipo-mkdir.txt`; the output must show where the program lives.\n3. Somewhere on the system there is a file called `tesoro-perdido.txt`. Update the `locate` database and save only its absolute path in `ruta.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-ayuda`); files requested without a path go there.",
+    "blind_alert": "REQUEST [LOCATION] · You need to find out what type of commands the two commands are and find a missing file on the server.",
+    "hints": [
+      "The shell can distinguish commands that are built into it from programs that live on disk: ask it, not a file finder.",
+      "`type NOMBRE` answers the first and second queries. For the third, `locate` searches a database that is only refreshed by a command in the `locate` family, and that command requires privileges.",
+      "`type cd > tipo-cd.txt`; `type mkdir > tipo-mkdir.txt`; `sudo updatedb`; `locate tesoro-perdido > ruta.txt`."
+    ],
+    "solution_summary": "`type` indicates whether a command is a shell builtin (`cd` is a builtin) or an external program with its path (`/usr/bin/mkdir`). `locate` queries a database that `updatedb` (as root) refreshes, so you have to update it before searching for a newly created file.",
+    "checks": {
+      "tipo-cd.txt dice que cd es una orden interna (builtin)": "tipo-cd.txt says cd is a shell builtin",
+      "tipo-mkdir.txt dice dónde está mkdir (/usr/bin/mkdir)": "tipo-mkdir.txt says where mkdir is (/usr/bin/mkdir)",
+      "ruta.txt tiene la ruta absoluta del tesoro": "ruta.txt has the absolute path to the treasure"
+    }
+  },
+  "lpie-listar": {
+    "title": "Inspecting a personal folder: hidden files, sizes, and tree",
+    "briefing": "You are asked to inventory the `casa/` folder, which contains visible files, hidden files, and subfolders:\n1. Save into `ocultos.txt` the names of the hidden files in `casa/` (those starting with a dot), one per line and without `.` or `..`.\n2. Save into `grande.txt` only the name of the largest file in `casa/`.\n3. Save into `arbol.txt` the recursive listing of `casa/`, including all its subfolders.\n4. Enter `casa/documentos/2024` and save its absolute path into `donde.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-listar`); files requested without a path go there.",
+    "blind_alert": "REQUEST [INVENTORY] · You need to produce a quick inventory of the contents of a sample personal folder.",
+    "hints": [
+      "Each part is a variant of the command that lists directories: one option for hidden files, another to sort by size, another to recurse through subfolders. The absolute path is given by another command when you are inside.",
+      "Hidden files appear with the option that shows almost everything (without `.` or `..`) and you may need to filter the result. Sorting by size puts the largest first; to keep one line, use `head`. For `donde.txt`, enter the folder and run `pwd`.",
+      "`ls -A casa | grep '^\\.' > ocultos.txt`; `ls -S casa | head -1 > grande.txt`; `ls -R casa > arbol.txt`; `cd casa/documentos/2024 && pwd > /home/alumno/retos/r010-listar/donde.txt`."
+    ],
+    "solution_summary": "`ls -A` lists everything except `.` and `..` (a `grep '^\\.'` keeps only hidden entries), `ls -S` sorts from largest to smallest, `ls -R` recurses, and `pwd` prints the absolute path of the current directory after a `cd`.",
+    "checks": {
+      "ocultos.txt tiene todos los ficheros ocultos": "ocultos.txt lists all hidden files",
+      "grande.txt: el fichero más grande": "grande.txt has the largest file",
+      "arbol.txt llega hasta acta-enero.txt (es recursivo)": "arbol.txt goes down to acta-enero.txt (recursive)",
+      "donde.txt es la ruta absoluta de casa/documentos/2024": "donde.txt is the absolute path to casa/documentos/2024"
+    }
+  },
+  "lpie-ficheros": {
+    "title": "Reorganizing a project: create, copy, rename, move, and delete",
+    "briefing": "You are asked to reorganize the working directory:\n1. Create the path `proyecto/src/viejo` in a single command, with all intermediate folders.\n2. Copy the entire `plantilla/` folder, with all its contents, as `proyecto/doc`.\n3. Rename `borrador.txt` to `final.txt`.\n4. Move only `dia1.log` … `dia9.log` (single digit) to `proyecto/src`, using a wildcard; `dia10.log` and `dia11.log` must stay where they are.\n5. Delete the `basura/` folder with everything it contains.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-ficheros`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ORGANIZATION] · You need to reorganize a project structure and clean up what is left over.",
+    "hints": [
+      "Five file management operations: create a folder tree, copy folders, rename, move by pattern, and delete recursively. Watch out for the wildcard in item four.",
+      "Creating intermediate paths and copying folders each have a specific option in their command. A wildcard that represents exactly one character tells `dia9.log` apart from `dia10.log`. Renaming is moving to the same directory with a different name.",
+      "`mkdir -p proyecto/src/viejo`; `cp -r plantilla proyecto/doc`; `mv borrador.txt final.txt`; `mv dia?.log proyecto/src/`; `rm -r basura`."
+    ],
+    "solution_summary": "`mkdir -p` creates the whole path, `cp -r` copies folders with their contents, `mv` renames or moves, and `rm -r` deletes recursively. The `?` wildcard matches exactly one character, so `dia?.log` does not catch `dia10.log` or `dia11.log`.",
+    "checks": {
+      "existe proyecto/src/viejo": "proyecto/src/viejo exists",
+      "proyecto/doc es una copia completa de plantilla/": "proyecto/doc is a complete copy of plantilla/",
+      "final.txt existe y borrador.txt ya no": "final.txt exists and borrador.txt no longer does",
+      "dia1,2,3,7,9.log están en proyecto/src": "dia1,2,3,7,9.log are in proyecto/src",
+      "dia10.log y dia11.log siguen en su sitio": "dia10.log and dia11.log are still in place",
+      "basura/ ya no existe": "basura/ no longer exists"
+    }
+  },
+  "lpie-comprimir": {
+    "title": "Archiving and compressing with tar, bzip2, and zip",
+    "briefing": "You are asked to prepare several packages from what is in the directory:\n1. Create `copia.tar.gz`: a gzip-compressed tar containing the entire `docs/` folder.\n2. Compress `grande.txt` with bzip2. It should become `grande.txt.bz2` and the original should disappear.\n3. From the `paquete.tar` archive extract only `config/red.conf`, nothing else.\n4. Create `para-windows.zip` containing the `docs/` folder and everything inside it.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-comprimir`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ARCHIVES] · You need to prepare compressed copies in three different formats and recover a single file from a package.",
+    "hints": [
+      "Three tools, three formats: tar with gzip compression, bzip2 on a single file, and zip for exchanging with other systems. Extracting a single file from a tar is a matter of telling it which one.",
+      "`tar` combines creating, compressing, and naming the archive in one option; to extract, specify the member name exactly as it appears in the tar (see it with the listing option). `zip` needs an option to walk folders.",
+      "`tar czf copia.tar.gz docs`; `bzip2 grande.txt`; `tar xf paquete.tar config/red.conf`; `zip -r para-windows.zip docs`."
+    ],
+    "solution_summary": "`tar czf` creates a gzip-compressed tar, `bzip2` replaces the file with its `.bz2` version, `tar xf archive member` extracts only that member, and `zip -r` packages folders recursively.",
+    "checks": {
+      "copia.tar.gz es un tar con gzip que contiene docs/notas/b.txt": "copia.tar.gz is a gzip-compressed tar containing docs/notas/b.txt",
+      "existe grande.txt.bz2 y ya no grande.txt": "grande.txt.bz2 exists and grande.txt no longer does",
+      "grande.txt.bz2 contiene los números 1..20000": "grande.txt.bz2 contains the numbers 1..20000",
+      "se extrajo config/red.conf": "config/red.conf has been extracted",
+      "y NO config/tema.conf": "and not config/tema.conf",
+      "para-windows.zip contiene docs/notas/b.txt": "para-windows.zip contains docs/notas/b.txt"
+    }
+  },
+  "lpie-redirecciones": {
+    "title": "Redirecting output and errors, and pipes",
+    "briefing": "You are asked to handle text streams:\n1. Run `ls /etc/hostname /no/existe` in a single command and save the normal output to `bien.txt` and the error message to `mal.txt`.\n2. Append the line `FIN` to the end of `bien.txt` without erasing what it already has.\n3. Save to `top3.txt` the first three lines of `nombres.txt` after sorting alphabetically, using a pipe.\n4. Save to `palabras.txt` only the number of words in `nombres.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-redirecciones`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PROCESSING] · You need to separate a command's normal output from its errors and extract data from a list using pipes.",
+    "hints": [
+      "Standard output and error output are two different streams and each has its own redirection operator. To append without overwriting there is another operator.",
+      "The error stream is file descriptor 2. For item 3, the output of a sorting command goes to another command that cuts lines from the beginning. If `wc` reads from stdin, it does not print a filename.",
+      "`ls /etc/hostname /no/existe > bien.txt 2> mal.txt`; `echo FIN >> bien.txt`; `sort nombres.txt | head -n 3 > top3.txt`; `wc -w < nombres.txt > palabras.txt`."
+    ],
+    "solution_summary": "`>` redirects standard output and `2>` redirects error output; `>>` appends to the end. With `sort … | head -n 3`, the first command's output feeds the second. `wc -w < file` reads from stdin, so it prints only the number.",
+    "checks": {
+      "bien.txt empieza por /etc/hostname": "bien.txt starts with /etc/hostname",
+      "bien.txt termina en FIN": "bien.txt ends with FIN",
+      "mal.txt tiene el error de /no/existe": "mal.txt has the error from /no/existe",
+      "top3.txt: los tres primeros en el orden pedido": "top3.txt has the first three in the requested order",
+      "palabras.txt: el número de palabras": "palabras.txt has the word count"
+    }
+  },
+  "lpie-grep": {
+    "title": "Filtering an inventory with grep and regular expressions",
+    "briefing": "The file `inventario.txt` has one line per item (and some comment lines). You are asked to extract:\n1. Into `cables.txt`, the lines that contain the word `cable`, ignoring case.\n2. Into `sin-stock.txt`, the lines of items with stock exactly 0 (stock is the last number; 10 or 30 do not count).\n3. Into `no-comentarios.txt`, all lines that do not start with `#`.\n4. Into `n-teclados.txt`, only the number of lines that contain `teclado`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-grep`); files requested without a path go there.",
+    "blind_alert": "REQUEST [SEARCH] · You need to extract subsets of an inventory file according to text patterns.",
+    "hints": [
+      "Everything is solved with the pattern search tool: one option ignores case, another inverts the selection, and another counts instead of showing. The start- and end-of-line anchors have their own symbols.",
+      "For \"stock 0\" you need the end-of-line anchor and something that prevents matching `10` or `30` (the 0 is preceded by a space). For \"does not start with\", invert the search for lines that start with `#`.",
+      "`grep -i cable inventario.txt > cables.txt`; `grep ' 0$' inventario.txt > sin-stock.txt`; `grep -v '^#' inventario.txt > no-comentarios.txt`; `grep -c teclado inventario.txt > n-teclados.txt`."
+    ],
+    "solution_summary": "`grep -i` ignores case, `' 0$'` anchors the 0 to the end of the line preceded by a space (so it does not catch `10` or `30`), `-v '^#'` inverts the search for lines starting with `#`, and `-c` returns the count.",
+    "checks": {
+      "cables.txt tiene las 3 líneas de cable": "cables.txt has the 3 lines matching cable",
+      "sin-stock.txt: las 2 líneas acabadas en 0 (no la de stock 10)": "sin-stock.txt has the 2 lines ending in 0 (not the stock 10 line)",
+      "no-comentarios.txt no tiene líneas con # al principio y tiene las 7 demás": "no-comentarios.txt has no lines starting with # and contains the other 7",
+      "n-teclados.txt: el número de líneas con teclado": "n-teclados.txt has the number of lines with teclado"
+    }
+  },
+  "lpie-script": {
+    "title": "Writing a script that greets each argument",
+    "briefing": "Write a script `saluda.sh`, make it executable, and ensure it meets the following:\n- Its first line is the interpreter `#!/bin/bash`.\n- If run without arguments, it prints `uso: saluda.sh NOMBRE...` and exits with status 1.\n- If it receives arguments, it prints `Hola NOMBRE` for each one, on separate lines, using a `for` loop, and exits with status 0.\nFor example, `./saluda.sh Ana Luis` must print `Hola Ana` and `Hola Luis`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-script`); files requested without a path go there.",
+    "blind_alert": "REQUEST [AUTOMATION] · A small shell utility that greets the people given to it is missing.",
+    "hints": [
+      "Three pieces: the interpreter shebang, a condition on the number of arguments, and a loop that goes through all arguments. Don't forget the execute permission.",
+      "The number of arguments and the list of all of them are in special shell variables (`$#` and `$@`). The exit status is set with `exit`. Quote the list to respect arguments with spaces.",
+      "`#!/bin/bash`, then `if [ $# -eq 0 ]; then echo \"uso: saluda.sh NOMBRE...\"; exit 1; fi`, then `for n in \"$@\"; do echo \"Hola $n\"; done; exit 0`, and finally `chmod +x saluda.sh`."
+    ],
+    "solution_summary": "The script checks `$#`; if it is 0, it prints the usage and exits with `exit 1`. Otherwise, `for n in \"$@\"` iterates over each argument and prints `Hola $n`, and ends with `exit 0`. `chmod +x` makes it executable and the `#!/bin/bash` line sets the interpreter.",
+    "checks": {
+      "saluda.sh existe y es ejecutable": "saluda.sh exists and is executable",
+      "la primera línea es #!/bin/bash": "the first line is #!/bin/bash",
+      "./saluda.sh Ana Luis escribe Hola Ana y Hola Luis": "./saluda.sh Ana Luis prints Hola Ana and Hola Luis",
+      "con argumentos sale con código 0": "with arguments it exits with status 0",
+      "sin argumentos sale con código 1 y explica el uso": "without arguments it exits with status 1 and explains usage",
+      "usa un bucle for": "it uses a for loop"
+    }
+  },
+  "lpie-usuarios": {
+    "title": "Creating and removing accounts and groups",
+    "briefing": "You are asked to manage accounts (you need `sudo`):\n1. Create the group `ventas`.\n2. Create the user `pedro` with home directory `/home/pedro`, shell `/bin/bash`, and `ventas` as a secondary group.\n3. Save to `pedro.txt` only the line for `pedro` in `/etc/passwd`.\n4. Save to `id.txt` the output of `id pedro`.\n5. Remove the account `antiguo` (it already exists) along with its home directory.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-usuarios`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ACCOUNTS] · You need to add a new person to a group and remove an account that is no longer used.",
+    "hints": [
+      "Creating and removing groups and users with the account administration commands, and two files that document the result. Everything requires privileges except writing in your directory.",
+      "`useradd` has options to create the home directory, set the shell, and add secondary groups. Removal with deletion of the home directory is an option of `userdel`. To extract a line from `/etc/passwd`, filter by the beginning of the line.",
+      "`sudo groupadd ventas`; `sudo useradd -m -s /bin/bash -G ventas pedro`; `grep '^pedro:' /etc/passwd > pedro.txt`; `id pedro > id.txt`; `sudo userdel -r antiguo`."
+    ],
+    "solution_summary": "`groupadd` creates the group; `useradd -m -s /bin/bash -G ventas pedro` creates the account, home, shell, and secondary group; `userdel -r` deletes the user and home directory. The line from `/etc/passwd` is extracted with `grep '^pedro:'`, and `id` shows uid, gid, and groups.",
+    "checks": {
+      "existe el grupo ventas": "the group ventas exists",
+      "existe pedro con /home/pedro creada": "pedro exists with /home/pedro created",
+      "la shell de pedro es /bin/bash": "pedro's shell is /bin/bash",
+      "pedro está en ventas": "pedro is in ventas",
+      "pedro.txt es su línea de /etc/passwd": "pedro.txt is his /etc/passwd line",
+      "id.txt es la salida de id pedro": "id.txt is the output of id pedro",
+      "antiguo ya no existe ni su /home/antiguo": "antiguo no longer exists, nor does /home/antiguo"
+    }
+  },
+  "lpie-permisos": {
+    "title": "Permissions and ownership in numeric and symbolic modes",
+    "briefing": "The user `luis` and the group `contabilidad` already exist (you need `sudo` to change owners). You are asked to adjust:\n1. `informe.txt` must end up with permissions 640 (use numeric mode).\n2. `copia.sh` must be executable only by its owner, without touching the rest of the permissions (symbolic mode).\n3. `informe.txt` must belong to user `luis` and group `contabilidad`, with a single command.\n4. The folder `privado/` must end up with 700.\n5. Remove the read permission for \"others\" from `notas.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r010-permisos`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PERMISSIONS] · Several department files have permissions and owners that do not match.",
+    "hints": [
+      "Two ways to express permissions, numeric and symbolic, and a separate command for owner and group. Check the initial state with `ls -l` before changing anything.",
+      "In symbolic mode you indicate who (`u`, `g`, `o`), whether to add or remove (`+`/`-`), and which permission. The ownership command accepts user and group together separated by a colon.",
+      "`chmod 640 informe.txt`; `chmod u+x copia.sh`; `sudo chown luis:contabilidad informe.txt`; `chmod 700 privado`; `chmod o-r notas.txt`."
+    ],
+    "solution_summary": "`chmod 640` and `chmod 700` set permissions in octal; `chmod u+x` adds execute only for the owner and `chmod o-r` removes read from others. `chown luis:contabilidad` changes user and group at once (requires root).",
+    "checks": {
+      "informe.txt tiene 640": "informe.txt has mode 640",
+      "copia.sh tiene 744 (solo el propietario ejecuta)": "copia.sh has mode 744 (only the owner can execute)",
+      "informe.txt es de luis:contabilidad": "informe.txt is owned by luis:contabilidad",
+      "privado/ tiene 700": "privado/ has mode 700",
+      "notas.txt tiene 660": "notas.txt has mode 660"
+    }
+  },
+  "lpie-especiales": {
+    "title": "Group directory with SGID, sticky bit, and a symbolic link",
+    "briefing": "The `equipo` group needs a shared directory, `compartido/` (you need `sudo` to change the group):\n1. Make `equipo` the group owner of `compartido/`.\n2. Give rwx to the owner and the group and no permissions to others.\n3. Enable the SGID bit so files created inside inherit the `equipo` group.\n4. Enable the sticky bit so each user can only delete their own files, as in `/tmp`.\n5. Create a symbolic link named `atajo` that points to `compartido`.\nYour terminal opens in the task directory (`/home/alumno/retos/r010-especiales`); files requested without a path go there.",
+    "blind_alert": "REQUEST [COLLABORATION] · A team needs a shared directory where each member can only delete their own files.",
+    "hints": [
+      "Combine a group change, base permissions, two special permissions, and a symbolic link. Special permissions can be added with symbolic mode or with a leading fourth octal digit.",
+      "The group is changed with `chgrp` or `chown`. SGID is `g+s` and sticky is `o+t`; in octal the extra digit is 2 and 1 respectively. In a symbolic link, the first argument is the target and the second is the link name.",
+      "`sudo chgrp equipo compartido`; `chmod 770 compartido`; `chmod g+s compartido`; `chmod o+t compartido` (or `chmod 3770 compartido`); `ln -s compartido atajo`."
+    ],
+    "solution_summary": "`chgrp` sets the group; `chmod 770` gives rwx to owner and group; `g+s` (SGID) makes new items inherit the group and `o+t` (sticky) restricts deletion to the owner. `ln -s compartido atajo` creates the symbolic link (target first).",
+    "checks": {
+      "compartido/ es del grupo equipo": "compartido/ is owned by the equipo group",
+      "compartido/ tiene rwxrwx--- (sin contar los especiales)": "compartido/ has rwxrwx--- (not counting the special bits)",
+      "tiene el bit SGID": "has the SGID bit",
+      "tiene el sticky bit": "has the sticky bit",
+      "atajo es un enlace simbólico a compartido": "atajo is a symbolic link to compartido"
+    }
+  },
+  "lpie-comillas-variables": {
+    "title": "Local and exported variables and quoting: what a child process inherits",
+    "briefing": "You are asked to demonstrate how variables and quoting behave:\n1. Create the local variable `saludo` with the value `hola` without exporting it, and the variable `ORDEN` with the value `desc` exported.\n2. Launch a child `bash` that prints on a single line the value of `saludo` and the value of `ORDEN`, each in brackets, and save the output to `hijo.txt`. It should be `[][desc]`.\n3. Save to `entorno.txt` only the line that `env` shows for `ORDEN`. Then remove `ORDEN` from the shell and save to `borrada.txt` the output of `echo \"[$ORDEN]\"` (it should be `[]`).\n4. Save to `ls.txt` the path to the `ls` program and to `cd.txt` what the shell says about `cd`.\n5. Create `comillas.txt` with two lines that contain the literal text `$HOME` unexpanded: the first using single quotes and the second using double quotes with the `$` escaped.\nYour terminal opens in the task directory (`/home/alumno/retos/r010-comillas-variables`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ENVIRONMENT] · Demonstrate which shell variables reach a child process and how quoting affects them.",
+    "hints": [
+      "A variable only reaches the child if it is exported; single quotes prevent expansion and double quotes allow it unless you escape the `$`. Every part demonstrates that difference.",
+      "To have the child expand the `$` and not your shell, pass the command to the child in single quotes. Remember that in `saludo=hola` there are no spaces around the `=`. `which` gives a program's path and `type` explains what a command is.",
+      "`saludo=hola; export ORDEN=desc`; `bash -c 'echo \"[$saludo][$ORDEN]\"' > hijo.txt`; `env | grep '^ORDEN=' > entorno.txt`; `unset ORDEN; echo \"[${ORDEN-}]\" > borrada.txt`; `which ls > ls.txt; type cd > cd.txt`; `printf '%s\\n' '$HOME' \"\\$HOME\" > comillas.txt`."
+    ],
+    "solution_summary": "`export` copies the variable to the children's environment; `saludo` without exporting does not arrive and the child prints `[]`. `unset` removes the variable. Single quotes leave `$HOME` literal, and in double quotes you have to escape the `$` (`\\$HOME`) to achieve the same.",
+    "checks": {
+      "hijo.txt: el hijo no ve saludo y sí ve ORDEN": "hijo.txt: the child does not see saludo and does see ORDEN",
+      "entorno.txt: solo la línea ORDEN=desc de env": "entorno.txt: only the ORDEN=desc line from env",
+      "borrada.txt: ORDEN ya no existe": "borrada.txt: ORDEN no longer exists",
+      "ls.txt: la ruta de ls": "ls.txt: the path to ls",
+      "cd.txt: la shell confirma que cd es una orden interna (builtin)": "cd.txt: the shell confirms that cd is a builtin"
+    }
+  },
+  "lpie-almacenamiento-datos": {
+    "title": "Where data is stored: executables, /etc, /proc, and the disk",
+    "briefing": "You are asked to collect information from several system sources:\n1. Save to `rutas.txt` the path to the `ps` executable and the path to `cut`, one per line.\n2. Save to `etc.txt` only the line for the `root` user in `/etc/passwd`.\n3. Save to `memoria.txt` only the `MemTotal` line from `/proc/meminfo`.\n4. Save to `montaje.txt` the mount point where `/tmp` is located (last column of the data line from `df -P /tmp`).\n5. Save to `tamano.txt` only the number of MiB that the `datos/` directory occupies according to `du -sm`.\nYour terminal opens in the task directory (`/home/alumno/retos/r010-almacenamiento-datos`); files requested without a path go there.",
+    "blind_alert": "REQUEST [INVENTORY] · You need to document where programs, configuration, kernel data, and disk space reside.",
+    "hints": [
+      "Each part reads from a different place: the PATH, a configuration file, the kernel's virtual filesystem, and disk space utilities. Extract only what is requested.",
+      "`which` locates executables. `grep` with a start-of-line anchor extracts an entry from `/etc/passwd` or `/proc/meminfo`. In `df -P` output, the data line is the second one and the mount point is the sixth column. `du -sm` prints size and name: keep the first field.",
+      "`{ which ps; which cut; } > rutas.txt`; `grep '^root:' /etc/passwd > etc.txt`; `grep '^MemTotal:' /proc/meminfo > memoria.txt`; `df -P /tmp | awk 'NR==2{print $6}' > montaje.txt`; `du -sm datos | cut -f1 > tamano.txt`."
+    ],
+    "solution_summary": "Executables are located with `which`; `/etc/passwd` stores accounts; `/proc/meminfo` is live kernel information; `df -P` gives the mount point in column 6 and `du -sm | cut -f1` the size in MiB.",
+    "checks": {
+      "rutas.txt: la ruta de ps y la de cut": "rutas.txt: the path to ps and the path to cut",
+      "etc.txt: la línea de root en /etc/passwd": "etc.txt: the root line in /etc/passwd",
+      "memoria.txt: la línea MemTotal de /proc/meminfo": "memoria.txt: the MemTotal line from /proc/meminfo",
+      "montaje.txt: el punto de montaje de /tmp": "montaje.txt: the mount point of /tmp",
+      "tamano.txt: los MiB de datos/ según du -sm": "tamano.txt: the MiB of datos/ according to du -sm"
+    }
+  },
+  "lpie-almacenamiento-datos2": {
+    "title": "Processes: PID, /proc/PID, and ps",
+    "briefing": "You are asked to create a process and inspect it in different ways:\n1. Launch `sleep 1234` in the background with `&` and save its PID to `pid.txt`.\n2. Read the program name of that PID from `/proc/PID/comm` and save only the name to `comm.txt`.\n3. Save to `ps.txt` the PID and the name that `ps` shows for that process, without headers.\n4. Save to `estado.txt` only the first letter of the process state according to `ps` (the STAT column).\nYour terminal opens in the task directory (`/home/alumno/retos/r010-almacenamiento-datos2`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PROCESSES] · You need to launch a background process and document its identity from several sources.",
+    "hints": [
+      "The process must remain alive while you request its data. A special shell variable gives you its PID as soon as you launch it, and from there you inspect it through `/proc` and `ps`.",
+      "Save the PID with `echo $! > pid.txt` right after launching it. The name is in a file inside the `/proc/<PID>/` directory. With the `ps` output option that ends in `=` headers are omitted; for the first letter use `cut -c1`.",
+      "`sleep 1234 &` and `echo $! > pid.txt`; `cat /proc/$(cat pid.txt)/comm > comm.txt`; `ps -p $(cat pid.txt) -o pid=,comm= > ps.txt`; `ps -o stat= -p $(cat pid.txt) | tr -d ' ' | cut -c1 > estado.txt`."
+    ],
+    "solution_summary": "`sleep 1234 &` creates the process and `$!` gives its PID. `/proc/PID/comm` contains the program name, `ps -p PID -o pid=,comm=` prints PID and name without a header, and `ps -o stat=` shows the state (S = sleeping), from which the first letter is taken.",
+    "checks": {
+      "pid.txt: un PID de un proceso que existe": "pid.txt: a PID of a process that exists",
+      "comm.txt: el programa de ese PID es sleep": "comm.txt: the program for that PID is sleep",
+      "ps.txt: el PID y el nombre sleep": "ps.txt: the PID and the name sleep",
+      "estado.txt: la letra del estado del proceso": "estado.txt: the process state letter"
+    }
+  },
+  "lpie-red-basica": {
+    "title": "Basic host networking: loopback, localhost, DNS, and resolution order",
+    "briefing": "You are asked to document the basic network configuration of the host:\n1. Save to `lo.txt` the brief output of the addresses of the loopback interface `lo`.\n2. Save to `resuelve.txt` only the IPv4 address with which the system resolves `localhost`.\n3. Save to `hosts.txt` the first line of `/etc/hosts` that mentions `localhost`.\n4. Save to `dns.txt` only the IP of the first `nameserver` in `/etc/resolv.conf`.\n5. Save to `orden.txt` the `hosts:` line from `/etc/nsswitch.conf`, which indicates the order in which names are resolved.\nYour terminal opens in the task directory (`/home/alumno/retos/r010-red-basica`); files requested without a path go there.",
+    "blind_alert": "REQUEST [NETWORK] · You need to document the basic network configuration of a host: local interface, names, and DNS servers.",
+    "hints": [
+      "Five network checks: one on the interface tools, one on the system's name resolution, and three on configuration files. Extract only the requested line or field.",
+      "`ip` has a brief output option and can be limited to one interface. `getent` queries resolution the way the system would (there is an IPv4 variant). For DNS, filter the lines that start with `nameserver` and take the second field of the first one.",
+      "`ip -br addr show lo > lo.txt`; `getent ahostsv4 localhost | awk 'NR==1{print $1}' > resuelve.txt`; `grep -m1 localhost /etc/hosts > hosts.txt`; `awk '/^nameserver/{print $2; exit}' /etc/resolv.conf > dns.txt`; `grep '^hosts:' /etc/nsswitch.conf > orden.txt`."
+    ],
+    "solution_summary": "`ip -br addr show lo` shows the loopback interface in brief format, `getent ahostsv4` resolves as the system does, `/etc/hosts` maps local names, `/etc/resolv.conf` lists the DNS servers, and the `hosts:` line in `nsswitch.conf` sets the order of the resolution sources.",
+    "checks": {
+      "lo.txt: el resumen breve de la interfaz lo": "lo.txt: the brief summary of the lo interface",
+      "resuelve.txt: localhost es 127.0.0.1": "resuelve.txt: localhost is 127.0.0.1",
+      "hosts.txt: la línea de localhost en /etc/hosts": "hosts.txt: the localhost line in /etc/hosts",
+      "dns.txt: el primer nameserver de resolv.conf": "dns.txt: the first nameserver in resolv.conf",
+      "orden.txt: la línea hosts: de nsswitch.conf": "orden.txt: the hosts: line from nsswitch.conf"
+    }
+  }
+}

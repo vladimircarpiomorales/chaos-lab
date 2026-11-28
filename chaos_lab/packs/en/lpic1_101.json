@@ -1,0 +1,309 @@
+{
+  "lpic1-ficheros": {
+    "title": "Organizing a downloads folder",
+    "briefing": "The `descargas/` folder has mixed files. Leave it like this:\n1. Create the folders `descargas/logs` and `descargas/fotos`.\n2. Move all `*.log` to `logs/` and all `*.jpg` to `fotos/` (none may remain outside).\n3. Delete all `*.tmp`.\n4. Copy `informe.txt` as `informe.txt.bak` in the same folder.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-ficheros`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ORDER] · A downloads folder needs to be reorganized by file type and temporary files cleaned up.",
+    "hints": [
+      "This is about creating, moving, deleting, and copying with wildcards so you don't go file by file.",
+      "`mkdir -p` creates directories, `mv *.log logs/` moves by pattern, `rm *.tmp` deletes by pattern, and `cp origen destino` copies. Work inside `descargas/`.",
+      "`cd descargas`; `mkdir -p logs fotos`; `mv *.log logs/`; `mv *.jpg fotos/`; `rm *.tmp`; `cp informe.txt informe.txt.bak`."
+    ],
+    "solution_summary": "`mkdir`, `mv`, `rm`, and `cp` with wildcards (`*.log`, `*.jpg`, `*.tmp`) reorganize the files in bulk; `cp informe.txt informe.txt.bak` leaves an identical copy next to the original.",
+    "checks": {
+      "existen logs/ y fotos/": "logs/ and fotos/ exist",
+      "los 3 .log están en logs/": "the 3 .log files are in logs/",
+      "no queda ningún .log fuera": "no .log files are left outside",
+      "las 2 fotos están en fotos/": "the 2 photos are in fotos/",
+      "no queda ningún .tmp": "no .tmp files remain",
+      "informe.txt.bak es una copia de informe.txt": "informe.txt.bak is a copy of informe.txt",
+      "no queda ninguna foto fuera": "no photos are left outside",
+      "informe.txt conserva su contenido": "informe.txt keeps its content"
+    }
+  },
+  "lpic1-filtros": {
+    "title": "Extracting data from a CSV with filters",
+    "briefing": "`ventas.csv` has lines `ciudad,producto,unidades` (no header). Generate:\n1. `ciudades.txt`, with the distinct cities sorted alphabetically, one per line.\n2. `madrid.txt`, with only the Madrid lines, exactly as they appear in the original.\n3. `cuantas.txt`, with the number of lines in `ventas.csv` (just the number, without the filename).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-filtros`); files requested without a path go there.",
+    "blind_alert": "REQUEST [REPORTS] · Three summaries need to be extracted from a sales CSV file.",
+    "hints": [
+      "Each result is obtained by chaining text filters: cut a field, sort without duplicates, select lines, and count them.",
+      "`cut -d, -f1` gets the first field and `sort -u` sorts without duplicates; `grep '^Madrid,'` filters by start of line; `wc -l < fichero` counts without printing the name.",
+      "`cut -d, -f1 ventas.csv | sort -u > ciudades.txt`; `grep '^Madrid,' ventas.csv > madrid.txt`; `wc -l < ventas.csv > cuantas.txt`."
+    ],
+    "solution_summary": "`cut -d, -f1 | sort -u` extracts and sorts the distinct values of a column, `grep '^Madrid,'` selects by start-of-line pattern, and `wc -l < fichero` counts lines without printing the name.",
+    "checks": {
+      "ciudades.txt: las ciudades distintas, ordenadas, una por línea": "ciudades.txt: the distinct cities, sorted, one per line",
+      "madrid.txt: solo las líneas de Madrid": "madrid.txt: only the Madrid lines",
+      "cuantas.txt: el número de líneas de ventas.csv": "cuantas.txt: the number of lines in ventas.csv"
+    }
+  },
+  "lpic1-redirecciones": {
+    "title": "Separating normal output from errors",
+    "briefing": "The `./genera.sh` script writes normal lines (stdout) and error lines (stderr). You need to:\n1. Run it, in a single command, saving the normal output to `salida.txt` and the errors to `errores.txt`.\n2. Append the current date from `date` to the end of `salida.txt` without erasing what's already there.\n3. Create `mayus.txt` with the contents of `salida.txt` in uppercase, using a pipe and `tr`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-redirecciones`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PROCESSING] · The errors from a script need to be separated from its normal output and an uppercase copy generated.",
+    "hints": [
+      "There are two output streams, each with its own descriptor number, and both can be redirected at once in the same command. Appending without overwriting requires a different operator.",
+      "`>` for stdout, `2>` for stderr, `>>` to append; the pipe `|` connects the output of `cat` to `tr a-z A-Z`.",
+      "`./genera.sh > salida.txt 2> errores.txt`; `date >> salida.txt`; `cat salida.txt | tr a-z A-Z > mayus.txt`."
+    ],
+    "solution_summary": "`> fichero` redirects stdout and `2> fichero` redirects stderr; `>>` appends without truncating; with `cat salida.txt | tr a-z A-Z`, the pipe passes the text to `tr`, which converts it to uppercase.",
+    "checks": {
+      "salida.txt: la salida normal del script": "salida.txt: the normal output of the script",
+      "salida.txt no tiene errores dentro": "salida.txt has no errors inside",
+      "salida.txt: lleva una línea añadida al final": "salida.txt: has an appended line at the end",
+      "errores.txt: solo los errores del script": "errores.txt: only the script errors",
+      "mayus.txt es salida.txt en mayúsculas": "mayus.txt is salida.txt in uppercase"
+    }
+  },
+  "lpic1-grep": {
+    "title": "Searching a log with regular expressions",
+    "briefing": "`acceso.log` is the log of a web server (each line: IP, method, path, and response code as the last field). Generate:\n1. `internas.txt`, with the lines whose IP starts with `192.168.` (watch out for addresses that look similar but don't start that way).\n2. `fallos.txt`, with the lines whose response code is 404 or 500.\n3. `n-post.txt`, with the number of lines containing `POST` (just the number).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-grep`); files requested without a path go there.",
+    "blind_alert": "REQUEST [SEARCH] · The internal requests, the errors, and the count of POST submissions need to be extracted from a web server log.",
+    "hints": [
+      "Line-start and line-end anchors matter here, as well as escaping the dot (which in a regular expression means “any character”), and the difference between displaying lines and counting them.",
+      "`grep '^192\\.168\\.'` anchors to the start and escapes the dots; `grep -E ' (404|500)$'` uses alternation at the end of the line; `grep -c` counts the matching lines.",
+      "`grep '^192\\.168\\.' acceso.log > internas.txt`; `grep -E ' (404|500)$' acceso.log > fallos.txt`; `grep -c POST acceso.log > n-post.txt`."
+    ],
+    "solution_summary": "`^` anchors to the start of the line and `\\.` represents a literal dot, so the lookalike IP is discarded; `-E` enables the alternation `(404|500)` and `$` fixes the end; `grep -c` returns how many lines match instead of showing them.",
+    "checks": {
+      "internas.txt: las líneas cuya IP empieza por 192.168. (y solo esas)": "internas.txt: the lines whose IP starts with 192.168. (and only those)",
+      "fallos.txt: las líneas con código 404 o 500": "fallos.txt: the lines with code 404 or 500",
+      "n-post.txt: el número de líneas con POST": "n-post.txt: the number of lines with POST"
+    }
+  },
+  "lpic1-permisos": {
+    "title": "Numeric permissions, SGID, and sticky bit",
+    "briefing": "You are asked to leave these permissions (for the group you need `sudo`):\n1. `secreto.txt` with permissions 600 (only the owner reads and writes).\n2. `script.sh` with 744: `rwx` for the owner and read-only for group and others.\n3. Create the group `proyecto`, make the `compartida/` folder belong to that group, and give it 2775 (SGID: new items inside inherit the group).\n4. The `publica/` folder must have the sticky bit with permissions 1777, like `/tmp`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-permisos`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PERMISSIONS] · A secret, a script, and two shared folders need to be left with the correct special permissions.",
+    "hints": [
+      "Permissions are written in octal; the special bits (SGID, sticky) go in a fourth digit in front. Creating a group and changing a folder's ownership requires privileges.",
+      "`chmod 600`, `chmod 744`; `groupadd`, `chgrp GRUPO carpeta`, and `chmod 2775`; `chmod 1777` (or `chmod +t`).",
+      "`chmod 600 secreto.txt`; `chmod 744 script.sh`; `sudo groupadd proyecto`; `sudo chgrp proyecto compartida`; `chmod 2775 compartida`; `chmod 1777 publica`."
+    ],
+    "solution_summary": "`chmod` in octal sets 600 and 744; `2775` adds SGID (new files inherit the group of the folder) and `1777` adds the sticky bit (only the owner deletes their own files). The group is created with `groupadd` and assigned with `chgrp`, both with privileges.",
+    "checks": {
+      "secreto.txt tiene 600": "secreto.txt has 600",
+      "script.sh tiene 744": "script.sh has 744",
+      "existe el grupo proyecto": "the group proyecto exists",
+      "compartida/ es del grupo proyecto": "compartida/ belongs to the group proyecto",
+      "compartida/ tiene 2775 (SGID)": "compartida/ has 2775 (SGID)",
+      "publica/ tiene 1777 (sticky)": "publica/ has 1777 (sticky)"
+    }
+  },
+  "lpic1-enlaces": {
+    "title": "Hard and symbolic links",
+    "briefing": "You are asked to create three links:\n1. `duro.txt`, as a hard link to `original.txt`.\n2. `blando.txt`, as a symbolic link to `original.txt` (the target is the relative name `original.txt`).\n3. Inside the `atajos/` folder, a symbolic link called `conf` that points to `/etc/hostname`.\nTo view them: `ls -li` shows the inode and the link count.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-enlaces`); files requested without a path go there.",
+    "blind_alert": "REQUEST [LINKS] · A file needs to be left accessible under a second name and two shortcuts created.",
+    "hints": [
+      "A hard link is another name for the same inode; a symbolic link is a small file that stores a path. The same command creates both, with an option that tells them apart.",
+      "`ln origen destino` makes the hard one; `ln -s origen destino` makes the symbolic one. In a symbolic link, the first argument is the destination path text exactly as given.",
+      "`ln original.txt duro.txt`; `ln -s original.txt blando.txt`; `ln -s /etc/hostname atajos/conf`."
+    ],
+    "solution_summary": "`ln` without options creates a hard link (same inode as the original); `ln -s` creates a symbolic link that stores the target path, which can be relative (`original.txt`) or absolute (`/etc/hostname`).",
+    "checks": {
+      "duro.txt existe y no es un enlace simbólico": "duro.txt exists and is not a symbolic link",
+      "duro.txt comparte inodo con original.txt": "duro.txt shares an inode with original.txt",
+      "blando.txt es simbólico y apunta a original.txt": "blando.txt is symbolic and points to original.txt",
+      "atajos/conf apunta a /etc/hostname": "atajos/conf points to /etc/hostname"
+    }
+  },
+  "lpic1-sistema-archivos": {
+    "title": "An ext4 filesystem inside a file",
+    "briefing": "In a container there are no real disks, so you'll use a file as a disk (`mkfs.ext4`, `tune2fs`, and `blkid` are in `/usr/sbin`: use `sudo`):\n1. Create `disco.img` of exactly 64 MiB (67108864 bytes).\n2. Format it as ext4 with the label `DATOS`.\n3. With `tune2fs`, set the maximum mount count before forcing a check to 30.\n4. Save the output of `blkid` applied to `disco.img` in `info.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-sistema-archivos`); files requested without a path go there.",
+    "blind_alert": "REQUEST [STORAGE] · A labeled ext4 volume needs to be prepared, its periodic check adjusted, and documented.",
+    "hints": [
+      "A file works as a block device for `mkfs`, `tune2fs`, and `blkid`. The label is set when formatting, and the mount counter is adjusted afterward.",
+      "`truncate -s 64M` creates the file; `sudo mkfs.ext4 -L ETIQUETA fichero` formats; `sudo tune2fs -c N` sets the maximum mount count; `sudo blkid fichero` prints the type and label.",
+      "`truncate -s 64M disco.img`; `sudo mkfs.ext4 -L DATOS disco.img`; `sudo tune2fs -c 30 disco.img`; `sudo blkid disco.img > info.txt`."
+    ],
+    "solution_summary": "`truncate -s 64M` creates the 64 MiB file; `mkfs.ext4 -L DATOS` formats it with a label; `tune2fs -c 30` sets the maximum mount count, and `blkid` shows TYPE and LABEL, which are saved in `info.txt`.",
+    "checks": {
+      "disco.img mide 64 MB": "disco.img is 64 MB",
+      "disco.img tiene un ext4": "disco.img has an ext4",
+      "la etiqueta es DATOS": "the label is DATOS",
+      "máximo de montajes = 30": "maximum mount count = 30",
+      "info.txt tiene la salida de blkid": "info.txt has the blkid output"
+    }
+  },
+  "lpic1-dpkg": {
+    "title": "Debian packages: install, list files, and find the owner",
+    "briefing": "The `tree` package is uninstalled. You are asked to (you need `sudo` and internet access; the image doesn't include the package index, so update it before installing):\n1. Install `tree` with `apt`.\n2. Save the list of files installed by that package, obtained with `dpkg`, in `archivos-tree.txt`.\n3. Save the output of `dpkg -S /usr/bin/ls`, which indicates which package that file belongs to, in `duenno.txt`.\nNote: in Debian 13 `/bin` is a link to `/usr/bin`, and `dpkg -S /bin/ls` finds nothing because dpkg only knows the path each file was installed with.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-dpkg`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PACKAGES] · A utility needs to be installed and its files documented, along with which package a system command belongs to.",
+    "hints": [
+      "`apt` installs (with `sudo` and an up-to-date index); `dpkg` queries the installed package database, both “which files it brings” and “which package this file belongs to”.",
+      "`sudo apt-get update` and `sudo apt install -y tree`; `dpkg -L paquete` lists files; `dpkg -S ruta` finds the owning package (with the exact path under `/usr`).",
+      "`sudo apt-get update && sudo apt install -y tree`; `dpkg -L tree > archivos-tree.txt`; `dpkg -S /usr/bin/ls > duenno.txt`."
+    ],
+    "solution_summary": "`apt install` installs the package after `apt-get update`; `dpkg -L tree` lists its files (including `/usr/bin/tree`) and `dpkg -S /usr/bin/ls` reveals that the owner is `coreutils`. With the unified /usr you must use the path under `/usr`.",
+    "checks": {
+      "tree está instalado": "tree is installed",
+      "archivos-tree.txt: la lista de ficheros del paquete tree": "archivos-tree.txt: the list of files from the tree package",
+      "duenno.txt: el paquete dueño de /usr/bin/ls": "duenno.txt: the package that owns /usr/bin/ls"
+    }
+  },
+  "lpic1-rpm": {
+    "title": "RPM packages with dnf and rpm (on Fedora)",
+    "briefing": "This challenge is done on a Fedora machine (the terminal already is one). The `tree` package is not installed. You need `sudo` and internet access:\n1. Install `tree` with `dnf`.\n2. Save the package that `/usr/bin/bash` belongs to, queried with `rpm`, in `duenno.txt`.\n3. Save the list of files from the `tree` package, obtained with `rpm`, in `archivos-tree.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-rpm`); files requested without a path go there.",
+    "blind_alert": "REQUEST [PACKAGES] · A utility needs to be installed on Fedora and its contents documented, along with the package of a base command.",
+    "hints": [
+      "`dnf` manages repositories and installations; `rpm` queries the local package database with query options (`-q`).",
+      "`sudo dnf install -y tree`; `rpm -qf RUTA` says which package a file belongs to; `rpm -ql PAQUETE` lists its files.",
+      "`sudo dnf install -y tree`; `rpm -qf /usr/bin/bash > duenno.txt`; `rpm -ql tree > archivos-tree.txt`."
+    ],
+    "solution_summary": "`dnf install` installs from the repositories; `rpm -qf /usr/bin/bash` returns the owning package (`bash-…`) and `rpm -ql tree` lists the files the package brings, including `/usr/bin/tree`.",
+    "checks": {
+      "tree está instalado": "tree is installed",
+      "duenno.txt: el paquete dueño de /usr/bin/bash": "duenno.txt: the package that owns /usr/bin/bash",
+      "archivos-tree.txt: la lista de ficheros del paquete tree": "archivos-tree.txt: the list of files from the tree package"
+    }
+  },
+  "lpic1-procesos": {
+    "title": "Finding, reprioritizing, and killing processes",
+    "briefing": "In the system there are two processes that you did not launch, `copianocturna` and `minerocripto`, and a third program, `informe`, that is not running. The first two belong to `root` (use `sudo` where needed):\n1. Find the PID of `copianocturna` and save it in `pid.txt` (just the number).\n2. Change its nice value to 15 without stopping it.\n3. Terminate `minerocripto` with `kill` and its default signal (SIGTERM).\n4. Launch `informe 3600` in the background with nice value 10, so that it stays alive even if the terminal closes.\nTo check status: `ps -o pid,ni,comm -C copianocturna,minerocripto,informe`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-procesos`); files requested without a path go there.",
+    "blind_alert": "INCIDENT [PROCESSES] · A suspicious process is consuming resources and another one doing copies needs lower priority; there is also a heavy report to launch carefully.",
+    "hints": [
+      "There are different tools for searching by name, for changing the priority of a process that is already running, and for launching a new one with different priority; `root` processes require privileges.",
+      "`pgrep -x NOMBRE` gives the PID; `renice -n VALOR -p PID` changes the priority of a running one; `kill PID` sends SIGTERM; `nohup nice -n VALOR comando &` launches it in the background immune to terminal closure.",
+      "`pgrep -x copianocturna > pid.txt`; `sudo renice -n 15 -p \"$(cat pid.txt)\"`; `sudo kill \"$(pgrep -x minerocripto)\"`; `nohup nice -n 10 informe 3600 >/dev/null 2>&1 &`."
+    ],
+    "solution_summary": "`pgrep -x` locates the PID by exact name, `renice -n 15 -p PID` re-prioritizes a live process, and `kill PID` terminates it with SIGTERM. To launch a new one with different priority and survive terminal closure, combine `nohup nice -n 10 comando &`.",
+    "checks": {
+      "pid.txt tiene el PID de copianocturna": "pid.txt contains the PID of copianocturna",
+      "copianocturna sigue en marcha con nice 15": "copianocturna is still running with nice 15",
+      "minerocripto ya no está en marcha": "minerocripto is no longer running",
+      "informe está en marcha con nice 10": "informe is running with nice 10"
+    }
+  },
+  "lpic1-find": {
+    "title": "Warehouse cleanup with find",
+    "briefing": "The `almacen` folder contains files and directories of all kinds. Work from the challenge directory and use `find` with `almacen` as the starting point (paths must begin with `almacen/`):\n1. Save in `grandes.txt` the paths of regular files larger than 2 MiB (one per line).\n2. Save in `viejos.txt` the paths of regular files modified more than 365 days ago.\n3. Remove write permission for “others” from all files that have it, using `find` with `-exec chmod`, without changing any other permission.\n4. Delete with `find` all empty directories in `almacen`; any that contain something are kept.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-find`); files requested without a path go there.",
+    "blind_alert": "REQUEST [WAREHOUSE] · A folder needs an inventory of heavy and old files, open write permissions must be closed, and empty directories removed.",
+    "hints": [
+      "`find` filters by type, size, age, permissions, and emptiness, and can act on what it finds. Watch the units of `-size` and note that exactly 2 MiB is not “more than 2 MiB”.",
+      "`-type f -size +2M`; `-type f -mtime +365`; `-type f -perm -o+w -exec chmod o-w {} \\;`; `-type d -empty -delete`. The first two are redirected to a file.",
+      "`find almacen -type f -size +2M > grandes.txt`; `find almacen -type f -mtime +365 > viejos.txt`; `find almacen -type f -perm -o+w -exec chmod o-w {} \\;`; `find almacen -type d -empty -delete`."
+    ],
+    "solution_summary": "`-size +2M` and `-mtime +365` select by size and age; `-perm -o+w` finds what is writable by “others” and `-exec chmod o-w {} \\;` corrects it without touching anything else; `-type d -empty -delete` deletes empty directories (nested empty ones are removed from the inside out).",
+    "checks": {
+      "grandes.txt: los ficheros de más de 2 MiB (y nada más)": "grandes.txt: the files larger than 2 MiB (and nothing else)",
+      "viejos.txt: los ficheros de más de un año (y nada más)": "viejos.txt: the files older than one year (and nothing else)",
+      "ningún fichero es escribible por «otros» y el resto de permisos sigue igual": "no file is writable by “others” and all other permissions remain the same",
+      "no quedan directorios vacíos y los que tenían algo siguen": "no empty directories remain and those that had something are kept"
+    }
+  },
+  "lpic1-vi": {
+    "title": "Editing a configuration file with vi",
+    "briefing": "Open `tienda.conf` with `vi` and leave it like this, without touching anything else:\n1. Delete the line `depurar=si`.\n2. Replace the word `tienda` with `almacen` throughout the file (comments included).\n3. Duplicate the line `puerto=8080` just below it and, in the copy, change `puerto` to `puerto_admin` (result is `puerto_admin=8080`; the original remains the same).\n4. Add `# editado con vi` as the first line of the file and `activo=si` as the last.\nSave and exit the editor.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-vi`); files requested without a path go there.",
+    "blind_alert": "REQUEST [EDITING] · A configuration file needs to be touched up from the terminal with the vi editor.",
+    "hints": [
+      "`vi` has normal mode (movement, delete, copy, paste) and insert mode; commands starting with `:` (command line) handle substitution, saving, and quitting.",
+      "In normal mode: `dd` deletes a line, `yy` and `p` copy and paste, `cw` changes a word, `gg` and `G` jump to the beginning and end, `O` and `o` open a line above and below. With `:%s/viejo/nuevo/g` you substitute throughout the file; `:wq` saves and exits.",
+      "`vi tienda.conf`; `/depurar` Enter `dd`; `:%s/tienda/almacen/g`; on `puerto=8080`: `yyp` and change the copied word to `puerto_admin`; `ggO# editado con vi` Esc; `Goactivo=si` Esc; `:wq`."
+    ],
+    "solution_summary": "In normal mode `dd` deletes the line and `yy`+`p` duplicates it; `:%s/tienda/almacen/g` substitutes throughout the file; `gg O` and `G o` add lines at the beginning and end; `:wq` saves and exits. The result must be exactly the expected file, with no other changes.",
+    "checks": {
+      "ya no está la línea depurar=si": "the line depurar=si is gone",
+      "no queda «tienda» y todas las apariciones son ahora «almacen»": "no “tienda” remains and all occurrences are now “almacen”",
+      "puerto_admin=8080 está justo debajo de puerto=8080": "puerto_admin=8080 is right below puerto=8080",
+      "empieza por # editado con vi, termina en activo=si y lo demás queda igual": "starts with # editado con vi, ends with activo=si, and everything else stays the same"
+    }
+  },
+  "lpic1-entorno-shell": {
+    "title": "An exported variable and a file with spaces in its name",
+    "briefing": "You are asked for two basic shell checks:\n1. Define the variable `CURSO` with the text `LPIC 101` (including the space) and export it.\n2. Launch a child `bash` that writes the value of `CURSO` to `hijo.txt`; that file must contain only `LPIC 101`.\n3. Create an empty file named `notas de clase.txt`, with spaces inside the name (a single file).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-entorno-shell`); files requested without a path go there.",
+    "blind_alert": "REQUEST [ENVIRONMENT] · A value containing spaces must be passed to a child process, and a file whose name contains spaces must be created.",
+    "hints": [
+      "A value with spaces needs quotes when assigning it, and a file name with spaces also needs them when using it, or the shell will split it into several words.",
+      "`export` so the child receives it; `bash -c 'printf \"%s\\n\" \"$CURSO\"'` prints it from the child (with single quotes, so the child expands it). `touch` creates the empty file.",
+      "`CURSO=\"LPIC 101\"; export CURSO`; `bash -c 'printf \"%s\\n\" \"$CURSO\"' > hijo.txt`; `touch \"notas de clase.txt\"`."
+    ],
+    "solution_summary": "Quotes prevent the shell from splitting words both in the value (`CURSO=\"LPIC 101\"`) and in the file name. Only exported variables reach child processes, which is why they can print it.",
+    "checks": {
+      "el proceso hijo recibió la variable": "the child process received the variable",
+      "se creó el nombre con espacios": "the name with spaces was created"
+    }
+  },
+  "lpic1-esquema-particionado": {
+    "title": "MBR partition scheme on an image and its fstab",
+    "briefing": "You are asked to design the partitioning of a 1 GiB disk onto an image and write its `fstab` (none of this touches real disks; `sfdisk` is in `/usr/sbin`, use `sudo sfdisk`):\n1. Create a raw disk image of exactly 1 GiB named `disco.img`.\n2. Partition it with `sfdisk` using MBR table (`dos`) and 4 primary partitions: partition 1 of 200M type `83` (Linux, for `/boot`); partition 2 of 256M type `82` (swap); partition 3 of 300M type `83` (for `/`); and partition 4 with the remaining space, type `83` (for `/var`).\n3. Create `fstab.nuevo` with a six-column line for each partition, as if they were `/dev/sdb1` through `/dev/sdb4`: `/boot`, swap (mount point `none`), `/` and `/var`, with filesystem type `ext4` (and `swap` for partition 2), options `defaults` (and `sw` for swap), dump `0` for all, and `fsck` order 1 for `/`, 2 for `/boot` and `/var`, and 0 for swap. The file must pass `findmnt --verify --tab-file fstab.nuevo` without errors.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-esquema-particionado`); files requested without a path go there.",
+    "blind_alert": "REQUEST [STORAGE] · The layout of a new disk must be designed and its mount table written up before installation.",
+    "hints": [
+      "An image is a file the size of a disk; `sfdisk` reads its partition description from standard input. An `fstab` has six columns: device, mount point, type, options, dump, and pass.",
+      "`truncate -s 1G disco.img`; to `sudo sfdisk disco.img` you pass `label: dos` and one `size=…, type=…` line per partition (the last one without `size` takes the rest). To validate the `fstab`, `findmnt --verify --tab-file`.",
+      "`truncate -s 1G disco.img`; `sudo sfdisk disco.img` with `label: dos`, `size=200M, type=83`, `size=256M, type=82`, `size=300M, type=83`, `type=83`; in `fstab.nuevo`: `/dev/sdb1 /boot ext4 defaults 0 2`, `/dev/sdb2 none swap sw 0 0`, `/dev/sdb3 / ext4 defaults 0 1`, `/dev/sdb4 /var ext4 defaults 0 2`."
+    ],
+    "solution_summary": "`truncate -s 1G` creates the image; `sfdisk` receives the table as text (`label: dos` and one `size=, type=` line per partition, the last one with no size). The `fstab` has six columns: root with pass 1, `/boot` and `/var` with pass 2, and swap as `none swap sw 0 0`; `findmnt --verify` validates it.",
+    "checks": {
+      "disco.img existe y tiene un tamaño de 1 GiB": "disco.img exists and is 1 GiB in size",
+      "disco.img tiene tabla MBR con 4 particiones (/boot, swap, /, /var)": "disco.img has an MBR table with 4 partitions (/boot, swap, /, /var)",
+      "fstab.nuevo es sintácticamente válido según findmnt": "fstab.nuevo is syntactically valid according to findmnt",
+      "fstab.nuevo define /boot, swap, / (pass 1) y /var": "fstab.nuevo defines /boot, swap, / (pass 1), and /var"
+    }
+  },
+  "lpic1-hardware": {
+    "title": "Kernel modules, blacklisting, and processor data",
+    "briefing": "You are asked for four hardware adjustments (files under `/etc` require privileges: use `sudo` to write them):\n1. Save to `modulos.txt` the list of kernel-loaded modules exactly as shown by `lsmod`.\n2. Create `/etc/modprobe.d/blacklist-audio.conf` with the directive that prevents automatic loading of the `snd_hda_intel` module.\n3. Extract from `/proc/cpuinfo` the processor model name value (what comes after `model name :`, without the prefix) and save it in `cpu-modelo.txt`, on a single line.\n4. Create `/etc/modules-load.d/red-virtual.conf` so that the `dummy` module loads at system boot.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-hardware`); files requested without a path go there.",
+    "blind_alert": "REQUEST [HARDWARE] · The state of the modules must be recorded, an audio driver blacklisted, a virtual network module loaded at boot, and the CPU documented.",
+    "hints": [
+      "Loaded modules come from `/proc/modules`, the processor model from `/proc/cpuinfo`, and files in `/etc/modprobe.d/` and `/etc/modules-load.d/` are text lists with one directive or module per line.",
+      "`lsmod > modulos.txt`; `grep -m1 'model name' /proc/cpuinfo` and `sed` to remove the prefix; in `modprobe.d` the keyword is the blacklist one; in `modules-load.d` the module name is enough. Write to `/etc` with `sudo tee`.",
+      "`lsmod > modulos.txt`; `echo 'blacklist snd_hda_intel' | sudo tee /etc/modprobe.d/blacklist-audio.conf`; `grep -m1 'model name' /proc/cpuinfo | sed 's/.*: //' > cpu-modelo.txt`; `echo dummy | sudo tee /etc/modules-load.d/red-virtual.conf`."
+    ],
+    "solution_summary": "`lsmod` shows the loaded modules (`Module` header); `blacklist NOMBRE` in a file under `/etc/modprobe.d/` prevents automatic loading; modules in `/etc/modules-load.d/*.conf` load at boot; the CPU model is in `model name` in `/proc/cpuinfo`.",
+    "checks": {
+      "modulos.txt contiene la lista de lsmod": "modulos.txt contains the lsmod list",
+      "blacklist-audio.conf: impide la carga automática de snd_hda_intel": "blacklist-audio.conf: prevents automatic loading of snd_hda_intel",
+      "cpu-modelo.txt contiene el modelo de procesador": "cpu-modelo.txt contains the processor model",
+      "red-virtual.conf contiene el módulo dummy": "red-virtual.conf contains the dummy module"
+    }
+  },
+  "lpic1-variables-entorno": {
+    "title": "Local and exported variables, and the literal $",
+    "briefing": "You are asked to demonstrate the difference between a shell variable and an environment variable:\n1. Create the variable `VAR_LOCAL` with the value `solo aqui` without exporting it, and `VAR_EXPORTADA` with the value `hola desde el padre`, this one exported.\n2. Launch a child `bash` that writes, each on its own line and in brackets, the value of `VAR_LOCAL` and `VAR_EXPORTADA`, and save its output to `hijos.txt`. It must be exactly `[]` and, below it, `[hola desde el padre]`.\n3. Save to `env.txt` only the lines of `env` output that start with `VAR_`, and to `printenv.txt` the value of `VAR_EXPORTADA` obtained with `printenv` (just the value).\n4. Remove `VAR_EXPORTADA` from the shell and save to `unset.txt` the attempt to print it in brackets: it must be `[]`.\n5. Create `comillas.txt` with two lines containing the literal text `$HOME` (without expanding): the first written with single quotes and the second with double quotes escaping the `$`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-variables-entorno`); files requested without a path go there. Do steps 1 through 4 in the same shell, because variables live there.",
+    "blind_alert": "REQUEST [ENVIRONMENT] · It must be demonstrated which shell variables child processes inherit and how to write a literal `$`.",
+    "hints": [
+      "An unexported variable only exists in the shell that created it; child processes inherit only exported ones. Between `$` and quotes the difference is who expands what.",
+      "`export` marks the variable for children; `bash -c '…'` creates the child (with single quotes the `$` is expanded by the child, not your shell). `unset` removes a variable and `${VAR-}` expands to empty if it does not exist. In single quotes the `$` is literal; in double quotes, escape it with a backslash.",
+      "`VAR_LOCAL=\"solo aqui\"; export VAR_EXPORTADA=\"hola desde el padre\"`; `bash -c 'echo \"[$VAR_LOCAL]\"; echo \"[$VAR_EXPORTADA]\"' > hijos.txt`; `env | grep '^VAR_' > env.txt`; `printenv VAR_EXPORTADA > printenv.txt`; `unset VAR_EXPORTADA; echo \"[${VAR_EXPORTADA-}]\" > unset.txt`; `printf '%s\\n' '$HOME' \"\\$HOME\" > comillas.txt`."
+    ],
+    "solution_summary": "The child shell inherits only variables exported with `export`, which is why it sees `VAR_EXPORTADA` and not `VAR_LOCAL`; `env` and `printenv` show only the exported environment. `unset` removes the variable and `${VAR-}` avoids an error by expanding it empty. With single quotes the `$` is literal, and with double quotes it must be escaped (`\\$HOME`).",
+    "checks": {
+      "hijos.txt: la hija no ve VAR_LOCAL y sí ve VAR_EXPORTADA": "hijos.txt: the child does not see VAR_LOCAL and does see VAR_EXPORTADA",
+      "env.txt: solo VAR_EXPORTADA, con su valor": "env.txt: only VAR_EXPORTADA, with its value",
+      "printenv.txt: el valor de VAR_EXPORTADA": "printenv.txt: the value of VAR_EXPORTADA",
+      "unset.txt: VAR_EXPORTADA ya no existe": "unset.txt: VAR_EXPORTADA no longer exists"
+    }
+  },
+  "lpic1-multiplexor-tmux": {
+    "title": "A tmux session driven from outside",
+    "briefing": "You are asked to manage a `tmux` session without entering it:\n1. Create a background session named `lpi101` that runs `bash` and whose starting directory is the challenge directory.\n2. Save the list of `tmux` sessions to `sesiones.txt`.\n3. Send the session `lpi101` the command `echo \"hola desde tmux\"` followed by Enter.\n4. Wait one second and save to `pantalla.txt` the text shown in that session (text only, without entering it).\n5. Close the `lpi101` session; it must not remain alive when finished.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-multiplexor-tmux`); files requested without a path go there.",
+    "blind_alert": "REQUEST [TERMINAL] · A persistent terminal session must be launched, typed into remotely, and its output captured.",
+    "hints": [
+      "`tmux` can create, write to, and read a session without you being inside; each action is a subcommand with the target session option.",
+      "`new-session` with the options for background, name, and directory; `ls` to list; `send-keys -t NOMBRE 'texto' Enter`; `capture-pane` with the option that prints to standard output; `kill-session -t NOMBRE`. Pause with `sleep 1` before capturing.",
+      "`tmux new-session -d -s lpi101 -c \"$PWD\" bash`; `tmux ls > sesiones.txt`; `tmux send-keys -t lpi101 'echo \"hola desde tmux\"' Enter`; `sleep 1; tmux capture-pane -p -t lpi101 > pantalla.txt`; `tmux kill-session -t lpi101`."
+    ],
+    "solution_summary": "`new-session -d -s NOMBRE -c DIR` creates the detached session, `send-keys` types into it, and `capture-pane -p` dumps the screen to standard output; wait a moment for the command to execute. `kill-session -t NOMBRE` closes it at the end.",
+    "checks": {
+      "sesiones.txt: aparece la sesión lpi101": "sesiones.txt: the lpi101 session appears",
+      "pantalla.txt: la salida de echo dentro de la sesión": "pantalla.txt: the echo output inside the session",
+      "la sesión lpi101 ya no existe": "the lpi101 session no longer exists"
+    }
+  },
+  "lpic1-dependencias": {
+    "title": "Bash shared libraries",
+    "briefing": "You are asked to document the libraries of `/bin/bash` (`ldconfig` is in `/usr/sbin`, which is not in your PATH: use `sudo ldconfig` or `/usr/sbin/ldconfig`):\n1. Save to `bash-dependencias.txt` the shared libraries needed by `/bin/bash`.\n2. Extract from that file only the `libc.so.6` line and save it to `glibc.txt`.\n3. Search the dynamic linker cache (`ldconfig`) for the `libc.so.6` entry and save it to `cache-glibc.txt`.\nYour terminal opens in the challenge directory (`/home/alumno/retos/r101-dependencias`); files requested without a path go there.",
+    "blind_alert": "REQUEST [LIBRARIES] · It must be documented which shared libraries Bash depends on and where the system locates them.",
+    "hints": [
+      "There is a command that shows which libraries an executable depends on and another that shows the system’s library cache; the rest is filtering with `grep`.",
+      "`ldd RUTA` lists dependencies; `sudo ldconfig -p` prints the cache; each result is filtered with `grep libc.so.6` and redirected to the requested file.",
+      "`ldd /bin/bash > bash-dependencias.txt`; `grep 'libc.so.6 =>' bash-dependencias.txt > glibc.txt`; `sudo ldconfig -p | grep 'libc.so.6' > cache-glibc.txt`."
+    ],
+    "solution_summary": "`ldd` resolves the dynamic dependencies of a binary and `ldconfig -p` prints the library cache used by the linker; `grep` isolates the `libc.so.6` entry in both cases.",
+    "checks": {
+      "se guardaron las dependencias de Bash": "the Bash dependencies were saved",
+      "la salida incluye libc.so.6": "the output includes libc.so.6",
+      "glibc.txt contiene la dependencia correcta": "glibc.txt contains the correct dependency",
+      "la caché incluye libc.so.6": "the cache includes libc.so.6"
+    }
+  }
+}

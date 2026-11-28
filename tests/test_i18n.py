@@ -57,9 +57,9 @@ def test_catalogo_solo_expone_titulo_y_briefing_en_ingles():
     for secreto in ("hints", "solution_summary", "blind_alert", "nftables rule on `srv`"):
         assert secreto not in blob
     # los escenarios sin traducción no llevan clave vacía engañosa: i18n es {} y el español sigue completo
-    sin = [x for x in view["scenarios"] if x["id"] != SID and "i18n" in x and x["i18n"]]
-    from chaos_lab.i18n_codigo import EN
-    assert [x["id"] for x in sin if x["id"] not in EN] == []  # solo el ejemplo y los escenarios en código están traducidos
+    # todos los escenarios del catálogo llevan título y briefing en inglés
+    sin = [x["id"] for x in view["scenarios"] if not ((x.get("i18n") or {}).get("en") or {}).get("title")]
+    assert sin == []
 
 
 def test_catalog_i18n_ignora_campos_vacios_o_ajenos():
@@ -207,3 +207,12 @@ def test_todas_las_dificultades_del_catalogo_tienen_traduccion():
     es, en = _diccionarios()
     for d in {s["difficulty"] for s in SCENARIO_CATALOG}:
         assert f"diff.{d}" in es and f"diff.{d}" in en, d
+
+
+def test_post_mortem_en_ingles_traduce_categoria_y_nivel():
+    from chaos_lab.mentor import build_postmortem_markdown
+    eng = _motor_activo()
+    eng.active["instance"].update(category="Redes y routing", difficulty="Avanzado")
+    md = build_postmortem_markdown(eng.active, "en")
+    assert "Networking & routing · Advanced" in md and "EN title" in md and "Síntoma" not in md
+    assert "Redes y routing · Avanzado" in build_postmortem_markdown(eng.active, "es")

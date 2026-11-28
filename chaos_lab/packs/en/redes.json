@@ -54,5 +54,206 @@
       "ethernet transit",
       "ethernet dmz"
     ]
+  },
+  "red-rutas-basicas": {
+    "title": "Two LANs joined by a router",
+    "briefing": "Set up routing so `cliente` can reach the web server on `web` through router `r1`. The `lan_c` network (10.6.1.0/24) joins `cliente` and `r1`; the `lan_s` network (10.6.2.0/24) joins `r1` and `web`. Addresses are already configured, but forwarding and routes are missing. Work on all three nodes as root: `cliente`, `r1`, and `web`.",
+    "blind_alert": "REQUEST [NETWORK] · Configure routing between two LANs through a Linux router.",
+    "hints": [
+      "Follow the path of a packet from `cliente` to `web`: does `cliente` know which gateway to send traffic that is not on its network to? Does `r1` have forwarding enabled between its interfaces? Does `web` know how to send packets back to the `cliente` network?",
+      "Look at the routing table on `cliente` and `web` (`ip route`, `ip route get`) and at the value of `sysctl net.ipv4.ip_forward` on `r1`. Routes between networks are added with `ip route add <red> via <puerta>`; the gateway is the IP address of `r1` on each network.",
+      "On `r1`: `sysctl -w net.ipv4.ip_forward=1`. On `cliente`: `ip route add 10.6.2.0/24 via 10.6.1.1`. On `web`: `ip route add 10.6.1.0/24 via 10.6.2.1`."
+    ],
+    "solution_summary": "The Linux kernel does not forward packets between interfaces when `ip_forward=0`, so `r1` drops packets that arrive from one network and are destined to the other. Each host only knows its local network; to reach the other network it needs an explicit route with the next hop. With forwarding enabled and both routes in place, the round trip works.",
+    "checks": {
+      "cliente alcanza a r1, su vecino directo": "cliente pings r1, its direct neighbor",
+      "cliente sabe llegar a la red de web a través de r1": "cliente knows how to reach the web network through r1",
+      "r1 reenvía paquetes entre sus interfaces": "r1 forwards packets between its interfaces",
+      "web sabe devolver los paquetes a cliente a través de r1": "web knows how to return packets to cliente through r1",
+      "ida y vuelta: cliente hace ping a web": "round trip: cliente pings web",
+      "cliente descarga la página de web": "cliente downloads the page from web"
+    },
+    "nodes": {
+      "cliente": {
+        "runs": "Client · lan_c",
+        "look": [
+          "the routing table",
+          "the ARP cache"
+        ]
+      },
+      "r1": {
+        "runs": "Router · joins lan_c and lan_s",
+        "look": [
+          "packet forwarding",
+          "the routing table"
+        ]
+      },
+      "web": {
+        "runs": "Web server (nginx) · lan_s",
+        "look": [
+          "listening sockets",
+          "the routing table"
+        ]
+      }
+    },
+    "links": [
+      "ethernet lan_c",
+      "ethernet lan_s"
+    ]
+  },
+  "red-nat-nftables": {
+    "title": "NAT and firewall with nftables",
+    "briefing": "On `fw`, configure outbound NAT (masquerade) toward the `wan` network and a firewall that only allows outbound HTTP traffic from `pc1`; ICMP ping must be blocked. `pc1` is on `lan` (10.7.1.0/24), `fw` joins `lan` and `wan` (10.7.2.0/24), and `ext` is the web server on `wan`. Addresses and forwarding are already configured. Work on `fw` and test from `pc1`.",
+    "blind_alert": "REQUEST [NETWORK] · Configure NAT and firewall so a LAN can reach the Internet only over HTTP.",
+    "hints": [
+      "Traffic from `pc1` to `ext` leaves `fw` with the private LAN source address; `ext` doesn't know how to send replies back. You need to translate the source address as it exits `wan` and let conntrack track the connection.",
+      "With nftables: an `ip nat` table with a `postrouting` chain (type nat hook postrouting priority srcnat) and a rule `oifname \"eth1\" masquerade`. Then an `inet filtro` table with a `forward` chain (policy drop), a rule `ct state established,related accept`, and a rule for TCP destination port 80 from `lan` to `wan`. With iptables: `iptables -t nat -A POSTROUTING -o eth1 -j MASQUERADE`, `iptables -P FORWARD DROP`, `iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT`, `iptables -A FORWARD -i eth0 -o eth1 -p tcp --dport 80 -j ACCEPT`.",
+      "Concrete commands with nftables: `nft add table ip nat; nft add chain ip nat postrouting '{ type nat hook postrouting priority srcnat; }'; nft add rule ip nat postrouting oifname \"eth1\" masquerade; nft add table inet filtro; nft add chain inet filtro forward '{ type filter hook forward priority filter; policy drop; }'; nft add rule inet filtro forward ct state established,related accept; nft add rule inet filtro forward iifname \"eth0\" oifname \"eth1\" tcp dport 80 accept`."
+    ],
+    "solution_summary": "Without NAT, `ext` receives packets with source 10.7.1.10 and has no return route; masquerade changes the source to 10.7.2.1, so `ext` replies to `fw` and conntrack undoes the translation. The firewall with a drop policy on forward only allows already-established connections and outbound HTTP, blocking ICMP ping.",
+    "checks": {
+      "pc1 alcanza a fw, su puerta de enlace": "pc1 pings fw, its gateway",
+      "fw reenvía paquetes entre sus interfaces": "fw forwards packets between its interfaces",
+      "pc1 consigue descargar la web de ext": "pc1 manages to download the web page from ext",
+      "ext ve llegar la petición con la IP de fw (masquerade), no con la de pc1": "ext sees the request arriving with fw's IP (masquerade), not pc1's",
+      "ext sigue sin ruta propia hacia la lan (la respuesta vuelve por el NAT de fw)": "ext still has no route of its own to the lan (the reply returns through fw's NAT)",
+      "con el firewall levantado, el ping de pc1 a ext no pasa": "with the firewall up, pings from pc1 to ext do not pass",
+      "desde pc1 solo sale la web: otros servicios de ext no responden": "from pc1 only the web works: other services on ext do not respond"
+    },
+    "nodes": {
+      "pc1": {
+        "runs": "Workstation · lan",
+        "look": [
+          "the routing table",
+          "HTTP connectivity toward the wan network"
+        ]
+      },
+      "fw": {
+        "runs": "Firewall/router · joins lan and wan",
+        "look": [
+          "nftables/iptables rules",
+          "the routing table"
+        ]
+      },
+      "ext": {
+        "runs": "External web server · wan",
+        "look": [
+          "the nginx log",
+          "listening sockets"
+        ]
+      }
+    },
+    "links": [
+      "ethernet lan",
+      "ethernet wan"
+    ]
+  },
+  "red-ospf-frr": {
+    "title": "OSPF with FRR between three routers",
+    "briefing": "Configure OSPF on routers `r1`, `r2`, and `r3` (area 0) so the `h1` LAN (10.8.1.0/24) and `h3` LAN (10.8.3.0/24) can see each other. Host addresses and routing are already configured; the routers have their interfaces and forwarding, but they do not know routes to the remote LANs. FRR is installed but stopped; you must configure and start it. Work on the routers in `vtysh` mode or by editing `/etc/frr/frr.conf`; use `h1` and `h3` for testing.",
+    "blind_alert": "REQUEST [NETWORK] · Configure OSPF on three routers so the LANs converge.",
+    "hints": [
+      "OSPF needs `ospfd` to be enabled in `/etc/frr/daemons` and the configuration (`/etc/frr/frr.conf`) to declare the networks in area 0. Each router must advertise its directly connected networks.",
+      "In `vtysh`: `conf t`, `router ospf`, `network <red> area 0`, `passive-interface` on the host-facing LANs. Restart with `/usr/lib/frr/frrinit.sh start`. To check, `show ip ospf neighbor` should show state `Full` and `show ip route ospf` should show routes with code `O`.",
+      "Minimal configuration: on `r1`, networks 10.8.1.0/24, 10.8.12.0/30, 10.8.13.0/30; on `r2`, 10.8.12.0/30, 10.8.23.0/30; on `r3`, 10.8.3.0/24, 10.8.13.0/30, 10.8.23.0/30. All in area 0; on r1 and r3, `passive-interface` on the host LAN interface (eth0 on r1, eth2 on r3)."
+    ],
+    "solution_summary": "OSPF propagates routes by exchanging LSAs: if the three routers declare their directly connected networks in area 0, they establish adjacencies (Full state) and each one computes the shortest path. Host LANs are advertised passively (no Hello on that interface). The hosts do not participate in OSPF; they only need their local route to the router.",
+    "checks": {
+      "h1 alcanza a r1, su puerta de enlace": "h1 pings r1, its gateway",
+      "r1 reenvía paquetes": "r1 forwards packets",
+      "r1 ve a sus dos vecinos OSPF (r2 y r3) en estado Full": "r1 sees both its OSPF neighbors (r2 and r3) in Full state",
+      "r1 aprende la ruta a la LAN de h3 por OSPF": "r1 learns the route to h3's LAN via OSPF",
+      "r2 también participa en OSPF: ve a r1 y r3 en estado Full": "r2 also participates in OSPF: sees r1 and r3 in Full state",
+      "r2 aprende por OSPF las dos LAN de los hosts": "r2 learns both host LANs via OSPF",
+      "h1 hace ping a h3": "h1 pings h3",
+      "h1 descarga la web de h3": "h1 downloads the web page from h3"
+    },
+    "nodes": {
+      "h1": {
+        "runs": "Host · h1 LAN",
+        "look": [
+          "the routing table",
+          "connectivity toward the other LAN"
+        ]
+      },
+      "r1": {
+        "runs": "Router · connects h1 to the OSPF network",
+        "look": [
+          "the FRR configuration",
+          "the OSPF neighbors"
+        ]
+      },
+      "r2": {
+        "runs": "Router · OSPF core",
+        "look": [
+          "the FRR configuration",
+          "the OSPF neighbors"
+        ]
+      },
+      "r3": {
+        "runs": "Router · connects h3 to the OSPF network",
+        "look": [
+          "the FRR configuration",
+          "the OSPF neighbors"
+        ]
+      },
+      "h3": {
+        "runs": "Host · h3 LAN and web server",
+        "look": [
+          "the web page",
+          "the routing table"
+        ]
+      }
+    },
+    "links": [
+      "ethernet lan_h1",
+      "ethernet tr12",
+      "ethernet tr13",
+      "ethernet tr23",
+      "ethernet lan_h3"
+    ]
+  },
+  "red-otra-interfaz": {
+    "title": "Reach a service through another interface",
+    "briefing": "The systems team says `app`'s metrics (port 9100) listen only on the management IP (10.9.2.10), and that is why the corporate network cannot reach them. You are on `dev`, on the corporate network (10.9.1.0/24). On `dev`, configure what is needed so `curl http://10.9.2.10:9100/metrics` returns the metrics, without touching `app` or `mon`. `dev` already has its IP and can see `app` via its corporate IP 10.9.1.10; `mon` is at 10.9.2.20.",
+    "blind_alert": "REQUEST [NETWORK] · Make a service that only listens on the management IP reachable from the corporate network.",
+    "hints": [
+      "In Linux an IP address belongs to the host, not to the interface: the kernel accepts a packet for any of its local IP addresses even if it arrives on another NIC (weak host model). So ask yourself why packets from `dev` to the management IP don't even leave toward `app`.",
+      "On `dev`, look at the chosen route with `ip route get 10.9.2.10`; for a single host, add a /32 route with `ip route add <ip>/32 via <ip_corporativa_de_app>`. The gateway must be on the same network as `dev`.",
+      "Concrete command on `dev`: `ip route add 10.9.2.10/32 via 10.9.1.10`. Then `curl http://10.9.2.10:9100/metrics` should return the metrics."
+    ],
+    "solution_summary": "Linux's weak host model (RFC 1122) makes the kernel treat its IP addresses as belonging to the host, not to each interface. By adding a /32 route on `dev` toward `app`'s management IP using its corporate IP as the next hop, the packet reaches `app` through its corporate interface and, since the destination is local, it is delivered to the process listening on 10.9.2.10:9100. There is no need to enable `ip_forward` on `app`.",
+    "checks": {
+      "dev alcanza a app por su IP corporativa": "dev pings app via its corporate IP",
+      "dev tiene una ruta a la IP de gestión de app por el siguiente salto corporativo": "dev has a route to app's management IP through the corporate next hop",
+      "dev descarga las métricas de app por la red de gestión": "dev downloads app's metrics over the management network",
+      "la web corporativa de app sigue cargando desde dev": "app's corporate web page still loads from dev",
+      "app sigue sin reenviar (ip_forward=0)": "app still does not forward (ip_forward=0)",
+      "app conserva su IP de gestión en la interfaz de gestión": "app keeps its management IP on the management interface",
+      "las métricas de app siguen escuchando solo en la IP de gestión": "app's metrics still listen only on the management IP"
+    },
+    "nodes": {
+      "dev": {
+        "runs": "Workstation · corp",
+        "look": [
+          "the routing table",
+          "the response from the metrics port"
+        ]
+      },
+      "app": {
+        "runs": "Server with corporate web and management metrics",
+        "look": [
+          "listening sockets",
+          "the routing table"
+        ]
+      },
+      "mon": {
+        "runs": "Monitor · management network"
+      }
+    },
+    "links": [
+      "ethernet corp",
+      "ethernet management"
+    ]
   }
 }

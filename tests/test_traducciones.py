@@ -18,6 +18,27 @@ LABEL_RE = re.compile(r'comprueba\s+"((?:[^"\\]|\\.)*)"')
 CODE_RE = re.compile(r"`([^`\n]+)`")
 TEXT_FIELDS = ("title", "briefing", "blind_alert", "solution_summary")
 
+# Plantillas de sintaxis cuyos marcadores SÍ se traducen (revisadas a mano una a una). Todo lo demás entre
+# backticks (órdenes, rutas, ficheros, valores reales) tiene que quedar idéntico.
+PLANTILLAS_OK = {
+    "tar xf archivo miembro": "tar xf archive member",
+    "wc -w < fichero": "wc -w < file",
+    "0 4 * * 0 /ruta/limpia.sh": "0 4 * * 0 /path/limpia.sh",
+    "--encrypt -r correo": "--encrypt -r email",
+    "--quick-generate-key 'NOMBRE <correo>' default default never": "--quick-generate-key 'NAME <email>' default default never",
+    "alias nombre='cmd1; cmd2'": "alias name='cmd1; cmd2'",
+    "nombre() { ...; }": "name() { ...; }",
+    "usuario ALL=(destino) NOPASSWD: comando": "user ALL=(target) NOPASSWD: command",
+    "dominio tipo recurso valor": "domain type item value",
+    "Xvfb :7 -auth FICHERO -screen 0 AxBxP &": "Xvfb :7 -auth FILE -screen 0 AxBxP &",
+    "xauth -f FICHERO add :7 . CLAVE": "xauth -f FILE add :7 . KEY",
+    "ipcalc DIRECCIÓN/PREFIJO": "ipcalc ADDRESS/PREFIX",
+    "echo 'comando' | at now + 2 hours": "echo 'command' | at now + 2 hours",
+    "echo 'echo recordatorio > RUTA/recordatorio.txt' | at now + 2 hours": "echo 'echo recordatorio > PATH/recordatorio.txt' | at now + 2 hours",
+    "usuario ALL=(destino) NOPASSWD: /ruta/cmd args, /ruta/otro": "user ALL=(target) NOPASSWD: /path/cmd args, /path/other",
+    "visudo -cf FICHERO": "visudo -cf FILE",
+}
+
 
 def _pack(name):
     return {x["id"]: x for x in json.loads((PACKS / f"{name}.json").read_text(encoding="utf-8"))}
@@ -88,5 +109,11 @@ def test_lo_que_va_entre_backticks_no_se_traduce(name, sid):
         (f"hint{i + 1}", h, (en.get("hints") or [""] * 3)[i]) for i, h in enumerate(sc["hints"])
     ]
     for campo, es_txt, en_txt in pares:
-        a, b = set(CODE_RE.findall(es_txt)), set(CODE_RE.findall(en_txt or ""))
+        a = {PLANTILLAS_OK.get(x, x) for x in CODE_RE.findall(es_txt)}
+        b = set(CODE_RE.findall(en_txt or ""))
         assert a == b, f"{sid}.{campo}: cambia lo que va entre backticks: solo ES {sorted(a - b)} · solo EN {sorted(b - a)}"
+
+
+def test_todos_los_escenarios_de_los_packs_tienen_ingles():
+    sin = [f"{name}:{sid}" for name in PACK_NAMES for sid in _pack(name) if sid not in _en(name)]
+    assert not sin, f"escenarios sin traducción en packs/en/: {sin}"
