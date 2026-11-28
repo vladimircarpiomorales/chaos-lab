@@ -122,6 +122,23 @@ def _tr(inst: dict[str, Any], field: str, lang: str) -> Any:
     return inst.get(field)
 
 
+def en_check_labels(inst: dict[str, Any]) -> list[str]:
+    """Etiqueta inglesa de cada sonda del escenario, alineada con inst["checks"] ("" si no hay traducción).
+    Fuentes: `label_en` en la propia sonda (escenarios en código) o i18n.en.checks como mapa
+    {etiqueta en español: inglés} (packs; aguanta bucles, ifs y bloques auxiliares) o, por compatibilidad, lista."""
+    cm = _en(inst).get("checks")
+    out = []
+    for i, c in enumerate(inst.get("checks") or []):
+        v = c.get("label_en") if isinstance(c, dict) else None
+        if not (isinstance(v, str) and v.strip()):
+            if isinstance(cm, dict):
+                v = cm.get(c.get("label", "").strip())
+            elif isinstance(cm, list) and i < len(cm):
+                v = cm[i]
+        out.append(v if isinstance(v, str) and v.strip() else "")
+    return out
+
+
 def ask_socratic_mentor(active: dict[str, Any], user_question: str = "", lang: str = "es") -> dict[str, Any]:
     en = lang == "en"
     inst = active["instance"]
@@ -229,11 +246,9 @@ def build_postmortem_markdown(active: dict[str, Any], lang: str = "es") -> str:
         f"- **`{n['role']}`** (`{n['image']}` · IP `{n['ip']}`)"
         for n in active["nodes_runtime"]
     )
-    labels_en = _en(inst).get("checks") if en else None
+    labels_en = en_check_labels(inst) if en else []
     def _label(i: int, c: dict[str, Any]) -> str:
-        if isinstance(labels_en, list) and i < len(labels_en) and isinstance(labels_en[i], str) and labels_en[i].strip():
-            return labels_en[i]
-        return c["label"]
+        return (labels_en[i] if i < len(labels_en) else "") or c["label"]
     checks_md = "\n".join(
         f"- [{'x' if active['last_check_map'].get(c['id']) else ' '}] **{c['node']}**: {_label(i, c)}"
         for i, c in enumerate(inst.get("checks", []))

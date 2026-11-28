@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .mentor import collect_timeline
+from .mentor import collect_timeline, en_check_labels
 from .scenarios import SCENARIO_CATALOG, SCENARIOS_BY_ID, instantiate_scenario
 from .runtime import RUNTIME
 
@@ -387,8 +387,9 @@ def _active_i18n(inst: dict[str, Any], hints_used: int, blind: bool, solved: boo
             out["title"] = en["title"]
         if _en_text(en.get("briefing")):
             out["description"] = en["briefing"]
-        if _en_list(en.get("checks")):
-            out["checks"] = _en_list(en.get("checks"))
+        labels = en_check_labels(inst)
+        if any(labels):
+            out["checks"] = labels  # alineada con la lista de sondas de la vista ("" = sin traducir)
         nodes = _en_nodes(en, with_look=True)
         if nodes:
             out["nodes"] = nodes

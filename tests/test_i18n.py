@@ -113,7 +113,7 @@ def test_activa_sin_traduccion_no_trae_clave_en():
 
 COMPLETO = dict(
     EN,
-    checks=["EN probe 1"],
+    checks={"ES probe 1": "EN probe 1"},
     nodes={"pc1": {"runs": "EN runs", "look": ["EN look"]}},
     links=["EN via"],
     entry={"label": "EN you", "via": "EN entry via"},
@@ -122,8 +122,14 @@ COMPLETO = dict(
 
 
 def test_activa_traduce_sondas_nodos_y_enlaces_sin_campos_ajenos():
-    en = _motor_activo(i18n={"en": COMPLETO}).public_active_view()["i18n"]["en"]
-    assert en["checks"] == ["EN probe 1"]
+    eng = _motor_activo(i18n={"en": COMPLETO})
+    eng.active["instance"]["checks"] = [
+        {"id": "c1", "label": "ES probe 1", "node": "pc1"},
+        {"id": "c2", "label": "sonda sin traducir", "node": "pc1"},
+        {"id": "c3", "label": "otra", "node": "pc1", "label_en": "EN from code"},
+    ]
+    en = eng.public_active_view()["i18n"]["en"]
+    assert en["checks"] == ["EN probe 1", "", "EN from code"]  # por texto, alineada con las sondas
     assert en["nodes"] == {"pc1": {"runs": "EN runs", "look": ["EN look"]}}
     assert en["links"] == ["EN via"] and en["entry"] == {"label": "EN you", "via": "EN entry via"}
     assert "SECRETO" not in json.dumps(en)

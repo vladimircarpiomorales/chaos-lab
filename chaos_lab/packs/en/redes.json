@@ -8,6 +8,51 @@
       "pc1 has a gateway that doesn't exist: the route must go via `10.5.1.1` (`ip route replace 10.5.0.0/16 via 10.5.1.1`). r2 doesn't know the way back to the lan: `ip route add 10.5.1.0/24 via 10.5.12.1`. srv drops port 80 with an nftables rule (`nft flush ruleset` or delete the rule by its handle). And in pc1's `/etc/hosts`, `web.lab` points to `10.5.3.100`: edit it with nano or vim (`sed -i` fails in a container)."
     ],
     "solution_summary": "Four faults in four layers: (1) `pc1`'s route used a gateway that doesn't exist (`ip neigh` showed FAILED) and must use `r1`; (2) `r2` had no return route to the lan, so requests reached `srv` and the replies were lost (`tcpdump` gives it away); (3) an nftables rule on `srv` dropped port 80 even though nginx was listening (`nmap` reported filtered); (4) `/etc/hosts` on `pc1` resolved `web.lab` to the wrong IP, and it beats any DNS because of the `nsswitch` order.",
-    "blind_alert": "INCIDENT [NETWORK] · A workstation on the lan can't open the internal website; the server appears to be up."
+    "blind_alert": "INCIDENT [NETWORK] · A workstation on the lan can't open the internal website; the server appears to be up.",
+    "checks": {
+      "pc1 alcanza con ping a r1, su vecino directo": "pc1 pings r1, its direct neighbor",
+      "r1 alcanza con ping a srv": "r1 pings srv",
+      "ida y vuelta: pc1 hace ping a srv": "round trip: pc1 pings srv",
+      "el puerto web de srv contesta a pc1 cuando se le llama por su IP": "srv's web port answers pc1 when called by IP",
+      "nginx sigue sirviendo la página en el propio srv": "nginx still serves the page on srv itself",
+      "en pc1, el nombre web.lab lleva al servidor srv": "on pc1, the name web.lab points to the srv server",
+      "en pc1, curl http://web.lab devuelve «srv OK»": "on pc1, curl http://web.lab returns “srv OK”"
+    },
+    "nodes": {
+      "pc1": {
+        "runs": "Workstation (client) · lan",
+        "look": [
+          "the routing table and the ARP cache",
+          "how the system resolves names"
+        ]
+      },
+      "r1": {
+        "runs": "Router · joins lan and transit",
+        "look": [
+          "routes and packet forwarding",
+          "a traffic capture on its interfaces"
+        ]
+      },
+      "r2": {
+        "runs": "Router · joins transit and dmz",
+        "look": [
+          "routes and packet forwarding",
+          "a traffic capture on its interfaces"
+        ]
+      },
+      "srv": {
+        "runs": "Web server (nginx) · dmz",
+        "look": [
+          "listening sockets",
+          "the firewall rules",
+          "a traffic capture"
+        ]
+      }
+    },
+    "links": [
+      "ethernet lan",
+      "ethernet transit",
+      "ethernet dmz"
+    ]
   }
 }
