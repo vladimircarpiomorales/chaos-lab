@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
   <script>try{var t=localStorage.getItem("chaos-theme")||(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark");document.documentElement.dataset.theme=t;}catch(e){}</script>
   <link rel="stylesheet" href="/static/vendor/xterm.css" />
-  <link rel="stylesheet" href="/static/styles.css?v=7" />
+  <link rel="stylesheet" href="/static/styles.css?v=8" />
 </head>
 <body>
   <header class="topbar">
@@ -15,37 +15,41 @@
       <img class="brand-icon" src="/static/favicon.svg" alt="" />
       <div>
         <h1>CHAOS LAB</h1>
-        <span class="subtitle">Simulador Interactivo de Incidentes Linux · Redes · Multi-Nodo</span>
+        <span class="subtitle" data-i18n="app.subtitle">Simulador Interactivo de Incidentes Linux · Redes · Multi-Nodo</span>
       </div>
     </div>
 
     <div class="topbar-status">
-      <div class="pill" id="podman-pill" title="Estado del motor de contenedores (Podman o Docker)">
+      <div class="pill" id="podman-pill" title="Estado del motor de contenedores (Podman o Docker)" data-i18n-title="pill.engineTip">
         <span class="dot" id="podman-dot"></span>
-        <span id="podman-text">Comprobando motor…</span>
+        <span id="podman-text" data-i18n="pill.checking">Comprobando motor…</span>
       </div>
-      <div class="pill" id="ollama-pill" title="Mentor IA Socrático local">
+      <div class="pill" id="ollama-pill" title="Mentor IA Socrático local" data-i18n-title="pill.mentorTip">
         <span class="dot" id="ollama-dot"></span>
-        <span id="ollama-text">Mentor Local</span>
+        <span id="ollama-text" data-i18n="pill.mentorLocal">Mentor Local</span>
       </div>
       <div class="pill xp-pill">
         <span>🏆 <strong id="stat-xp">0</strong> XP</span>
         <span class="sep">·</span>
-        <span><strong id="stat-solved">0/0</strong> resueltos</span>
+        <span><strong id="stat-solved">0/0</strong> <span data-i18n="stat.solved">resueltos</span></span>
       </div>
     </div>
 
     <div class="topbar-actions">
-      <a id="btn-panel" href="#" class="btn btn-ghost hidden" title="Volver a tu panel (CHAOS_PANEL_URL en .env)">← Panel</a>
-      <select id="blind-diff-select" class="input-compact" title="Filtro de dificultad para Guardia a Ciegas">
-        <option value="Todos">Cualquier nivel</option>
-        <option value="Básico">Solo Básico</option>
-        <option value="Intermedio">Solo Intermedio</option>
-        <option value="Avanzado">Solo Avanzado</option>
-        <option value="Experto">Solo Experto</option>
+      <a id="btn-panel" href="#" class="btn btn-ghost hidden" title="Volver a tu panel (CHAOS_PANEL_URL en .env)" data-i18n-title="btn.panelTip" data-i18n="btn.panel">← Panel</a>
+      <select id="blind-diff-select" class="input-compact" title="Filtro de dificultad para Guardia a Ciegas" data-i18n-title="blind.filterTip">
+        <option value="Todos" data-i18n="blind.any">Cualquier nivel</option>
+        <option value="Básico" data-i18n="blind.onlyBasic">Solo Básico</option>
+        <option value="Intermedio" data-i18n="blind.onlyMid">Solo Intermedio</option>
+        <option value="Avanzado" data-i18n="blind.onlyAdv">Solo Avanzado</option>
+        <option value="Experto" data-i18n="blind.onlyExpert">Solo Experto</option>
       </select>
-      <button id="btn-theme" class="theme-toggle" title="Cambiar tema claro / oscuro" aria-label="Cambiar tema">◐</button>
-      <button id="btn-blind-launch" class="btn btn-danger-glow">
+      <div id="lang-toggle" class="lang-toggle" role="group" aria-label="Idioma de la interfaz" data-i18n-aria-label="lang.aria">
+        <button type="button" data-lang="es" aria-pressed="true">ES</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <button id="btn-theme" class="theme-toggle" title="Cambiar tema claro / oscuro" aria-label="Cambiar tema" data-i18n-title="theme.tip" data-i18n-aria-label="theme.aria">◐</button>
+      <button id="btn-blind-launch" class="btn btn-danger-glow" data-i18n="btn.blindLaunch">
         🎲 Guardia 3:00 AM (+25% XP)
       </button>
     </div>
@@ -56,32 +60,33 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-title-row">
-          <h2>Catálogo</h2>
-          <button id="btn-toggle-history" class="btn-ghost-sm" title="Ver historial reciente">📜 Historial</button>
+          <h2 data-i18n="cat.title">Catálogo</h2>
+          <button id="btn-toggle-history" class="btn-ghost-sm" title="Ver historial reciente" data-i18n-title="hist.btnTip" data-i18n="hist.btn">📜 Historial</button>
         </div>
         <input
           type="search"
           id="search-input"
           class="search-box"
           placeholder="Buscar por Nginx, ACL, DNS, Rocky, Routing…"
+          data-i18n-placeholder="search.ph"
         />
         <div class="filter-selects">
-          <select id="filter-category" class="input-compact" aria-label="Filtrar por categoría">
-            <option value="">Categoría: todas</option>
+          <select id="filter-category" class="input-compact" aria-label="Filtrar por categoría" data-i18n-aria-label="filter.catAria">
+            <option value="" data-i18n="filter.catAll">Categoría: todas</option>
           </select>
-          <select id="filter-cert" class="input-compact" aria-label="Filtrar por certificación">
-            <option value="">Certificación: todas</option>
+          <select id="filter-cert" class="input-compact" aria-label="Filtrar por certificación" data-i18n-aria-label="filter.certAria">
+            <option value="" data-i18n="filter.certAll">Certificación: todas</option>
           </select>
         </div>
         <div class="filter-chips" id="filter-chips">
-          <button class="chip active" data-filter="all">Todos</button>
-          <button class="chip" data-filter="multi">Multi-Nodo</button>
-          <button class="chip" data-filter="Básico">Básico</button>
-          <button class="chip" data-filter="Intermedio">Intermedio</button>
-          <button class="chip" data-filter="Avanzado">Avanzado+</button>
-          <button class="chip" data-filter="averia">🔧 Averías</button>
-          <button class="chip" data-filter="tarea">📋 Tareas</button>
-          <button class="chip" data-filter="pending">Pendientes</button>
+          <button class="chip active" data-filter="all" data-i18n="filter.all">Todos</button>
+          <button class="chip" data-filter="multi" data-i18n="filter.multi">Multi-Nodo</button>
+          <button class="chip" data-filter="Básico" data-i18n="diff.Básico">Básico</button>
+          <button class="chip" data-filter="Intermedio" data-i18n="diff.Intermedio">Intermedio</button>
+          <button class="chip" data-filter="Avanzado" data-i18n="filter.adv">Avanzado+</button>
+          <button class="chip" data-filter="averia" data-i18n="filter.averia">🔧 Averías</button>
+          <button class="chip" data-filter="tarea" data-i18n="filter.tarea">📋 Tareas</button>
+          <button class="chip" data-filter="pending" data-i18n="filter.pending">Pendientes</button>
         </div>
       </div>
 
@@ -89,16 +94,16 @@
 
       <div class="history-drawer hidden" id="history-drawer">
         <div class="history-header">
-          <h3>Últimas guardias resueltas</h3>
+          <h3 data-i18n="hist.drawerTitle">Últimas guardias resueltas</h3>
           <button id="btn-close-history" class="btn-ghost-sm">✕</button>
         </div>
         <div id="history-list" class="history-list"></div>
         <div class="history-actions">
-          <a id="btn-export-progress" class="btn-ghost-sm" href="/api/progress/export" download title="Descargar tu progreso en un fichero JSON">⬇ Exportar progreso</a>
-          <button id="btn-import-progress" class="btn-ghost-sm" title="Cargar un progreso exportado (sustituye el actual; se guarda copia)">⬆ Importar</button>
+          <a id="btn-export-progress" class="btn-ghost-sm" href="/api/progress/export" download title="Descargar tu progreso en un fichero JSON" data-i18n-title="hist.exportTip" data-i18n="hist.export">⬇ Exportar progreso</a>
+          <button id="btn-import-progress" class="btn-ghost-sm" title="Cargar un progreso exportado (sustituye el actual; se guarda copia)" data-i18n-title="hist.importTip" data-i18n="hist.import">⬆ Importar</button>
           <input type="file" id="input-import-progress" accept="application/json,.json" hidden />
         </div>
-        <p class="muted-note">Tu progreso solo vive en este equipo (<code>data/state.json</code>).</p>
+        <p class="muted-note"><span data-i18n="hist.local">Tu progreso solo vive en este equipo:</span> <code>data/state.json</code></p>
       </div>
     </aside>
 
@@ -107,9 +112,9 @@
       <!-- Estado vacío cuando no hay contenedor corriendo -->
       <div id="empty-arena" class="empty-arena">
         <div class="empty-card">
-          <div class="empty-badge">ENTORNO EFÍMERO AISLADO SOBRE PODMAN</div>
-          <h2>¿Listo para entrar de guardia?</h2>
-          <p>
+          <div class="empty-badge" data-i18n="empty.badge">ENTORNO EFÍMERO AISLADO SOBRE PODMAN</div>
+          <h2 data-i18n="empty.title">¿Listo para entrar de guardia?</h2>
+          <p data-i18n-html="empty.lead">
             Cada laboratorio levanta <strong>1 a 3 contenedores reales interconectados</strong> con averías inyectadas
             dinámicamente (puertos, contraseñas, reglas de firewall, rutas y tokens cambian en cada partida).
           </p>
@@ -117,37 +122,37 @@
             <div class="feat-item">
               <span class="feat-ico">🖧</span>
               <div>
-                <strong>Topologías Multi-Nodo</strong>
-                <small>Pestañas PTY reales por servidor (`edge-proxy`, `api`, `redis`, routers IPv4).</small>
+                <strong data-i18n="feat.multi.t">Topologías Multi-Nodo</strong>
+                <small data-i18n="feat.multi.d">Pestañas PTY reales por servidor (`edge-proxy`, `api`, `redis`, routers IPv4).</small>
               </div>
             </div>
             <div class="feat-item">
               <span class="feat-ico">🧬</span>
               <div>
-                <strong>Chaos Mutator</strong>
-                <small>Semillas aleatorias para diagnosticar de verdad en lugar de memorizar comandos.</small>
+                <strong data-i18n="feat.chaos.t">Chaos Mutator</strong>
+                <small data-i18n="feat.chaos.d">Semillas aleatorias para diagnosticar de verdad en lugar de memorizar comandos.</small>
               </div>
             </div>
             <div class="feat-item">
               <span class="feat-ico">🚨</span>
               <div>
-                <strong>Modo Guardia 3:00 AM</strong>
-                <small>Incidente a ciegas tipo PagerDuty sin pistas en el título ni en las sondas.</small>
+                <strong data-i18n="feat.blind.t">Modo Guardia 3:00 AM</strong>
+                <small data-i18n="feat.blind.d">Incidente a ciegas tipo PagerDuty sin pistas en el título ni en las sondas.</small>
               </div>
             </div>
             <div class="feat-item">
               <span class="feat-ico">📝</span>
               <div>
-                <strong>Post-Mortem &amp; Mentor SRE</strong>
-                <small>Orientación socrática sin spoilers y exportación del informe `.md` en 1 clic.</small>
+                <strong data-i18n="feat.pm.t">Post-Mortem &amp; Mentor SRE</strong>
+                <small data-i18n="feat.pm.d">Orientación socrática sin spoilers y exportación del informe `.md` en 1 clic.</small>
               </div>
             </div>
           </div>
           <div class="empty-cta-row">
-            <button id="btn-empty-blind" class="btn btn-danger-glow btn-lg">
+            <button id="btn-empty-blind" class="btn btn-danger-glow btn-lg" data-i18n="btn.emptyBlind">
               🎲 Lanzar Incidente Aleatorio a Ciegas
             </button>
-            <button id="btn-empty-first" class="btn btn-primary btn-lg">
+            <button id="btn-empty-first" class="btn btn-primary btn-lg" data-i18n="btn.emptyFirst">
               ▶ Empezar por Pasarela 502 (Multi-Nodo)
             </button>
           </div>
@@ -169,19 +174,19 @@
 
             <div class="incident-controls">
               <div class="timer-box" id="timer-box">
-                <span class="timer-label">TIEMPO</span>
+                <span class="timer-label" data-i18n="timer.label">TIEMPO</span>
                 <span class="timer-val" id="timer-val">00:00</span>
               </div>
-              <button id="btn-reveal-blind" class="btn btn-ghost hidden" title="Mostrar qué escenario es (pierde bonus ciego)">
+              <button id="btn-reveal-blind" class="btn btn-ghost hidden" title="Mostrar qué escenario es (pierde bonus ciego)" data-i18n-title="reveal.tip" data-i18n="reveal.btn">
                 👁 Revelar Escenario
               </button>
-              <button id="btn-remutate" class="btn btn-ghost" title="Redesplegar escenario con nueva semilla aleatoria">
+              <button id="btn-remutate" class="btn btn-ghost" title="Redesplegar escenario con nueva semilla aleatoria" data-i18n-title="remutate.tip" data-i18n="remutate.btn">
                 ↻ Re-mutar
               </button>
-              <button id="btn-postmortem" class="btn btn-ghost" title="Generar informe Post-Mortem en Markdown">
+              <button id="btn-postmortem" class="btn btn-ghost" title="Generar informe Post-Mortem en Markdown" data-i18n-title="pm.tip" data-i18n="pm.btn">
                 📄 Post-Mortem
               </button>
-              <button id="btn-stop-lab" class="btn btn-stop" title="Detener y limpiar contenedores">
+              <button id="btn-stop-lab" class="btn btn-stop" title="Detener y limpiar contenedores" data-i18n-title="stop.tip" data-i18n="stop.btn">
                 ⏹ Destruir Lab
               </button>
             </div>
@@ -193,14 +198,14 @@
 
         <div class="topo-strip hidden" id="topo-strip">
           <div class="topo-head">
-            <span class="section-label">🗺 Cómo debería fluir el tráfico</span>
+            <span class="section-label" data-i18n="topo.title">🗺 Cómo debería fluir el tráfico</span>
             <span class="topo-legend">
-              <span class="lg lg-unk"></span>sin comprobar
-              <span class="lg lg-ok"></span>OK
-              <span class="lg lg-bad"></span>falla
-              <span class="topo-tip">· clic en un nodo = abrir su terminal</span>
+              <span class="lg lg-unk"></span><span data-i18n="topo.unk">sin comprobar</span>
+              <span class="lg lg-ok"></span><span data-i18n="topo.ok">OK</span>
+              <span class="lg lg-bad"></span><span data-i18n="topo.bad">falla</span>
+              <span class="topo-tip" data-i18n="topo.tip">· clic en un nodo = abrir su terminal</span>
             </span>
-            <button id="btn-topo-toggle" class="btn-ghost-sm">Ocultar</button>
+            <button id="btn-topo-toggle" class="btn-ghost-sm" data-i18n="topo.hide">Ocultar</button>
           </div>
           <div class="topo-body" id="topo-body"></div>
         </div>
@@ -211,14 +216,14 @@
             <div class="terminal-bar">
               <div class="node-tabs" id="node-tabs"></div>
               <div class="terminal-tools">
-                <button id="btn-copy-cli" class="btn-tool" title="Copiar comando podman exec para abrir en tu terminal local">
-                  📋 <span class="lbl">CLI externa</span>
+                <button id="btn-copy-cli" class="btn-tool" title="Copiar comando podman exec para abrir en tu terminal local" data-i18n-title="tool.cliTip">
+                  📋 <span class="lbl" data-i18n="tool.cli">CLI externa</span>
                 </button>
-                <button id="btn-reconnect-tty" class="btn-tool" title="Reconectar sesión PTY del nodo actual">
-                  🔌 <span class="lbl">Reconectar</span>
+                <button id="btn-reconnect-tty" class="btn-tool" title="Reconectar sesión PTY del nodo actual" data-i18n-title="tool.reconnectTip">
+                  🔌 <span class="lbl" data-i18n="tool.reconnect">Reconectar</span>
                 </button>
-                <button id="btn-clear-tty" class="btn-tool" title="Limpiar pantalla">
-                  🧹 <span class="lbl">Limpiar</span>
+                <button id="btn-clear-tty" class="btn-tool" title="Limpiar pantalla" data-i18n-title="tool.clearTip">
+                  🧹 <span class="lbl" data-i18n="tool.clear">Limpiar</span>
                 </button>
               </div>
             </div>
@@ -232,15 +237,15 @@
               <div class="victory-header">
                 <div class="rank-medal" id="victory-rank">S</div>
                 <div>
-                  <h3>¡Incidente Resuelto!</h3>
+                  <h3 data-i18n="victory.title">¡Incidente Resuelto!</h3>
                   <p id="victory-meta">+180 XP · Resuelto en 02:15</p>
                 </div>
               </div>
               <div class="solution-box">
-                <strong>Causa raíz documentada:</strong>
+                <strong data-i18n="victory.cause">Causa raíz documentada:</strong>
                 <pre id="victory-solution"></pre>
               </div>
-              <button id="btn-victory-pm" class="btn btn-primary btn-block">
+              <button id="btn-victory-pm" class="btn btn-primary btn-block" data-i18n="victory.pm">
                 📄 Exportar Post-Mortem SRE (.md)
               </button>
             </div>
@@ -248,29 +253,29 @@
             <!-- Sondas de validación -->
             <div class="panel-card">
               <div class="panel-card-header">
-                <h3>Sondas de Salud (SLO)</h3>
+                <h3 data-i18n="probes.title">Sondas de Salud (SLO)</h3>
                 <span class="check-counter" id="check-counter">0/3</span>
               </div>
               <div id="checks-list" class="checks-list"></div>
-              <button id="btn-verify" class="btn btn-verify btn-block">
+              <button id="btn-verify" class="btn btn-verify btn-block" data-i18n="btn.verify">
                 ✓ Ejecutar Verificación en Vivo
               </button>
             </div>
 
             <!-- Método para empezar -->
             <details class="panel-card howto" id="howto-card" open>
-              <summary><h3>🧭 Cómo empezar</h3></summary>
+              <summary><h3 data-i18n="howto.title">🧭 Cómo empezar</h3></summary>
               <ol class="howto-steps" id="howto-averia">
-                <li><strong>Reproduce el síntoma.</strong> Lanza tú la misma petición que falla (la flecha «tú» del esquema).</li>
-                <li><strong>Sigue el camino.</strong> Ve nodo a nodo en el orden de las flechas.</li>
-                <li><strong>En cada salto pregúntate:</strong> ¿el servicio está vivo? ¿escucha en la IP y puerto correctos? ¿la config apunta al sitio bueno? ¿algún firewall lo corta?</li>
-                <li><strong>Arregla de uno en uno y pulsa Verificar.</strong> El esquema se pone verde donde ya funciona.</li>
+                <li data-i18n-html="howto.a1"><strong>Reproduce el síntoma.</strong> Lanza tú la misma petición que falla (la flecha «tú» del esquema).</li>
+                <li data-i18n-html="howto.a2"><strong>Sigue el camino.</strong> Ve nodo a nodo en el orden de las flechas.</li>
+                <li data-i18n-html="howto.a3"><strong>En cada salto pregúntate:</strong> ¿el servicio está vivo? ¿escucha en la IP y puerto correctos? ¿la config apunta al sitio bueno? ¿algún firewall lo corta?</li>
+                <li data-i18n-html="howto.a4"><strong>Arregla de uno en uno y pulsa Verificar.</strong> El esquema se pone verde donde ya funciona.</li>
               </ol>
               <ol class="howto-steps hidden" id="howto-tarea">
-                <li><strong>Lee el encargo entero.</strong> Fíjate en los nombres exactos que pide: usuarios, rutas, ficheros.</li>
-                <li><strong>Antes de tocar, mira cómo está.</strong> Consulta la configuración actual y el manual del comando (<code>man</code>, <code>--help</code>).</li>
-                <li><strong>Hazlo paso a paso.</strong> Si necesitas root, usa <code>sudo</code>.</li>
-                <li><strong>Pulsa Verificar cuando quieras.</strong> Cada sonda en verde es un punto del encargo ya cumplido.</li>
+                <li data-i18n-html="howto.t1"><strong>Lee el encargo entero.</strong> Fíjate en los nombres exactos que pide: usuarios, rutas, ficheros.</li>
+                <li data-i18n-html="howto.t2"><strong>Antes de tocar, mira cómo está.</strong> Consulta la configuración actual y el manual del comando (<code>man</code>, <code>--help</code>).</li>
+                <li data-i18n-html="howto.t3"><strong>Hazlo paso a paso.</strong> Si necesitas root, usa <code>sudo</code>.</li>
+                <li data-i18n-html="howto.t4"><strong>Pulsa Verificar cuando quieras.</strong> Cada sonda en verde es un punto del encargo ya cumplido.</li>
               </ol>
               <div id="howto-look" class="howto-look"></div>
             </details>
@@ -278,19 +283,19 @@
             <!-- Pistas progresivas -->
             <div class="panel-card">
               <div class="panel-card-header">
-                <h3>Pistas Escalonadas</h3>
-                <button id="btn-unlock-hint" class="btn-ghost-sm">💡 Pedir pista (-15% XP)</button>
+                <h3 data-i18n="hints.title">Pistas Escalonadas</h3>
+                <button id="btn-unlock-hint" class="btn-ghost-sm" data-i18n="hint.ask">💡 Pedir pista (-15% XP)</button>
               </div>
               <div id="hints-list" class="hints-list">
-                <p class="muted-note">Sin pistas consumidas. ¡Resuélvelo limpio para rango S!</p>
+                <p class="muted-note" data-i18n="hint.none0">Sin pistas consumidas. ¡Resuélvelo limpio para rango S!</p>
               </div>
             </div>
 
             <!-- Copiloto Socrático -->
             <div class="panel-card">
               <div class="panel-card-header">
-                <h3>Mentor SRE Socrático</h3>
-                <span class="mentor-tag" id="mentor-source-tag">Listo</span>
+                <h3 data-i18n="mentor.title">Mentor SRE Socrático</h3>
+                <span class="mentor-tag" id="mentor-source-tag" data-i18n="mentor.ready">Listo</span>
               </div>
               <div class="mentor-form">
                 <input
@@ -298,10 +303,11 @@
                   id="mentor-input"
                   class="input-compact"
                   placeholder="Opcional: ¿qué observas o dónde dudas?"
+                  data-i18n-placeholder="mentor.ph"
                 />
-                <button id="btn-ask-mentor" class="btn btn-ghost">Consultar</button>
+                <button id="btn-ask-mentor" class="btn btn-ghost" data-i18n="mentor.ask">Consultar</button>
               </div>
-              <div id="mentor-output" class="mentor-output muted-note">
+              <div id="mentor-output" class="mentor-output muted-note" data-i18n="mentor.intro">
                 Analiza los comandos que has probado en la terminal y te sugiere por dónde seguir investigando sin destriparte el comando final.
               </div>
             </div>
@@ -314,22 +320,22 @@
   <!-- Overlay de carga al levantar topología -->
   <div id="loading-overlay" class="loading-overlay hidden">
     <div class="spinner"></div>
-    <h3 id="loading-title">Desplegando contenedores e inyectando caos…</h3>
-    <p id="loading-sub">Configurando red aislada y mutando variables del escenario</p>
+    <h3 id="loading-title" data-i18n="load.default">Desplegando contenedores e inyectando caos…</h3>
+    <p id="loading-sub" data-i18n="load.sub">Configurando red aislada y mutando variables del escenario</p>
   </div>
 
   <!-- Modal Post-Mortem -->
   <div id="pm-modal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>📄 Informe Post-Mortem SRE</h3>
-        <button id="btn-close-pm" class="btn-ghost-sm">✕ Cerrar</button>
+        <h3 data-i18n="pmodal.title">📄 Informe Post-Mortem SRE</h3>
+        <button id="btn-close-pm" class="btn-ghost-sm" data-i18n="btn.close">✕ Cerrar</button>
       </div>
       <textarea id="pm-textarea" class="pm-textarea" readonly></textarea>
       <div class="modal-actions">
-        <button id="btn-copy-pm" class="btn btn-ghost">📋 Copiar Markdown</button>
-        <button id="btn-vault-pm" class="btn btn-ghost" title="Guarda el post-mortem como Markdown en CHAOS_EXPORT_DIR (por defecto, exports/)">📝 Guardar post-mortem (.md)</button>
-        <button id="btn-download-pm" class="btn btn-primary">⬇ Descargar .md</button>
+        <button id="btn-copy-pm" class="btn btn-ghost" data-i18n="pmodal.copy">📋 Copiar Markdown</button>
+        <button id="btn-vault-pm" class="btn btn-ghost" title="Guarda el post-mortem como Markdown en CHAOS_EXPORT_DIR (por defecto, exports/)" data-i18n-title="pmodal.vaultTip" data-i18n="pmodal.vault">📝 Guardar post-mortem (.md)</button>
+        <button id="btn-download-pm" class="btn btn-primary" data-i18n="pmodal.download">⬇ Descargar .md</button>
       </div>
     </div>
   </div>
@@ -339,13 +345,13 @@
     <div class="modal-card pv-card">
       <div class="modal-header">
         <h3 id="pv-title"></h3>
-        <button id="btn-close-pv" class="btn-ghost-sm">✕ Cerrar</button>
+        <button id="btn-close-pv" class="btn-ghost-sm" data-i18n="btn.close">✕ Cerrar</button>
       </div>
       <div id="pv-meta" class="sc-meta"></div>
       <div id="pv-body"></div>
       <div class="modal-actions">
-        <button id="btn-pv-blind" class="btn btn-ghost" title="Jugar ocultando pistas de sondas (+25% XP)">🎲 A ciegas</button>
-        <button id="btn-pv-launch" class="btn btn-primary">▶ Desplegar</button>
+        <button id="btn-pv-blind" class="btn btn-ghost" title="Jugar ocultando pistas de sondas (+25% XP)" data-i18n-title="pv.blindTip" data-i18n="btn.blind">🎲 A ciegas</button>
+        <button id="btn-pv-launch" class="btn btn-primary" data-i18n="btn.deploy">▶ Desplegar</button>
       </div>
     </div>
   </div>
@@ -355,6 +361,7 @@
   <script src="/static/vendor/xterm.js"></script>
   <script src="/static/vendor/addon-fit.js"></script>
   <script src="/static/vendor/cytoscape.min.js"></script>
-  <script src="/static/app.js?v=12"></script>
+  <script src="/static/i18n.js?v=1"></script>
+  <script src="/static/app.js?v=13"></script>
 </body>
 </html>

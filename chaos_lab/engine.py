@@ -329,6 +329,39 @@ def sanitize_progress(data: Any) -> dict[str, Any]:
     return {"solved": solved, "history": history, "total_xp": total_xp}
 
 
+def _en_text(v: Any) -> str:
+    return v if isinstance(v, str) and v.strip() else ""
+
+
+def _catalog_i18n(item: dict[str, Any]) -> dict[str, Any]:
+    """Traducción inglesa PÚBLICA de una ficha del catálogo: solo título y briefing (nunca pistas ni solución)."""
+    en = (item.get("i18n") or {}).get("en") or {}
+    out = {k: _en_text(en.get(k)) for k in ("title", "briefing")}
+    out = {k: v for k, v in out.items() if v}
+    return {"en": out} if out else {}
+
+
+def _active_i18n(inst: dict[str, Any], hints_used: int, blind: bool, solved: bool) -> dict[str, Any]:
+    """Traducción inglesa del escenario activo, con el MISMO filtrado que la vista en español: en modo ciego solo la
+    alerta (ni título ni briefing), solo las pistas ya desbloqueadas y la solución solo tras resolver."""
+    en = (inst.get("i18n") or {}).get("en") or {}
+    out: dict[str, Any] = {}
+    if blind:
+        if _en_text(en.get("blind_alert")):
+            out["description"] = en["blind_alert"]
+    else:
+        if _en_text(en.get("title")):
+            out["title"] = en["title"]
+        if _en_text(en.get("briefing")):
+            out["description"] = en["briefing"]
+    hints = en.get("hints")
+    if isinstance(hints, list) and hints_used > 0:
+        out["hints"] = [_en_text(h) for h in hints[:hints_used]]
+    if solved and _en_text(en.get("solution_summary")):
+        out["solution_summary"] = en["solution_summary"]
+    return {"en": out} if out else {}
+
+
 def _parse_check_output(out: str, node: str, start: int = 0, empty_label: str = CHECK_EMPTY_LABEL) -> list[dict[str, Any]]:
     """Líneas ✔/✘ en orden -> sondas c<start+1>, … Sin ninguna, una sonda fallida (nunca resuelto por vacío)."""
     checks: list[dict[str, Any]] = []
@@ -520,6 +553,7 @@ class ChaosEngine:
                         "tags": item["tags"],
                         "certs": item.get("certs", []),
                         "briefing": item["briefing"],
+                        "i18n": _catalog_i18n(item),
                         "tipo": item.get("tipo", "averia"),
                         "node_count": len(sample["nodes"]),
                         "nodes": [n["role"] for n in sample["nodes"]],
@@ -617,6 +651,7 @@ class ChaosEngine:
                 "topology": _public_topology(inst.get("topology"), blind, _networks_map(inst)),
                 "timeline": act.get("timeline") or [],
                 "solution_summary": inst["solution_summary"] if act["solved"] else None,
+                "i18n": _active_i18n(inst, act["hints_used"], blind, act["solved"]),
             }
 
     # -------------------- Lanzamiento --------------------

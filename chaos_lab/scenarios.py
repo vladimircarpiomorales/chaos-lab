@@ -2076,6 +2076,7 @@ def instantiate_scenario(scenario_id: str, seed: int | None = None) -> dict[str,
         "blind_alert": meta["blind_alert"],
         "briefing": meta["briefing"],
         "tipo": meta.get("tipo", "averia"),
+        "i18n": meta.get("i18n") or {},
         "seed": actual_seed,
         **built,
     }

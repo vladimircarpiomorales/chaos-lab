@@ -97,6 +97,16 @@ El pack `chaos_lab/packs/redes.json` (imagen `images/redes` → `localhost/chaos
 - Sin ruta por defecto: lo que no tiene ruta falla con «Network is unreachable», no se escapa por ninguna puerta trasera.
 - Prueba sin servidor: `tests/e2e/redes_seco.sh [id]` (redes y contenedores `redseco-*`; despliega, comprueba ✘ antes y ✔ después de `tests/e2e/soluciones/<id>.sh`). Ids con prefijo `red-`.
 
+## Traducción al inglés (opcional)
+
+La interfaz está en español e inglés (`static/i18n.js`: diccionarios `es` y `en`; toda clave usada en `app.js` o `index.html` debe estar en los dos, lo comprueba `tests/test_i18n.py`). El español es la fuente; un escenario (pack JSON o código) puede añadir su traducción:
+
+```json
+"i18n": {"en": {"title": "…", "briefing": "…", "hints": ["…", "…", "…"], "solution_summary": "…", "blind_alert": "…"}}
+```
+
+Todos los campos son opcionales; el que falte se muestra en español. Las mismas reglas «sin spoilers» valen para el inglés: la API solo entrega las pistas ya desbloqueadas y la solución tras resolver. No traduzcas comandos, rutas ni salida de contenedores. Ejemplo: `red-averias-4saltos` en `chaos_lab/packs/redes.json`.
+
 ## Estilo
 
 - Textos en español, frases cortas; comandos, ficheros y términos TI sin traducir (namespace, host, proxy_pass…).

@@ -684,3 +684,21 @@ html, body {
 }
 .history-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; margin-top: var(--sp-3); }
 .history-actions a.btn-ghost-sm, .history-actions a.btn-ghost-sm:hover { text-decoration: none !important; }
+
+/* ───────── Selector de idioma ES | EN ───────── */
+.lang-toggle {
+  display: inline-flex;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.lang-toggle button {
+  border: 0; background: transparent; color: var(--text-dim);
+  font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .04em;
+  padding: 0 9px; cursor: pointer;
+}
+.lang-toggle button + button { border-left: 1px solid var(--border); }
+.lang-toggle button:hover { color: var(--text); }
+.lang-toggle button.active { background: var(--accent-soft); color: var(--accent); }
