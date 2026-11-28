@@ -184,6 +184,7 @@
     "import.confirm": "¿Sustituir tu progreso actual por el de «{name}»?\n(El actual se guarda como copia en data/.)",
     "import.ok": "Progreso importado: {solved} escenarios resueltos, {xp} XP.",
     "import.fail": "No se pudo importar: {msg}",
+    "import.tooBig": "el fichero pasa de 1 MB y no parece un progreso de Chaos Lab",
 
     /* ---- Post-mortem ---- */
     "pmodal.title": "📄 Informe Post-Mortem SRE",
@@ -365,6 +366,7 @@
     "import.confirm": "Replace your current progress with “{name}”?\n(The current one is kept as a backup in data/.)",
     "import.ok": "Progress imported: {solved} scenarios solved, {xp} XP.",
     "import.fail": "Import failed: {msg}",
+    "import.tooBig": "the file is larger than 1 MB and doesn't look like Chaos Lab progress",
 
     "pmodal.title": "📄 SRE Post-Mortem Report",
     "pmodal.copy": "📋 Copy Markdown",

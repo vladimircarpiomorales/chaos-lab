@@ -198,7 +198,7 @@ function renderScenarioList() {
     .map((sc) => {
       const isCurrent = currentRealId === sc.id;
       const solvedBadge = sc.solved
-        ? `<span class="badge badge-solved">✓ ${sc.best_rank || "OK"} · ${fmtSeconds(sc.best_time_s)}</span>`
+        ? `<span class="badge badge-solved">✓ ${escapeHtml(sc.best_rank || "OK")} · ${fmtSeconds(sc.best_time_s)}</span>`
         : "";
       return `
       <div class="sc-card ${isCurrent ? "active-sc" : ""}" data-id="${escapeHtml(sc.id)}"
@@ -269,7 +269,7 @@ function openPreview(id) {
     <span>⚡ ${sc.points} XP</span><span>·</span><span>~${sc.estimated_min}m</span><span>·</span>
     <span>${escapeHtml(sc.category)}</span>
     ${(sc.certs || []).map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}
-    ${sc.solved ? `<span class="badge badge-solved">✓ ${sc.best_rank || "OK"} · ${fmtSeconds(sc.best_time_s)}</span>` : ""}`;
+    ${sc.solved ? `<span class="badge badge-solved">✓ ${escapeHtml(sc.best_rank || "OK")} · ${fmtSeconds(sc.best_time_s)}</span>` : ""}`;
   const oldBox = $("pv-topo");
   if (oldBox && oldBox._topo) oldBox._topo.destroy();
   $("pv-body").innerHTML = scenarioPreview(sc);
@@ -1064,6 +1064,10 @@ function bindEvents() {
     const file = ev.target.files && ev.target.files[0];
     ev.target.value = "";
     if (!file) return;
+    if (file.size > 1_000_000) {
+      alert(t("import.fail", { msg: t("import.tooBig") }));
+      return;
+    }
     if (!confirm(t("import.confirm", { name: file.name }))) return;
     try {
       const r = await api("/api/progress/import", { method: "POST", body: await file.text() });
