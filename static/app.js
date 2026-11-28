@@ -18,6 +18,24 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
+// Texto de un escenario en el idioma activo: usa i18n.en[campo] si existe y, si no, el español (campo a campo)
+function L(obj, field) {
+  if (currentLang() === "en") {
+    const v = obj && obj.i18n && obj.i18n.en && obj.i18n.en[field];
+    if (typeof v === "string" && v.trim()) return v;
+  }
+  return obj ? obj[field] : "";
+}
+const diffName = (d) => tOr("diff." + d, d);
+// Pista n-ésima en el idioma activo (con respaldo al español por pista)
+function hintText(active, idx, es) {
+  if (currentLang() === "en") {
+    const hs = active && active.i18n && active.i18n.en && active.i18n.en.hints;
+    if (Array.isArray(hs) && typeof hs[idx] === "string" && hs[idx].trim()) return hs[idx];
+  }
+  return es;
+}
+
 function showToast(msg) {
   const el = $("toast");
   el.textContent = msg;
@@ -26,7 +44,7 @@ function showToast(msg) {
   showToast._t = setTimeout(() => el.classList.add("hidden"), 2800);
 }
 
-function setLoading(visible, title = "Desplegando contenedores…") {
+function setLoading(visible, title = t("load.default")) {
   $("loading-title").textContent = title;
   $("loading-overlay").classList.toggle("hidden", !visible);
 }
@@ -54,26 +72,35 @@ async function api(path, opts = {}) {
 
 async function refreshHealth() {
   try {
-    const h = await fetch("/api/health").then((r) => r.json());
-    const rt = h.runtime || {};
-    const panel = $("btn-panel");
-    if (panel && h.panel_url) { panel.href = h.panel_url; panel.classList.remove("hidden"); }
-    const motor = rt.engine === "docker" ? "Docker" : "Podman";
-    $("podman-dot").className = "dot " + (rt.podman_ok ? "ok" : "err");
-    $("podman-text").textContent = rt.podman_ok
-      ? `${motor} OK · ${rt.cached_images_count} imgs`
-      : `${motor} sin acceso`;
-
-    const ol = h.ollama || {};
-    $("ollama-dot").className = "dot " + (ol.online ? "ok" : "warn");
-    $("ollama-text").textContent = ol.online
-      ? `IA: ${ol.model || "Ollama"}`
-      : "Mentor Heurístico";
+    state.health = await fetch("/api/health").then((r) => r.json());
   } catch (_) {
-    const motor = rt.engine === "docker" ? "Docker" : "Podman";
-    $("podman-dot").className = "dot err";
-    $("podman-text").textContent = "Servidor desconectado";
+    state.health = { offline: true };
   }
+  renderHealth();
+}
+
+function renderHealth() {
+  const h = state.health;
+  if (!h) return;
+  if (h.offline) {
+    $("podman-dot").className = "dot err";
+    $("podman-text").textContent = t("health.offline");
+    return;
+  }
+  const rt = h.runtime || {};
+  const panel = $("btn-panel");
+  if (panel && h.panel_url) { panel.href = h.panel_url; panel.classList.remove("hidden"); }
+  const motor = rt.engine === "docker" ? "Docker" : "Podman";
+  $("podman-dot").className = "dot " + (rt.podman_ok ? "ok" : "err");
+  $("podman-text").textContent = rt.podman_ok
+    ? t("health.ok", { motor, n: rt.cached_images_count })
+    : t("health.noAccess", { motor });
+
+  const ol = h.ollama || {};
+  $("ollama-dot").className = "dot " + (ol.online ? "ok" : "warn");
+  $("ollama-text").textContent = ol.online
+    ? t("health.ai", { model: ol.model || "Ollama" })
+    : t("health.heuristic");
 }
 
 async function refreshCatalog() {
@@ -92,7 +119,7 @@ function renderStats() {
   const histEl = $("history-list");
   const items = state.stats.history || [];
   if (!items.length) {
-    histEl.innerHTML = `<p class="muted-note">Aún no has cerrado ningún incidente.</p>`;
+    histEl.innerHTML = `<p class="muted-note">${escapeHtml(t("hist.empty"))}</p>`;
     return;
   }
   histEl.innerHTML = items
@@ -101,10 +128,10 @@ function renderStats() {
       <div class="hist-item">
         <div class="hist-row">
           <span>${h.blind_mode ? "🎲 " : ""}${escapeHtml(h.title)}</span>
-          <span class="badge badge-solved">Rango ${escapeHtml(h.rank)} · +${h.xp} XP</span>
+          <span class="badge badge-solved">${escapeHtml(t("hist.rank", { rank: h.rank, xp: h.xp }))}</span>
         </div>
         <div class="hist-sub">
-          ⏱ ${fmtSeconds(h.elapsed_s)} · 💡 ${h.hints_used} pistas · ${escapeHtml(h.at)}
+          ⏱ ${fmtSeconds(h.elapsed_s)} · 💡 ${escapeHtml(t("hist.hints", { n: h.hints_used }))} · ${escapeHtml(h.at)}
         </div>
       </div>`
     )
@@ -126,7 +153,7 @@ function fillFilterSelects() {
   const fill = (id, values) => {
     const sel = $(id);
     if (!sel || sel.options.length > 1) return;
-    [...new Set(values)].sort((a, b) => a.localeCompare(b, "es")).forEach((v) => {
+    [...new Set(values)].sort((a, b) => a.localeCompare(b, currentLang())).forEach((v) => {
       const o = document.createElement("option");
       o.value = v; o.textContent = v; sel.appendChild(o);
     });
@@ -152,7 +179,7 @@ function renderScenarioList() {
     if (state.cert && !(sc.certs || []).includes(state.cert)) return false;
 
     if (q) {
-      const hay = [sc.title, sc.category, sc.difficulty, ...(sc.tags || []), ...(sc.certs || []), ...(sc.nodes || [])]
+      const hay = [L(sc, "title"), sc.title, sc.category, sc.difficulty, diffName(sc.difficulty), ...(sc.tags || []), ...(sc.certs || []), ...(sc.nodes || [])]
         .join(" ")
         .toLowerCase();
       if (!hay.includes(q)) return false;
@@ -161,7 +188,7 @@ function renderScenarioList() {
   });
 
   if (!filtered.length) {
-    listEl.innerHTML = `<p class="muted-note empty-note">Ningún escenario coincide con ese filtro.</p>`;
+    listEl.innerHTML = `<p class="muted-note empty-note">${escapeHtml(t("list.empty"))}</p>`;
     return;
   }
 
@@ -175,31 +202,31 @@ function renderScenarioList() {
         : "";
       return `
       <div class="sc-card ${isCurrent ? "active-sc" : ""}" data-id="${escapeHtml(sc.id)}"
-           role="button" tabindex="0" title="Clic para ver de qué va sin desplegarlo">
+           role="button" tabindex="0" title="${escapeHtml(t("sc.openTip"))}">
         <div class="sc-top">
-          <div class="sc-title">${escapeHtml(sc.title)}</div>
+          <div class="sc-title">${escapeHtml(L(sc, "title"))}</div>
           ${solvedBadge}
         </div>
         <div class="sc-meta">
-          <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(sc.difficulty)}</span>
-          <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${sc.tipo === "tarea" ? "📋 Tarea" : "🔧 Avería"}</span>
+          <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(diffName(sc.difficulty))}</span>
+          <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${escapeHtml(sc.tipo === "tarea" ? t("type.tarea") : t("type.averia"))}</span>
           <span>⚡ ${sc.points} XP</span>
           <span>·</span>
-          <span>🖧 ${sc.node_count} ${sc.node_count > 1 ? "nodos" : "nodo"}</span>
+          <span>🖧 ${sc.node_count} ${escapeHtml(sc.node_count > 1 ? t("sc.nodes") : t("sc.node"))}</span>
           <span>·</span>
           <span>~${sc.estimated_min}m</span>
         </div>
         <div class="sc-tags">
           ${(sc.certs || []).length ? `<span class="sc-certs">${sc.certs.map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}</span>` : ""}
           ${sc.solved
-            ? (sc.tags || []).map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")
-            : `<span class="tags-locked" title="Los temas del escenario delatan la causa: se muestran al resolverlo">🔒 temas al resolver</span>`}
+            ? (sc.tags || []).map((tg) => `<span class="tag">${escapeHtml(tg)}</span>`).join("")
+            : `<span class="tags-locked" title="${escapeHtml(t("sc.lockedTip"))}">${escapeHtml(t("sc.locked"))}</span>`}
         </div>
         <div class="sc-actions">
           <span class="sc-cat" title="${escapeHtml(sc.category)}">${escapeHtml(sc.category)}</span>
           <div class="sc-buttons">
-            <button class="btn-ghost-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', true)" title="Jugar ocultando pistas de sondas (+25% XP)">🎲</button>
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', false)">▶ Desplegar</button>
+            <button class="btn-ghost-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', true)" title="${escapeHtml(t("sc.blindTip"))}">🎲</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', false)">${escapeHtml(t("btn.deploy"))}</button>
           </div>
         </div>
       </div>`;
@@ -209,7 +236,7 @@ function renderScenarioList() {
 
 /* Vista previa de un escenario dentro de su tarjeta (sin desplegar nada) */
 function scenarioPreview(sc) {
-  const code = (t) => escapeHtml(t || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  const code = (x) => escapeHtml(x || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
   const hasDraw = (sc.machines || []).length > 1 || Object.keys(sc.networks || {}).length > 0;
   const machines = hasDraw ? "" : (sc.machines || [])
     .map((m) => `<li><span class="pv-role">${escapeHtml(m.role)}</span>${m.runs ? ` <span class="pv-runs">${escapeHtml(m.runs)}</span>` : ""}</li>`)
@@ -218,15 +245,15 @@ function scenarioPreview(sc) {
     .map((l) => `<li>${escapeHtml(l.from)} → ${escapeHtml(l.to)}${l.via ? ` <span class="pv-runs">· ${escapeHtml(l.via)}</span>` : ""}</li>`)
     .join("");
   const obj = (sc.objetivos_lpi || []).length
-    ? `<div class="pv-obj">Objetivos LPI: ${sc.objetivos_lpi.map((o) => `<span class="tag">${escapeHtml(o)}</span>`).join(" ")}</div>`
+    ? `<div class="pv-obj">${escapeHtml(t("pv.obj"))} ${sc.objetivos_lpi.map((o) => `<span class="tag">${escapeHtml(o)}</span>`).join(" ")}</div>`
     : "";
   return `
         <div class="sc-preview">
-          <div class="pv-label">${sc.tipo === "tarea" ? "📋 El encargo" : "🔧 La incidencia"}</div>
-          <div class="pv-brief">${code(sc.briefing)}</div>
-          ${hasDraw ? `<div class="pv-label">🗺 Topología</div><div class="pv-topo" id="pv-topo"></div>` : ""}
-          ${machines ? `<div class="pv-label">🖧 Máquinas</div><ul class="pv-list">${machines}</ul>` : ""}
-          ${links ? `<div class="pv-label">🔗 Conexiones</div><ul class="pv-list">${links}</ul>` : ""}
+          <div class="pv-label">${escapeHtml(sc.tipo === "tarea" ? t("pv.task") : t("pv.issue"))}</div>
+          <div class="pv-brief">${code(L(sc, "briefing"))}</div>
+          ${hasDraw ? `<div class="pv-label">${escapeHtml(t("pv.topo"))}</div><div class="pv-topo" id="pv-topo"></div>` : ""}
+          ${machines ? `<div class="pv-label">${escapeHtml(t("pv.machines"))}</div><ul class="pv-list">${machines}</ul>` : ""}
+          ${links ? `<div class="pv-label">${escapeHtml(t("pv.links"))}</div><ul class="pv-list">${links}</ul>` : ""}
           ${obj}
         </div>`;
 }
@@ -235,10 +262,10 @@ function openPreview(id) {
   const sc = state.scenarios.find((x) => x.id === id);
   if (!sc) return;
   state.previewId = id;
-  $("pv-title").textContent = sc.title;
+  $("pv-title").textContent = L(sc, "title");
   $("pv-meta").innerHTML = `
-    <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(sc.difficulty)}</span>
-    <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${sc.tipo === "tarea" ? "📋 Tarea" : "🔧 Avería"}</span>
+    <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(diffName(sc.difficulty))}</span>
+    <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${escapeHtml(sc.tipo === "tarea" ? t("type.tarea") : t("type.averia"))}</span>
     <span>⚡ ${sc.points} XP</span><span>·</span><span>~${sc.estimated_min}m</span><span>·</span>
     <span>${escapeHtml(sc.category)}</span>
     ${(sc.certs || []).map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}
@@ -271,8 +298,8 @@ async function launchScenario(scenarioId = null, blindMode = false) {
   setLoading(
     true,
     blindMode && !scenarioId
-      ? "Sorteando incidente de guardia 3:00 AM…"
-      : "Levantando contenedores e inyectando avería…"
+      ? t("load.blind")
+      : t("load.deploy")
   );
   try {
     const res = await api("/api/lab/launch", {
@@ -283,19 +310,30 @@ async function launchScenario(scenarioId = null, blindMode = false) {
         difficulty: diff,
       }),
     });
-    $("mentor-output").textContent =
-      "Laboratorio en marcha. Investiga desde la consola y pulsa «Consultar» si necesitas orientación socrática.";
+    setMentorKey("mentor.started");
     syncActiveView(res.active);
     await refreshCatalog();
-    showToast(blindMode ? "🚨 Guardia a ciegas iniciada" : "⚡ Escenario desplegado");
+    showToast(blindMode ? t("toast.blind") : t("toast.deployed"));
   } catch (err) {
-    showToast(`❌ ${err.message}`);
+    showToast(t("toast.err", { msg: err.message }));
   } finally {
     setLoading(false);
   }
 }
 
 window.launchScenario = launchScenario;
+
+// Salida del mentor: texto fijo traducible (data-i18n) o texto del servidor (sin data-i18n, no se retraduce)
+function setMentorKey(key) {
+  const el = $("mentor-output");
+  el.dataset.i18n = key;
+  el.textContent = t(key);
+}
+function setMentorText(text) {
+  const el = $("mentor-output");
+  delete el.dataset.i18n;
+  el.textContent = text;
+}
 
 function destroyAllTerminals() {
   Object.values(state.sessions).forEach((s) => {
@@ -326,12 +364,12 @@ function syncActiveView(active) {
 
   $("incident-banner").classList.toggle("blind-active", Boolean(active.blind_masked));
   $("active-diff-badge").className = `badge diff-${active.difficulty}`;
-  $("active-diff-badge").textContent = `${active.difficulty} · ${active.points} XP`;
-  $("active-cat-badge").textContent = active.category;
+  $("active-diff-badge").textContent = `${diffName(active.difficulty)} · ${active.points} XP`;
+  $("active-cat-badge").textContent = active.blind_masked ? t("blind.cat") : active.category;
   $("active-seed-badge").textContent = `Seed #${active.seed}`;
-  $("active-title").textContent = active.title;
+  $("active-title").textContent = active.blind_masked ? t("blind.title") : L(active, "title");
   // `algo` → <code>algo</code>; los saltos de línea se respetan (listas numeradas del encargo)
-  $("active-desc").innerHTML = escapeHtml(active.description || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
+  $("active-desc").innerHTML = escapeHtml(L(active, "description") || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
   $("active-desc").style.whiteSpace = "pre-line";
   const esTarea = active.tipo === "tarea";
   $("howto-averia").classList.toggle("hidden", esTarea);
@@ -344,7 +382,7 @@ function syncActiveView(active) {
   if (tl.length) {
     const ico = { crit: "🔴", warn: "🟠", info: "🔵" };
     tlBox.innerHTML =
-      `<div class="alert-timeline-title">📡 Señales correlacionadas (SIEM)</div>` +
+      `<div class="alert-timeline-title">${escapeHtml(t("tl.title"))}</div>` +
       tl
         .map(
           (e) => `<div class="tl-row tl-${escapeHtml(e.sev)}"><span class="tl-t">${escapeHtml(e.t)}</span>` +
@@ -379,14 +417,14 @@ function syncActiveView(active) {
   $("check-counter").textContent = `${passed}/${(active.checks || []).length}`;
   $("checks-list").innerHTML = (active.checks || [])
     .map(
-      (c) => `
+      (c, ci) => `
       <div class="check-item ${c.passed ? "passed" : ""}">
         <span class="check-icon">
           ${c.passed ? "✓" : "○"}
         </span>
         <div>
           <span class="check-node">[${escapeHtml(c.node)}]</span>
-          <span>${escapeHtml(c.label)}</span>
+          <span>${escapeHtml(active.blind_masked ? t("blind.probe", { n: ci + 1 }) : c.label)}</span>
         </div>
       </div>`
     )
@@ -397,14 +435,14 @@ function syncActiveView(active) {
   $("btn-unlock-hint").disabled = active.hints_used >= active.total_hints;
   $("btn-unlock-hint").textContent =
     active.hints_used >= active.total_hints
-      ? `Pistas (${active.hints_used}/${active.total_hints})`
-      : `💡 Pista ${active.hints_used + 1}/${active.total_hints} (-15% XP)`;
+      ? t("hint.done", { used: active.hints_used, total: active.total_hints })
+      : t("hint.next", { n: active.hints_used + 1, total: active.total_hints });
 
   if (!hints.length) {
-    $("hints-list").innerHTML = `<p class="muted-note">Sin pistas consumidas (${active.total_hints} disponibles).</p>`;
+    $("hints-list").innerHTML = `<p class="muted-note">${escapeHtml(t("hint.none", { total: active.total_hints }))}</p>`;
   } else {
     $("hints-list").innerHTML = hints
-      .map((h, idx) => `<div class="hint-box"><strong>Pista ${idx + 1}:</strong> ${escapeHtml(h)}</div>`)
+      .map((h, idx) => `<div class="hint-box"><strong>${escapeHtml(t("hint.item", { n: idx + 1 }))}</strong> ${escapeHtml(hintText(active, idx, h))}</div>`)
       .join("");
   }
 
@@ -412,8 +450,8 @@ function syncActiveView(active) {
   if (active.solved) {
     $("victory-card").classList.remove("hidden");
     $("victory-rank").textContent = active.rank || "S";
-    $("victory-meta").textContent = `+${active.earned_xp || active.points} XP · Resuelto en ${fmtSeconds(active.elapsed_s)}`;
-    $("victory-solution").textContent = active.solution_summary || "";
+    $("victory-meta").textContent = t("victory.meta", { xp: active.earned_xp || active.points, time: fmtSeconds(active.elapsed_s) });
+    $("victory-solution").textContent = L(active, "solution_summary") || "";
   } else {
     $("victory-card").classList.add("hidden");
   }
@@ -676,7 +714,7 @@ function drawTopology(container, topo, opts = {}) {
     });
   });
   if (topo.entry) {
-    els.push({ group: "nodes", classes: "entry", position: lay.pos.__entry, data: { id: "entry", w: dims.entryW, h: 40, label: topo.entry.label || "tú" } });
+    els.push({ group: "nodes", classes: "entry", position: lay.pos.__entry, data: { id: "entry", w: dims.entryW, h: 40, label: topo.entry.label || t("topo.you") } });
     if (roles.includes(topo.entry.to)) els.push({ group: "edges", classes: "l", data: { id: "e:entry", label: "", source: "entry", target: "n:" + topo.entry.to, via: topo.entry.via || "", tk: "entry" } });
   }
   links.forEach((l, i) => {
@@ -772,7 +810,7 @@ function renderTopology(active) {
   let collapsed = false;
   try { collapsed = localStorage.getItem("chaos-topo-collapsed") === "1"; } catch (_) {}
   strip.classList.toggle("collapsed", collapsed);
-  $("btn-topo-toggle").textContent = collapsed ? "Mostrar esquema" : "Ocultar";
+  $("btn-topo-toggle").textContent = collapsed ? t("topo.show") : t("topo.hide");
   if (collapsed) { if (body._topo) body._topo.destroy(); body._sig = null; return; }
 
   // Router con varias IPs: una línea «red ip» por red
@@ -793,7 +831,7 @@ function renderHowtoLook(active) {
   const box = $("howto-look");
   const toolsOf = Object.fromEntries(((active && active.nodes) || []).map((n) => [n.role, n.tools || []]));
   const tools = (role) => (toolsOf[role] && toolsOf[role].length)
-    ? `<div class="look-tools">🧰 Herramientas: ${toolsOf[role].map((t) => `<code>${escapeHtml(t)}</code>`).join("")}</div>`
+    ? `<div class="look-tools">${escapeHtml(t("look.tools"))} ${toolsOf[role].map((tl) => `<code>${escapeHtml(tl)}</code>`).join("")}</div>`
     : "";
   if (!topo || !topo.nodes) {
     // Sin esquema: al menos las herramientas de cada nodo
@@ -805,7 +843,7 @@ function renderHowtoLook(active) {
     .map(([role, n]) =>
       `<div class="look-node">` +
       ((n.look && n.look.length)
-        ? `Dónde mirar en <b>${escapeHtml(role)}</b>:<br>` + n.look.map((x) => `<code>${escapeHtml(x)}</code>`).join("")
+        ? escapeHtml(t("look.where", { role: "\u0001" })).replace("\u0001", `<b>${escapeHtml(role)}</b>`) + "<br>" + n.look.map((x) => `<code>${escapeHtml(x)}</code>`).join("")
         : `<b>${escapeHtml(role)}</b>`) +
       tools(role) + `</div>`)
     .join("");
@@ -948,22 +986,22 @@ window.addEventListener("resize", () => {
 async function runVerify() {
   const btn = $("btn-verify");
   btn.disabled = true;
-  btn.textContent = "⏳ Comprobando sondas…";
+  btn.textContent = t("verify.running");
   try {
     const res = await api("/api/lab/verify", { method: "POST" });
     if (res.active) state.verifiedSession = res.active.session_id;
     syncActiveView(res.active);
     if (res.all_passed) {
-      showToast(`🏆 ¡Incidente resuelto! Rango ${res.active.rank}`);
+      showToast(t("toast.solved", { rank: res.active.rank }));
       await refreshCatalog();
     } else {
-      showToast(`Sondas superadas: ${res.passed_count}/${res.total_checks}`);
+      showToast(t("toast.probes", { passed: res.passed_count, total: res.total_checks }));
     }
   } catch (err) {
-    showToast(`❌ ${err.message}`);
+    showToast(t("toast.err", { msg: err.message }));
   } finally {
     btn.disabled = false;
-    btn.textContent = "✓ Ejecutar Verificación en Vivo";
+    btn.textContent = t("btn.verify");
   }
 }
 
@@ -974,7 +1012,7 @@ async function openPostMortem() {
     $("pm-textarea").value = res.markdown || "";
     $("pm-modal").classList.remove("hidden");
   } catch (err) {
-    showToast(`❌ ${err.message}`);
+    showToast(t("toast.err", { msg: err.message }));
   }
 }
 
@@ -1026,13 +1064,13 @@ function bindEvents() {
     const file = ev.target.files && ev.target.files[0];
     ev.target.value = "";
     if (!file) return;
-    if (!confirm(`¿Sustituir tu progreso actual por el de «${file.name}»?\n(El actual se guarda como copia en data/.)`)) return;
+    if (!confirm(t("import.confirm", { name: file.name }))) return;
     try {
       const r = await api("/api/progress/import", { method: "POST", body: await file.text() });
       await refreshCatalog();
-      alert(`Progreso importado: ${r.solved} escenarios resueltos, ${r.total_xp} XP.`);
+      alert(t("import.ok", { solved: r.solved, xp: r.total_xp }));
     } catch (err) {
-      alert(`No se pudo importar: ${err.message}`);
+      alert(t("import.fail", { msg: err.message }));
     }
   });
 
@@ -1043,7 +1081,7 @@ function bindEvents() {
       const res = await api("/api/lab/hint", { method: "POST" });
       syncActiveView(res.active);
     } catch (err) {
-      showToast(`❌ ${err.message}`);
+      showToast(t("toast.err", { msg: err.message }));
     }
   });
 
@@ -1052,9 +1090,9 @@ function bindEvents() {
       const res = await api("/api/lab/reveal", { method: "POST" });
       syncActiveView(res.active);
       renderScenarioList();
-      showToast("👁 Identidad del escenario revelada");
+      showToast(t("toast.revealed"));
     } catch (err) {
-      showToast(`❌ ${err.message}`);
+      showToast(t("toast.err", { msg: err.message }));
     }
   });
 
@@ -1065,14 +1103,14 @@ function bindEvents() {
   });
 
   $("btn-stop-lab").addEventListener("click", async () => {
-    setLoading(true, "Limpiando contenedores y red efímera…");
+    setLoading(true, t("load.stop"));
     try {
       await api("/api/lab/stop", { method: "POST" });
       syncActiveView(null);
       renderScenarioList();
-      showToast("⏹ Laboratorio detenido y limpio");
+      showToast(t("toast.stopped"));
     } catch (err) {
-      showToast(`❌ ${err.message}`);
+      showToast(t("toast.err", { msg: err.message }));
     } finally {
       setLoading(false);
     }
@@ -1081,18 +1119,20 @@ function bindEvents() {
   $("btn-ask-mentor").addEventListener("click", async () => {
     const btn = $("btn-ask-mentor");
     btn.disabled = true;
-    $("mentor-output").textContent = "Analizando tus comandos…";
+    setMentorKey("mentor.analyzing");
     try {
       const q = $("mentor-input").value;
       const res = await api("/api/lab/mentor", {
         method: "POST",
         body: JSON.stringify({ question: q }),
       });
-      $("mentor-source-tag").textContent = res.source || "Mentor";
-      $("mentor-output").textContent = res.advice || "";
+      const tag = $("mentor-source-tag");
+      delete tag.dataset.i18n;
+      tag.textContent = res.source || t("mentor.fallback");
+      setMentorText(res.advice || "");
       $("mentor-input").value = "";
     } catch (err) {
-      $("mentor-output").textContent = `Error: ${err.message}`;
+      setMentorText(t("mentor.error", { msg: err.message }));
     } finally {
       btn.disabled = false;
     }
@@ -1103,14 +1143,14 @@ function bindEvents() {
     const n = (state.active.nodes || []).find((x) => x.role === state.activeNodeRole);
     if (n && n.cli_attach) {
       await navigator.clipboard.writeText(n.cli_attach);
-      showToast("📋 Comando 'podman exec' copiado al portapapeles");
+      showToast(t("toast.cli"));
     }
   });
 
   $("btn-reconnect-tty").addEventListener("click", () => {
     if (state.activeNodeRole) {
       connectNodeWs(state.activeNodeRole);
-      showToast(`🔌 Reconectado a ${state.activeNodeRole}`);
+      showToast(t("toast.reconnected", { role: state.activeNodeRole }));
     }
   });
 
@@ -1125,15 +1165,15 @@ function bindEvents() {
 
   $("btn-copy-pm").addEventListener("click", async () => {
     await navigator.clipboard.writeText($("pm-textarea").value);
-    showToast("📋 Post-Mortem copiado");
+    showToast(t("toast.pmCopied"));
   });
 
   $("btn-vault-pm")?.addEventListener("click", async () => {
     try {
       const res = await api("/api/lab/export-vault", { method: "POST" });
-      showToast(`📝 Post-mortem guardado: ${res.path}`);
+      showToast(t("toast.pmSaved", { path: res.path }));
     } catch (err) {
-      showToast(`❌ ${err.message}`);
+      showToast(t("toast.err", { msg: err.message }));
     }
   });
 
@@ -1148,7 +1188,27 @@ function bindEvents() {
   });
 }
 
+// Cambio de idioma: textos estáticos (data-i18n) y todo lo que pinta JS, sin recargar
+function rerenderLang() {
+  I18N.applyI18n();
+  renderHealth();
+  renderStats();
+  renderScenarioList();
+  if (state.active) syncActiveView(state.active);
+  if (!$("pv-modal").classList.contains("hidden") && state.previewId) {
+    const id = state.previewId;
+    closePreview();
+    openPreview(id);
+  }
+}
+
 (async function init() {
+  document.querySelectorAll("#lang-toggle [data-lang]").forEach((b) =>
+    b.addEventListener("click", () => {
+      if (b.dataset.lang === currentLang()) return;
+      I18N.setLang(b.dataset.lang);
+      rerenderLang();
+    }));
   bindEvents();
   await refreshHealth();
   await refreshCatalog();

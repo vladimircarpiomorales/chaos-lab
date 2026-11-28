@@ -30,6 +30,19 @@
     ],
     "category": "LPIC-2 · 201-450 · Redes",
     "blind_alert": "INCIDENTE [RED] · Un puesto de la lan no consigue abrir la web interna; el servidor parece levantado.",
+    "i18n": {
+      "en": {
+        "title": "The intranet won't load from pc1",
+        "briefing": "Ticket: \"The intranet won't open from workstation `pc1`: `curl http://web.lab` returns no page.\" The network has four machines in a row: `pc1` (lan `10.5.1.0/24`) — `r1` — `r2` (transit `10.5.12.0/24`) — `srv` (dmz `10.5.3.0/24`, the web server, `10.5.3.10`). Once everything works, `curl http://web.lab` from `pc1` must return \"srv OK\". Work bottom-up and hop by hop; every machine has its own root terminal.",
+        "hints": [
+          "There is more than one fault, in different layers and on different machines: fixing one usually uncovers the next. Follow the path hop by hop: can pc1 reach out? Does ping reach each machine? Do the replies come back? Is the port open? Does the name resolve correctly?",
+          "Look in three places: pc1's route and whether its next hop exists (`ip route get`, `ip neigh`); whether packets reach srv but replies don't return (`tcpdump -nni` on srv) and the routers' routes; and whether nginx listens but something filters the port (`ss -ltn`, `nmap -p80`, `nft list ruleset`). Then, where the IP of `web.lab` comes from (`getent hosts`).",
+          "pc1 has a gateway that doesn't exist: the route must go via `10.5.1.1` (`ip route replace 10.5.0.0/16 via 10.5.1.1`). r2 doesn't know the way back to the lan: `ip route add 10.5.1.0/24 via 10.5.12.1`. srv drops port 80 with an nftables rule (`nft flush ruleset` or delete the rule by its handle). And in pc1's `/etc/hosts`, `web.lab` points to `10.5.3.100`: edit it with nano or vim (`sed -i` fails in a container)."
+        ],
+        "solution_summary": "Four faults in four layers: (1) `pc1`'s route used a gateway that doesn't exist (`ip neigh` showed FAILED) and must use `r1`; (2) `r2` had no return route to the lan, so requests reached `srv` and the replies were lost (`tcpdump` gives it away); (3) an nftables rule on `srv` dropped port 80 even though nginx was listening (`nmap` reported filtered); (4) `/etc/hosts` on `pc1` resolved `web.lab` to the wrong IP, and it beats any DNS because of the `nsswitch` order.",
+        "blind_alert": "INCIDENT [NETWORK] · A workstation on the lan can't open the internal website; the server appears to be up."
+      }
+    },
     "redes": [
       "lan",
       "transito",

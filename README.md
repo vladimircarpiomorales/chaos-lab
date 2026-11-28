@@ -15,6 +15,7 @@ Pensado para practicar troubleshooting de verdad (LPIC-1/2, CCNA, AZ-104, guardi
   - **Tareas** (65): configúralo desde cero y un corrector comprueba cada paso. Vienen en *packs* por certificación: Linux Essentials, LPIC-1 (101 y 102) y LPIC-2 · LDAP.
 - **Terminal real en cada nodo** (xterm.js por WebSocket): `vim`, `nano`, `Tab`, `Ctrl+C`… Cada nodo trae de serie nano, vim, less, curl, ss, dig y ps, y la interfaz te dice qué herramientas tiene.
 - **Esquema de la topología** (Cytoscape.js) con cada red como una caja, sus máquinas dentro y el recorrido de la petición; tras «Verificar» se pone verde donde ya funciona y rojo donde no. Clic en un nodo abre su terminal.
+- **Interfaz en español e inglés** (selector ES | EN en la cabecera; sin recargar, se recuerda la elección). Los escenarios pueden traer su traducción inglesa (`i18n.en`).
 - **Catálogo con filtros** (avería o tarea, certificación, categoría, nivel) y **ficha de vista previa** de cada escenario antes de desplegarlo.
 - **Semilla aleatoria**: cada despliegue cambia puertos, contraseñas, nombres de procesos o subredes, para que diagnostiques en vez de memorizar.
 - **Sondas sin spoilers**: dicen *qué* tiene que funcionar, nunca qué está roto ni la respuesta. Las pistas son graduales.

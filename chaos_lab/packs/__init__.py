@@ -20,7 +20,8 @@ rutas, las pone el `preparar` de cada nodo). Cada nodo declara `redes` (sus rede
 
 Campos de cada objeto: id, reto (id original, es el nombre del directorio), title, briefing, hints (3),
 solution_summary, difficulty, points, estimated_min, tipo, certs, tags, objetivos_lpi, category, blind_alert,
-preparar, comprobar; opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
+preparar, comprobar; opcional `i18n` ({"en": {title, briefing, hints[], solution_summary, blind_alert}}: traducción
+al inglés, cada campo opcional; el español sigue siendo la fuente y el respaldo); opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
 """
 
 from __future__ import annotations
@@ -162,6 +163,7 @@ def load_pack(name: str) -> list[dict[str, Any]]:
                 "objetivos_lpi": it.get("objetivos_lpi", []),
                 "blind_alert": it["blind_alert"],
                 "briefing": it["briefing"],
+                **({"i18n": it["i18n"]} if it.get("i18n") else {}),
                 "builder": _builder_multi(it) if "nodos" in it else _builder(it),
             }
         )
