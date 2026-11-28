@@ -53,6 +53,11 @@ IMAGE_CANDIDATES: dict[str, list[str]] = {
     "ldap-cli": [
         "localhost/chaos-ldap-cli:1",
     ],
+    # Pack de redes (images/redes): iproute2, nftables, nginx, FRR parado…
+    "redes": [
+        "localhost/chaos-redes:1",
+        "docker.io/library/debian:trixie",
+    ],
     "rocky": [
         "localhost/chaos-rocky:1",
         "docker.io/rockylinux/rockylinux:9",
@@ -128,8 +133,45 @@ def _plan_networks(inst: dict[str, Any]) -> tuple[list[str], dict[str, list[str]
     return nets, per_node
 
 
+def _manual_networks(inst: dict[str, Any]) -> bool:
+    """¿Las redes del escenario son «manuales» (sin IPAM, estilo containerlab)? Campo `network_mode: "manual"`.
+
+    En una red manual el motor NO reparte IPs ni rutas: el nodo las pone en su `setup_sh` (`ip addr add`,
+    `ip route add`). La red i-ésima de un nodo (orden de su lista `networks`) es siempre `eth{i}`.
+    """
+    return inst.get("network_mode") == "manual"
+
+
+# Docker no tiene `--ipam-driver none`: la red manual se crea `--internal` con una subred cualquiera (una distinta por
+# red) y el motor vacía direcciones y rutas de sus interfaces al arrancar el nodo (ver `_manual_prep_cmd`).
+DOCKER_MANUAL_SUBNET = "10.213.{i}.0/24"
+
+
+def _network_create_cmd(net: str, manual: bool = False, index: int = 0, runtime: str | None = None) -> list[str]:
+    """Comando para crear una red. Manual: interna (sin salida a fuera) y sin IPAM en Podman."""
+    rt = runtime or RUNTIME
+    if not manual:
+        return [rt, "network", "create", net]
+    if rt == "podman":
+        return [rt, "network", "create", "--internal", "--ipam-driver", "none", net]
+    return [rt, "network", "create", "--internal", "--subnet", DOCKER_MANUAL_SUBNET.format(i=index), net]
+
+
+def _manual_prep_cmd(cname: str, nets: list[str], runtime: str | None = None) -> list[str] | None:
+    """Docker: vacía direcciones y rutas de las interfaces eth0..ethN-1 (la subred de relleno no debe verse).
+    Podman con `--ipam-driver none` no necesita nada (devuelve None). Hace falta NET_ADMIN en el nodo."""
+    if (runtime or RUNTIME) == "podman" or not nets:
+        return None
+    script = "; ".join(f"ip -4 addr flush dev eth{i}; ip -4 route flush dev eth{i} 2>/dev/null || true" for i in range(len(nets)))
+    return [runtime or RUNTIME, "exec", "--user", "root", cname, "sh", "-c", script]
+
+
 def _build_run_cmd(n: dict[str, Any], cname: str, image: str, nets: list[str]) -> list[str]:
-    """Comando `run` de un nodo: arranca en su primera red; las demás se conectan después."""
+    """Comando `run` de un nodo: arranca en su primera red; las demás se conectan después.
+
+    `sysctl_rw: true` en el nodo → `--security-opt systempaths=unconfined` (deja /proc/sys escribible: `sysctl -w
+    net.ipv4.ip_forward=1` en un router). Quita una protección del contenedor: solo para nodos que lo necesiten.
+    """
     role = n["role"]
     cmd = [RUNTIME, "run", "-d", "--rm", "--user", "root", "--name", cname,
            "--hostname", role, "--memory", "384m"]
@@ -139,6 +181,8 @@ def _build_run_cmd(n: dict[str, Any], cname: str, image: str, nets: list[str]) -
         cmd.extend(["--cap-add", cap])
     for sk, sv in (n.get("sysctls") or {}).items():
         cmd.extend(["--sysctl", f"{sk}={sv}"])
+    if n.get("sysctl_rw"):
+        cmd.extend(["--security-opt", "systempaths=unconfined"])
     cmd.extend([image, "sh", "-c", "trap : TERM INT; while true; do sleep 30; done"])
     return cmd
 
@@ -181,6 +225,16 @@ def _short_net(net: str) -> str:
     return net[len(NETWORK_PREFIX):] if net.startswith(NETWORK_PREFIX) else net
 
 
+def _design_ips(n: dict[str, Any], nets: list[str]) -> dict[str, str]:
+    """IPs «de diseño» de un nodo en redes manuales: {nombre corto de red: ip} (solo de sus redes, sin /prefijo).
+
+    Son datos del encargo/diseño (el esquema y /etc/chaos_nodes.env las usan); nunca reflejan una avería.
+    """
+    shorts = [_short_net(net) for net in nets]
+    declared = n.get("design_ips") or {}
+    return {s: str(declared[s]).split("/")[0] for s in shorts if s in declared}
+
+
 def _build_check_script(cs: dict[str, Any]) -> str:
     """Texto completo que se pasa por stdin a `bash -s`: preámbulo + (cd) + script del escenario."""
     parts = [CHECK_PREAMBLE, ". /etc/chaos_nodes.env 2>/dev/null\n"]
@@ -199,6 +253,15 @@ def _check_blocks(cs: dict[str, Any] | list[dict[str, Any]]) -> list[dict[str, A
     """Bloques de corrector de un escenario: `check_script` puede ser un dict (un nodo) o una lista de dicts
     {node, cwd, script} (un bloque por nodo; las sondas se unen en el orden de la lista)."""
     return [cs] if isinstance(cs, dict) else list(cs or [])
+
+
+def _map_checks_to_topology(inst: dict[str, Any]) -> None:
+    """Corrector por script: las sondas de un bloque con `marca` (node:<rol>, link:<n>, entry) pintan ese
+    elemento del esquema tras «Verificar». Sin marcas no cambia nada."""
+    marks = {c["id"]: c["target"] for c in inst.get("checks", []) if c.get("target")}
+    topo = inst.get("topology")
+    if marks and isinstance(topo, dict):
+        topo["checks"] = marks
 
 
 def _parse_check_output(out: str, node: str, start: int = 0, empty_label: str = CHECK_EMPTY_LABEL) -> list[dict[str, Any]]:
@@ -498,8 +561,9 @@ class ChaosEngine:
             inst = instantiate_scenario(scenario_id, seed=seed)
             all_nets, nets_by_role = _plan_networks(inst)
 
-            for net in all_nets:
-                rc_net, out_net = _run_cmd([RUNTIME, "network", "create", net], timeout=12)
+            manual = _manual_networks(inst)
+            for i, net in enumerate(all_nets):
+                rc_net, out_net = _run_cmd(_network_create_cmd(net, manual, i), timeout=12)
                 if rc_net != 0:
                     self.cleanup_containers()
                     return {"ok": False, "error": f"No se pudo crear la red {RUNTIME} ({net}): {out_net}"}
@@ -536,9 +600,21 @@ class ChaosEngine:
                         "error": f"No se pudo conectar el nodo '{role}' a sus redes: {connect_err[:260]}",
                     }
 
+                if manual:
+                    prep = _manual_prep_cmd(cname, nets)
+                    if prep:
+                        rc_p, out_p = _run_cmd(prep, timeout=15)
+                        if rc_p != 0:
+                            self.cleanup_containers()
+                            return {"ok": False, "error": f"No se pudo vaciar la red de '{role}': {out_p[:260]}"}
+
                 ip_addr = "127.0.0.1"
                 ips: dict[str, str] = {}
-                if nets:
+                if manual:
+                    # Sin IPAM no hay IPs que leer: se enseñan las «de diseño» que declara el escenario
+                    ips = _design_ips(n, nets)
+                    ip_addr = ips.get(_short_net(nets[0]), ip_addr) if nets else ip_addr
+                elif nets:
                     rc_ip, out_ip = _run_cmd(
                         [RUNTIME, "inspect", "-f", "{{json .NetworkSettings.Networks}}", cname],
                         timeout=8,
@@ -606,6 +682,7 @@ class ChaosEngine:
             # Corrector por script: una primera ejecución para conocer las etiquetas (el jugador empieza en rojo)
             if inst.get("check_script"):
                 inst["checks"] = self._run_check_script(inst["check_script"], nodes_runtime)
+                _map_checks_to_topology(inst)
 
             self.active = {
                 "id": inst["id"],
@@ -697,7 +774,11 @@ class ChaosEngine:
             if multi and not re.search(r"\b(comprueba|ok|mal)\b", blk.get("script", "")):
                 # Bloque auxiliar (p. ej. vaciar la caché de sssd antes de las sondas de otro nodo): no da sondas
                 continue
-            checks.extend(_parse_check_output(out, role, len(checks), empty))
+            parsed = _parse_check_output(out, role, len(checks), empty)
+            if blk.get("marca"):
+                for c in parsed:
+                    c["target"] = blk["marca"]
+            checks.extend(parsed)
         if not checks:
             checks = _parse_check_output("", blocks[0].get("node", "") if blocks else "", 0)
         return checks
@@ -716,6 +797,7 @@ class ChaosEngine:
                 # Se reejecuta el script: manda lo último (etiquetas y estados)
                 fresh = self._run_check_script(inst["check_script"], act["nodes_runtime"])
                 inst["checks"] = [{k: v for k, v in c.items() if k != "passed"} for c in fresh]
+                _map_checks_to_topology(inst)
                 act["last_check_map"] = {c["id"]: c["passed"] for c in fresh}
                 passed_count = sum(1 for c in fresh if c["passed"])
             for chk in ([] if inst.get("check_script") else inst.get("checks", [])):

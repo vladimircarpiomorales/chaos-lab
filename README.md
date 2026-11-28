@@ -10,8 +10,8 @@ Pensado para practicar troubleshooting de verdad (LPIC-1/2, CCNA, AZ-104, guardi
 
 ## Qué tiene
 
-- **86 escenarios** de dos tipos:
-  - **Averías** (21): llega roto y lo arreglas. Proxies y 502, cortafuegos, DNS, routing, VPN y MTU, TLS, permisos y ACL, sudo, cron, y Blue Team (fuerza bruta SSH, escaneo de puertos, exfiltración por DNS).
+- **87 escenarios** de dos tipos:
+  - **Averías** (22): llega roto y lo arreglas. Proxies y 502, cortafuegos, DNS, routing, VPN y MTU, TLS, permisos y ACL, sudo, cron, y Blue Team (fuerza bruta SSH, escaneo de puertos, exfiltración por DNS).
   - **Tareas** (65): configúralo desde cero y un corrector comprueba cada paso. Vienen en *packs* por certificación: Linux Essentials, LPIC-1 (101 y 102) y LPIC-2 · LDAP.
 - **Terminal real en cada nodo** (xterm.js por WebSocket): `vim`, `nano`, `Tab`, `Ctrl+C`… Cada nodo trae de serie nano, vim, less, curl, ss, dig y ps, y la interfaz te dice qué herramientas tiene.
 - **Esquema de la topología** (Cytoscape.js) con cada red como una caja, sus máquinas dentro y el recorrido de la petición; tras «Verificar» se pone verde donde ya funciona y rojo donde no. Clic en un nodo abre su terminal.
@@ -42,13 +42,14 @@ Elige un escenario, pulsa **▶ Desplegar**, investiga en las terminales y pulsa
 
 ## Escenarios
 
-### Packs de tareas por certificación
+### Packs por certificación
 
 | Pack | Escenarios | Imagen | Ejemplos |
 |---|---|---|---|
 | Linux Essentials (010-160) | 14 | Debian | ficheros y permisos, usuarios, búsquedas, empaquetado, scripts |
 | LPIC-1 · 101-500 | 18 | Debian y Fedora | filtros y expresiones regulares, permisos y enlaces, ext4 y MBR en una imagen, paquetes deb/rpm, procesos, vi, módulos, tmux |
 | LPIC-1 · 102-500 | 27 | Debian | entorno y scripts, cron y at, sudo y SSH, X con xauth, red e IPv6, chrony, rsyslog y logrotate, journalctl, alias de correo, GnuPG |
+| LPIC-2 · Redes (201-450) | 1 | 4 nodos: pc, 2 routers y servidor, en redes manuales sin IPAM | rutas y puertas de enlace, rutas de vuelta, nftables, /etc/hosts, tcpdump salto a salto |
 | LPIC-2 · LDAP (202-450) | 10 | 2 nodos: servidor y cliente | ldapsearch/ldapadd/ldapmodify, índices en cn=config, slapcat, ACL, StartTLS y ldaps, PAM en el cliente con SSSD |
 
 Las tareas marcan sus objetivos del temario LPI y el corrector enseña cada paso como ✔/✘ al pulsar **Verificar**.
@@ -88,13 +89,14 @@ Opcional, en un fichero `.env` en la raíz del repo (no se sube a git):
 | `CHAOS_PANEL_URL` | (vacío) | Si lo pones, sale un botón «← Panel» que vuelve a esa dirección (p. ej. tu dashboard) |
 | `CHAOS_EXPORT_DIR` | `./exports` | Dónde se guardan los post-mortem (p. ej. una carpeta de tu bóveda de Obsidian) |
 
-Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`, `chaos-lpic-debian`, `chaos-lpic-fedora`, `chaos-ldap-srv` y `chaos-ldap-cli` se construyen con `images/construir.sh` (lo hace `arrancar.sh` solo si faltan; la primera vez tarda unos minutos). Si no existen, se usan las imágenes oficiales, que funcionan pero sin las herramientas de serie.
+Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`, `chaos-lpic-debian`, `chaos-lpic-fedora`, `chaos-ldap-srv`, `chaos-ldap-cli` y `chaos-redes` se construyen con `images/construir.sh` (lo hace `arrancar.sh` solo si faltan; la primera vez tarda unos minutos). Si no existen, se usan las imágenes oficiales, que funcionan pero sin las herramientas de serie.
 
 ## Seguridad
 
 - El servidor escucha **solo en `127.0.0.1`**. No lo expongas a la red: da una shell root dentro de los contenedores a quien abra la página.
 - Rechaza (403, o cierre 1008 en el WebSocket) las peticiones que llegan desde **otra web** abierta en tu navegador (cabecera `Origin` distinta) y las que traen un `Host` desconocido (DNS rebinding). Si de verdad necesitas entrar por otro nombre o IP (p. ej. Tailscale), añádelo en `CHAOS_ALLOWED_HOSTS`.
 - Los contenedores corren como **root dentro del contenedor** (rootless desde fuera con Podman; con Docker, según tu instalación) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red.
+- Los nodos con `sysctl_rw` (routers de los labs de redes) llevan `--security-opt systempaths=unconfined` para poder hacer `sysctl -w net.ipv4.ip_forward=1`: dejan `/proc/sys` escribible en ese contenedor (sin `--privileged`; `kernel.*` sigue denegado).
 - Todo ocurre en redes aisladas `chaoslab-*`; `--parar` borra contenedores y redes.
 - El usuario de prácticas `alumno` tiene la contraseña `alumno`: solo existe dentro de los contenedores.
 

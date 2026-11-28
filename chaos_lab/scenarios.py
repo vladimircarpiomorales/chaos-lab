@@ -2053,6 +2053,7 @@ SCENARIO_CATALOG += load_pack("lpic1_102")
 SCENARIO_CATALOG += load_pack("lpic1_101")
 SCENARIO_CATALOG += load_pack("essentials_010")
 SCENARIO_CATALOG += load_pack("lpic2_ldap")
+SCENARIO_CATALOG += load_pack("redes")
 
 SCENARIOS_BY_ID: dict[str, dict[str, Any]] = {s["id"]: s for s in SCENARIO_CATALOG}
 

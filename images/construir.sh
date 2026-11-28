@@ -22,7 +22,7 @@ construir_ldap() {
     done
 }
 LDAP_HECHO=0
-for nombre in "${@:-debian lpic-debian lpic-fedora rocky nginx redis ldap-srv}"; do
+for nombre in "${@:-debian lpic-debian lpic-fedora rocky nginx redis ldap-srv redes}"; do
     for n in $nombre; do
         case "$n" in
             ldap-srv|ldap-cli|ldap)
