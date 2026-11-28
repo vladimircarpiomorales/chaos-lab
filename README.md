@@ -83,6 +83,7 @@ Opcional, en un fichero `.env` en la raíz del repo (no se sube a git):
 |---|---|---|
 | `CHAOS_PORT` | `7820` | Puerto de la interfaz web |
 | `CHAOS_HOST` | `127.0.0.1` | Dirección de escucha (déjala en local, ver *Seguridad*) |
+| `CHAOS_ALLOWED_HOSTS` | (vacío) | Nombres o IPs extra con los que se puede abrir la página, separados por comas |
 | `CHAOS_RUNTIME` | autodetección | `podman` o `docker` |
 | `CHAOS_PANEL_URL` | (vacío) | Si lo pones, sale un botón «← Panel» que vuelve a esa dirección (p. ej. tu dashboard) |
 | `CHAOS_EXPORT_DIR` | `./exports` | Dónde se guardan los post-mortem (p. ej. una carpeta de tu bóveda de Obsidian) |
@@ -92,6 +93,7 @@ Las imágenes `chaos-debian`, `chaos-rocky`, `chaos-nginx`, `chaos-redis`, `chao
 ## Seguridad
 
 - El servidor escucha **solo en `127.0.0.1`**. No lo expongas a la red: da una shell root dentro de los contenedores a quien abra la página.
+- Rechaza (403, o cierre 1008 en el WebSocket) las peticiones que llegan desde **otra web** abierta en tu navegador (cabecera `Origin` distinta) y las que traen un `Host` desconocido (DNS rebinding). Si de verdad necesitas entrar por otro nombre o IP (p. ej. Tailscale), añádelo en `CHAOS_ALLOWED_HOSTS`.
 - Los contenedores corren como **root dentro del contenedor** (rootless desde fuera con Podman; con Docker, según tu instalación) y algunos escenarios piden `NET_ADMIN`/`NET_RAW` para tocar rutas y cortafuegos **dentro** de su propia red.
 - Todo ocurre en redes aisladas `chaoslab-*`; `--parar` borra contenedores y redes.
 - El usuario de prácticas `alumno` tiene la contraseña `alumno`: solo existe dentro de los contenedores.

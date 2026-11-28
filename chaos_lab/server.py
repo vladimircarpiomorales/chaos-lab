@@ -7,9 +7,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-from fastapi import FastAPI, HTTPException, WebSocket
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request, WebSocket
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -22,6 +23,54 @@ STATIC_DIR = BASE_DIR / "static"
 
 app = FastAPI(title="Chaos Lab — Linux & Network Incident Simulator", version="1.0.0")
 engine = ChaosEngine()
+
+# ---------- Protección del servidor local ----------
+# Escuchar en 127.0.0.1 no basta: cualquier web abierta en el navegador puede intentar hablar con
+# http://127.0.0.1:7820 (CSRF) o abrir ws://127.0.0.1:7820/ws/terminal/... (CSWSH) y conseguir una
+# shell root en el contenedor; y un dominio con DNS rebinding puede hacerse pasar por «mismo origen».
+# Defensas: 1) la cabecera Host tiene que ser un nombre permitido (frena el DNS rebinding);
+#           2) si el navegador manda Origin, tiene que ser esta misma página (frena CSRF y CSWSH).
+# Las herramientas locales (curl, arrancar.sh) no mandan Origin y siguen funcionando.
+_LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
+
+
+def _allowed_hosts() -> set[str]:
+    hosts = set(_LOCAL_HOSTS)
+    bind = os.environ.get("CHAOS_HOST", "").strip()
+    if bind and bind not in ("0.0.0.0", "::"):
+        hosts.add(bind.strip("[]").lower())
+    extra = os.environ.get("CHAOS_ALLOWED_HOSTS", "")  # p. ej. «miportatil.tailnet.ts.net,100.64.0.5»
+    hosts.update(h.strip().strip("[]").lower() for h in extra.split(",") if h.strip())
+    return hosts
+
+
+def _hostname(netloc: str) -> str:
+    """Nombre sin puerto de un «host:puerto» (también IPv6 entre corchetes)."""
+    try:
+        return (urlsplit(f"//{netloc}").hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def request_is_allowed(host_header: str | None, origin: str | None) -> bool:
+    host_header = (host_header or "").strip().lower()
+    if not host_header or _hostname(host_header) not in _allowed_hosts():
+        return False
+    if origin is None:
+        return True  # cliente local que no es un navegador (curl, scripts)
+    try:
+        o = urlsplit(origin.strip())
+    except ValueError:
+        return False
+    return o.scheme in ("http", "https") and o.netloc.lower() == host_header
+
+
+@app.middleware("http")
+async def local_guard(request: Request, call_next):
+    if not request_is_allowed(request.headers.get("host"), request.headers.get("origin")):
+        return PlainTextResponse("Origen no permitido", status_code=403)
+    return await call_next(request)
+
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
@@ -156,6 +205,10 @@ async def api_export_vault() -> JSONResponse:
 
 @app.websocket("/ws/terminal/{role}")
 async def ws_terminal(websocket: WebSocket, role: str) -> None:
+    # El middleware http no pasa por los WebSocket: misma comprobación aquí, antes de aceptar.
+    if not request_is_allowed(websocket.headers.get("host"), websocket.headers.get("origin")):
+        await websocket.close(code=1008)  # policy violation
+        return
     node = engine.get_node_runtime(role)
     if not node:
         await websocket.accept()

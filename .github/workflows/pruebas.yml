@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Dependencias
-        run: pip install -r requirements.txt pytest
+        run: pip install -r requirements.txt pytest httpx
       - name: Coherencia de escenarios, esquemas y reglas sin spoilers
         run: python -m pytest -q tests
       - name: Sintaxis de scripts y JS
