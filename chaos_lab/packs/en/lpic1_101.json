@@ -270,7 +270,8 @@
       "hijos.txt: la hija no ve VAR_LOCAL y sí ve VAR_EXPORTADA": "hijos.txt: the child does not see VAR_LOCAL and does see VAR_EXPORTADA",
       "env.txt: solo VAR_EXPORTADA, con su valor": "env.txt: only VAR_EXPORTADA, with its value",
       "printenv.txt: el valor de VAR_EXPORTADA": "printenv.txt: the value of VAR_EXPORTADA",
-      "unset.txt: VAR_EXPORTADA ya no existe": "unset.txt: VAR_EXPORTADA no longer exists"
+      "unset.txt: VAR_EXPORTADA ya no existe": "unset.txt: VAR_EXPORTADA no longer exists",
+      "comillas.txt: dos veces $HOME sin expandir": "comillas.txt: $HOME twice, unexpanded"
     }
   },
   "lpic1-multiplexor-tmux": {

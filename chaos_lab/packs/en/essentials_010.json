@@ -195,7 +195,8 @@
       "entorno.txt: solo la línea ORDEN=desc de env": "entorno.txt: only the ORDEN=desc line from env",
       "borrada.txt: ORDEN ya no existe": "borrada.txt: ORDEN no longer exists",
       "ls.txt: la ruta de ls": "ls.txt: the path to ls",
-      "cd.txt: la shell confirma que cd es una orden interna (builtin)": "cd.txt: the shell confirms that cd is a builtin"
+      "cd.txt: la shell confirma que cd es una orden interna (builtin)": "cd.txt: the shell confirms that cd is a builtin",
+      "comillas.txt: dos veces $HOME sin expandir": "comillas.txt: $HOME twice, unexpanded"
     }
   },
   "lpie-almacenamiento-datos": {

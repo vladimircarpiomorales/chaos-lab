@@ -100,7 +100,8 @@
     "solution_summary": "The private key stays in `/root/.ssh`, and the public key is added to `ina`'s `authorized_keys`, which must be owned by `ina` with mode `600` inside a `.ssh` directory with mode `700`. The `Host servidor-lab` block in `~/.ssh/config` sets alias, destination, user, port, and key; `ssh -G` shows the resulting configuration without connecting.",
     "checks": {
       "/home/ina/.ssh (700) y authorized_keys (600) son de ina y tienen tu clave pública": "/home/ina/.ssh (700) and authorized_keys (600) are owned by ina and contain your public key",
-      "ssh -G servidor-lab: 127.0.0.1, usuario ina, puerto 2222 y la clave lab_ed25519": "ssh -G servidor-lab shows 127.0.0.1, user ina, port 2222, and key lab_ed25519"
+      "ssh -G servidor-lab: 127.0.0.1, usuario ina, puerto 2222 y la clave lab_ed25519": "ssh -G servidor-lab shows 127.0.0.1, user ina, port 2222, and key lab_ed25519",
+      "hay un par ed25519 en /root/.ssh/lab_ed25519, sin frase de paso, con el comentario root@lpi-lab": "there is an ed25519 key pair in /root/.ssh/lab_ed25519, with no passphrase and the comment root@lpi-lab"
     }
   },
   "lpic1-xvfb": {
@@ -224,7 +225,9 @@
     "checks": {
       "puerta.txt: la puerta de enlace por defecto": "puerta.txt: the default gateway",
       "interfaz.txt: la interfaz de la ruta por defecto": "interfaz.txt: the interface of the default route",
-      "direccion.txt: ninguna": "direccion.txt: none"
+      "direccion.txt: ninguna": "direccion.txt: ninguna (the literal word)",
+      "mtu.txt: la MTU de lo": "mtu.txt: the MTU of lo",
+      "direccion.txt: una IPv4 con prefijo de la interfaz de la ruta por defecto": "direccion.txt: an IPv4 address with prefix from the default route's interface"
     }
   },
   "lpic1-ss-nc": {
@@ -313,7 +316,7 @@
     "checks": {
       "existe /etc/cron.d/copia": "the file /etc/cron.d/copia exists",
       "la línea es: 30 2 * * * root .../copia.sh": "the line is: 30 2 * * * root .../copia.sh",
-      "campos.txt: minuto hora dia mes semana": "campos.txt: minute hour day month week"
+      "campos.txt: minuto hora dia mes semana": "campos.txt: minuto hora dia mes semana (the Spanish words, in that order)"
     }
   },
   "lpic1-suid": {
@@ -352,7 +355,7 @@
   },
   "lpic1-zonahoraria": {
     "title": "Time zone without timedatectl and dates with date",
-    "briefing": "The container has no `timedatectl` (no systemd), so you'll do it by hand. You need `sudo`:\n1. Change the system time zone to `America/Bogota`: `/etc/localtime` must be a symbolic link to its file under `/usr/share/zoneinfo`.\n2. Without changing the system zone, save to `tokio.txt` the abbreviation of the `Asia/Tokyo` zone (the one given by `date +%Z`, with the `TZ` variable set only for that command).\n3. Save to `epoch.txt` the UTC date, in `AAAA-MM-DD` format, of the instant `1564013011` (seconds since the epoch).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-zonahoraria`); files requested without a path go there.",
+    "briefing": "The container has no `timedatectl` (no systemd), so you'll do it by hand. You need `sudo`:\n1. Change the system time zone to `America/Bogota`: `/etc/localtime` must be a symbolic link to its file under `/usr/share/zoneinfo`.\n2. Without changing the system zone, save to `tokio.txt` the abbreviation of the `Asia/Tokyo` zone (the one given by `date +%Z`, with the `TZ` variable set only for that command).\n3. Save to `epoch.txt` the UTC date, in `YYYY-MM-DD` format, of the instant `1564013011` (seconds since the epoch).\nYour terminal opens in the challenge directory (`/home/alumno/retos/r102-zonahoraria`); files requested without a path go there.",
     "blind_alert": "REQUEST [TIME] · The server must switch to Bogotá time and two date conversions must be documented.",
     "hints": [
       "The system zone is a link to a file in the time zone database. An environment variable lets you test another zone without touching the system.",
@@ -424,7 +427,12 @@
       "logrotate -d no da errores": "logrotate -d gives no errors",
       "existe acceso.log.1 sin comprimir con las líneas antiguas": "acceso.log.1 exists uncompressed with the old lines",
       "no hay acceso.log.1.gz (delaycompress)": "there is no acceso.log.1.gz (delaycompress)",
-      "acceso.log nuevo, vacío, con permisos 640 y grupo adm": "acceso.log is new, empty, with 640 permissions and group adm"
+      "acceso.log nuevo, vacío, con permisos 640 y grupo adm": "acceso.log is new, empty, with 640 permissions and group adm",
+      "rotación semanal": "weekly rotation",
+      "compresión": "compression",
+      "compresión aplazada un ciclo": "compression delayed by one cycle",
+      "no falla si falta el fichero": "does not fail if the file is missing",
+      "no rota ficheros vacíos": "does not rotate empty files"
     }
   },
   "lpic1-diario": {

@@ -14,7 +14,7 @@ import pytest
 
 PACKS = Path(__file__).resolve().parent.parent / "chaos_lab" / "packs"
 PACK_NAMES = sorted(p.stem for p in PACKS.glob("*.json"))
-LABEL_RE = re.compile(r'comprueba\s+"((?:[^"\\]|\\.)*)"')
+LABEL_RE = re.compile(r"""comprueba\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')""")
 CODE_RE = re.compile(r"`([^`\n]+)`")
 TEXT_FIELDS = ("title", "briefing", "blind_alert", "solution_summary")
 
@@ -37,6 +37,16 @@ PLANTILLAS_OK = {
     "echo 'echo recordatorio > RUTA/recordatorio.txt' | at now + 2 hours": "echo 'echo recordatorio > PATH/recordatorio.txt' | at now + 2 hours",
     "usuario ALL=(destino) NOPASSWD: /ruta/cmd args, /ruta/otro": "user ALL=(target) NOPASSWD: /path/cmd args, /path/other",
     "visudo -cf FICHERO": "visudo -cf FILE",
+    "AAAA-MM-DD": "YYYY-MM-DD",
+}
+
+
+# Etiquetas que el corrector calcula al ejecutar (bucles, $VAR, $(…)) con su texto real en el contenedor:
+# también se traducen y se aceptan como claves de checks.
+ETIQUETAS_DE_EJECUCION = {
+    "lpic1-claves-ssh": ["hay un par ed25519 en /root/.ssh/lab_ed25519, sin frase de paso, con el comentario root@lpi-lab"],
+    "lpic1-logrotate": ["rotación semanal", "compresión", "compresión aplazada un ciclo",
+                        "no falla si falta el fichero", "no rota ficheros vacíos"],
 }
 
 
@@ -61,8 +71,13 @@ def static_labels(sc):
     out = []
     for s in _scripts(sc):
         for m in LABEL_RE.finditer(s):
-            lab = m.group(1).replace('\\"', '"').replace("\\\\", "\\").strip()
-            if "$" not in lab and lab not in out:
+            if m.group(1) is not None:  # entre comillas dobles: $ se expande al ejecutar
+                lab = m.group(1).replace('\\"', '"').replace("\\\\", "\\").strip()
+                if "$" in lab:
+                    continue
+            else:  # entre comillas simples: literal, $ incluido
+                lab = m.group(2).strip()
+            if lab not in out:
                 out.append(lab)
     return out
 
@@ -84,7 +99,7 @@ def test_traduccion_encaja_con_el_original(name, sid):
         assert isinstance(en.get(f), str) and en[f].strip(), f"{sid}: falta {f}"
     assert len(en.get("hints") or []) == len(sc["hints"]), f"{sid}: número de pistas distinto"
 
-    labels = static_labels(sc)
+    labels = static_labels(sc) + ETIQUETAS_DE_EJECUCION.get(sid, [])
     cm = en.get("checks") or {}
     assert isinstance(cm, dict), f"{sid}: checks debe ser {{etiqueta en español: inglés}}"
     faltan = [l for l in labels if not (isinstance(cm.get(l), str) and cm[l].strip())]
