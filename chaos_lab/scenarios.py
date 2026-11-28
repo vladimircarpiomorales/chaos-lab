@@ -9,6 +9,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
+from .i18n_codigo import apply_en
 from .packs import load_pack
 from .scenarios_secops import build_dns_exfil, build_portscan_detect, build_ssh_bruteforce
 
@@ -1173,7 +1174,7 @@ chmod +x /usr/local/bin/wg-apply
 """
 
     return {
-        "vars": {"real_port": real_port, "subnet_oct": subnet_oct, "token": token},
+        "vars": {"real_port": real_port, "wrong_port": wrong_port, "subnet_oct": subnet_oct, "token": token},
         "nodes": [
             {
                 "role": "hq-vpn-gw",
@@ -2065,7 +2066,7 @@ def instantiate_scenario(scenario_id: str, seed: int | None = None) -> dict[str,
     actual_seed = seed if seed is not None else random.randint(100000, 999999)
     rng = random.Random(actual_seed)
     built = meta["builder"](rng)
-    return {
+    inst = {
         "id": meta["id"],
         "title": meta["title"],
         "category": meta["category"],
@@ -2080,3 +2081,5 @@ def instantiate_scenario(scenario_id: str, seed: int | None = None) -> dict[str,
         "seed": actual_seed,
         **built,
     }
+    apply_en(inst)  # inglés de los escenarios en código (los packs traen el suyo en packs/en/)
+    return inst

@@ -768,7 +768,7 @@ def build_dns_exfil(rng: random.Random) -> dict[str, Any]:
 
     marker = hidden.lstrip(".")
     return {
-        "vars": {"zone": zone, "c2_domain": domain, "hidden_dir": path_dir, "cron_mode": cron_mode},
+        "vars": {"zone": zone, "c2_domain": domain, "hidden_dir": path_dir, "cron_mode": cron_mode, "script": script, "cron_name": cron_name},
         "nodes": [
             {"role": "corp-dns", "distro": "debian", "shell": "/bin/bash", "default_user": "root", "setup_timeout": 90, "setup_sh": corp},
             {"role": "ns-externo", "distro": "debian", "shell": "/bin/bash", "default_user": "root", "setup_timeout": 90, "setup_sh": rogue},

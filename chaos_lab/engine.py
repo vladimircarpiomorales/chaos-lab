@@ -598,7 +598,7 @@ class ChaosEngine:
                         "tags": item["tags"],
                         "certs": item.get("certs", []),
                         "briefing": item["briefing"],
-                        "i18n": _catalog_i18n(item),
+                        "i18n": _catalog_i18n(item) or _catalog_i18n(sample),  # código: el inglés sale de la muestra (sin pistas/look/sondas)
                         "tipo": item.get("tipo", "averia"),
                         "node_count": len(sample["nodes"]),
                         "nodes": [n["role"] for n in sample["nodes"]],

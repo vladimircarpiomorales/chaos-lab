@@ -58,7 +58,8 @@ def test_catalogo_solo_expone_titulo_y_briefing_en_ingles():
         assert secreto not in blob
     # los escenarios sin traducción no llevan clave vacía engañosa: i18n es {} y el español sigue completo
     sin = [x for x in view["scenarios"] if x["id"] != SID and "i18n" in x and x["i18n"]]
-    assert sin == []  # solo el ejemplo está traducido
+    from chaos_lab.i18n_codigo import EN
+    assert [x["id"] for x in sin if x["id"] not in EN] == []  # solo el ejemplo y los escenarios en código están traducidos
 
 
 def test_catalog_i18n_ignora_campos_vacios_o_ajenos():
