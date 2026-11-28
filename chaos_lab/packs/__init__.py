@@ -21,7 +21,9 @@ rutas, las pone el `preparar` de cada nodo). Cada nodo declara `redes` (sus rede
 Campos de cada objeto: id, reto (id original, es el nombre del directorio), title, briefing, hints (3),
 solution_summary, difficulty, points, estimated_min, tipo, certs, tags, objetivos_lpi, category, blind_alert,
 preparar, comprobar; opcional `i18n` ({"en": {title, briefing, hints[], solution_summary, blind_alert}}: traducción
-al inglés, cada campo opcional; el español sigue siendo la fuente y el respaldo); opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
+al inglés, cada campo opcional; el español sigue siendo la fuente y el respaldo; lo normal es dejarla en
+packs/en/<pack>.json como {id: {…}}, con además checks[] (etiquetas de las sondas en orden), nodes{rol: {runs, look[]}}
+y links[] (via de cada enlace)); opcional `distro` (por defecto lpic-debian; el reto RPM usa lpic-fedora).
 """
 
 from __future__ import annotations
@@ -147,8 +149,13 @@ def _builder_multi(item: dict[str, Any]) -> Callable[[random.Random], dict[str, 
 def load_pack(name: str) -> list[dict[str, Any]]:
     """Entradas de SCENARIO_CATALOG del pack `name` (chaos_lab/packs/<name>.json)."""
     items = json.loads((PACKS_DIR / f"{name}.json").read_text(encoding="utf-8"))
+    # Traducción inglesa aparte, para no tocar el pack en español: packs/en/<name>.json = {id: {title, briefing, …}}
+    en_file = PACKS_DIR / "en" / f"{name}.json"
+    en_map = json.loads(en_file.read_text(encoding="utf-8")) if en_file.exists() else {}
     out = []
     for it in items:
+        if not it.get("i18n") and isinstance(en_map.get(it["id"]), dict):
+            it = {**it, "i18n": {"en": en_map[it["id"]]}}
         out.append(
             {
                 "id": it["id"],

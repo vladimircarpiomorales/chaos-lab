@@ -46,6 +46,7 @@ async def stream_container_pty(
     websocket: WebSocket,
     node_info: dict[str, Any],
     on_command_line=None,
+    lang: str = "es",
 ) -> None:
     await websocket.accept()
 
@@ -112,15 +113,15 @@ async def stream_container_pty(
 
     async def _pty_to_ws() -> None:
         banner = (
-            f"\x1b[1;38;5;45m⚡ Conectado a nodo \x1b[1;97m{role}\x1b[1;38;5;45m "
-            f"({node_info.get('ip', 'local')}) · imagen {node_info.get('image', '')}\x1b[0m\r\n"
+            f"\x1b[1;38;5;45m⚡ {'Connected to node' if lang == 'en' else 'Conectado a nodo'} \x1b[1;97m{role}\x1b[1;38;5;45m "
+            f"({node_info.get('ip', 'local')}) · {'image' if lang == 'en' else 'imagen'} {node_info.get('image', '')}\x1b[0m\r\n"
         )
         await websocket.send_text(json.dumps({"type": "output", "data": banner}))
         while True:
             chunk = await out_queue.get()
             if chunk is None:
                 await websocket.send_text(
-                    json.dumps({"type": "output", "data": "\r\n\x1b[33m[Sesión de terminal finalizada]\x1b[0m\r\n"})
+                    json.dumps({"type": "output", "data": "\r\n\x1b[33m[" + ("Terminal session ended" if lang == "en" else "Sesión de terminal finalizada") + "]\x1b[0m\r\n"})
                 )
                 break
             text = chunk.decode("utf-8", errors="replace")

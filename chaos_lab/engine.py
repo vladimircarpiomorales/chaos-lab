@@ -333,27 +333,71 @@ def _en_text(v: Any) -> str:
     return v if isinstance(v, str) and v.strip() else ""
 
 
+def _en_of(item: dict[str, Any]) -> dict[str, Any]:
+    en = (item.get("i18n") or {}).get("en")
+    return en if isinstance(en, dict) else {}
+
+
+def _en_nodes(en: dict[str, Any], with_look: bool) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for role, nd in (en.get("nodes") or {}).items():
+        if not isinstance(nd, dict):
+            continue
+        v: dict[str, Any] = {}
+        if _en_text(nd.get("runs")):
+            v["runs"] = nd["runs"]
+        if with_look and isinstance(nd.get("look"), list):
+            v["look"] = [_en_text(x) for x in nd["look"]]
+        if v:
+            out[role] = v
+    return out
+
+
+def _en_list(v: Any) -> list[str]:
+    return [_en_text(x) for x in v] if isinstance(v, list) else []
+
+
 def _catalog_i18n(item: dict[str, Any]) -> dict[str, Any]:
-    """Traducción inglesa PÚBLICA de una ficha del catálogo: solo título y briefing (nunca pistas ni solución)."""
-    en = (item.get("i18n") or {}).get("en") or {}
-    out = {k: _en_text(en.get(k)) for k in ("title", "briefing")}
-    out = {k: v for k, v in out.items() if v}
+    """Traducción inglesa PÚBLICA de una ficha del catálogo: lo mismo que enseña la vista previa en español
+    (título, briefing, qué corre en cada máquina y por dónde van los enlaces); nunca pistas, look ni solución."""
+    en = _en_of(item)
+    out: dict[str, Any] = {k: en[k] for k in ("title", "briefing") if _en_text(en.get(k))}
+    nodes = _en_nodes(en, with_look=False)
+    if nodes:
+        out["nodes"] = nodes
+    if _en_list(en.get("links")):
+        out["links"] = _en_list(en.get("links"))
     return {"en": out} if out else {}
 
 
 def _active_i18n(inst: dict[str, Any], hints_used: int, blind: bool, solved: bool) -> dict[str, Any]:
     """Traducción inglesa del escenario activo, con el MISMO filtrado que la vista en español: en modo ciego solo la
-    alerta (ni título ni briefing), solo las pistas ya desbloqueadas y la solución solo tras resolver."""
-    en = (inst.get("i18n") or {}).get("en") or {}
+    alerta y las señales (ni título, ni briefing, ni sondas, ni qué corre en cada nodo), solo las pistas ya
+    desbloqueadas y la solución solo tras resolver."""
+    en = _en_of(inst)
     out: dict[str, Any] = {}
     if blind:
         if _en_text(en.get("blind_alert")):
             out["description"] = en["blind_alert"]
+        entry = en.get("entry") if isinstance(en.get("entry"), dict) else {}
+        if _en_text(entry.get("label")):
+            out["entry"] = {"label": entry["label"]}
     else:
         if _en_text(en.get("title")):
             out["title"] = en["title"]
         if _en_text(en.get("briefing")):
             out["description"] = en["briefing"]
+        if _en_list(en.get("checks")):
+            out["checks"] = _en_list(en.get("checks"))
+        nodes = _en_nodes(en, with_look=True)
+        if nodes:
+            out["nodes"] = nodes
+        if _en_list(en.get("links")):
+            out["links"] = _en_list(en.get("links"))
+        entry = en.get("entry") if isinstance(en.get("entry"), dict) else {}
+        e = {k: entry[k] for k in ("label", "via") if _en_text(entry.get(k))}
+        if e:
+            out["entry"] = e
     hints = en.get("hints")
     if isinstance(hints, list) and hints_used > 0:
         out["hints"] = [_en_text(h) for h in hints[:hints_used]]

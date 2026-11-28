@@ -51,7 +51,7 @@ def test_ejemplo_redes_trae_ingles():
 def test_catalogo_solo_expone_titulo_y_briefing_en_ingles():
     view = ChaosEngine().get_catalog_view()
     s = next(x for x in view["scenarios"] if x["id"] == SID)
-    assert set(s["i18n"]["en"]) == {"title", "briefing"}
+    assert set(s["i18n"]["en"]) <= {"title", "briefing", "nodes", "links"}
     assert s["i18n"]["en"]["title"].startswith("The intranet")
     blob = json.dumps(s["i18n"], ensure_ascii=False)
     for secreto in ("hints", "solution_summary", "blind_alert", "nftables rule on `srv`"):
@@ -64,7 +64,7 @@ def test_catalogo_solo_expone_titulo_y_briefing_en_ingles():
 def test_catalog_i18n_ignora_campos_vacios_o_ajenos():
     assert _catalog_i18n({}) == {}
     assert _catalog_i18n({"i18n": {"en": {"title": " ", "hints": ["x"], "solution_summary": "s"}}}) == {}
-    assert _catalog_i18n({"i18n": {"en": {"title": "T", "look": ["x"]}}}) == {"en": {"title": "T"}}
+    assert _catalog_i18n({"i18n": {"en": {"title": "T", "look": ["x"], "checks": ["c"]}}}) == {"en": {"title": "T"}}
 
 
 # ---------- Vista activa: mismo filtrado que el español ----------
@@ -111,10 +111,39 @@ def test_activa_sin_traduccion_no_trae_clave_en():
     assert _active_i18n({}, 3, False, True) == {}
 
 
-def test_activa_no_filtra_look_ni_otros_campos():
-    inst_en = dict(EN, look=["SECRETO"], checks=["SECRETO"], extra="SECRETO")
-    v = _motor_activo(hints_used=3, solved=True, i18n={"en": inst_en}).public_active_view()
-    assert "SECRETO" not in json.dumps(v["i18n"])
+COMPLETO = dict(
+    EN,
+    checks=["EN probe 1"],
+    nodes={"pc1": {"runs": "EN runs", "look": ["EN look"]}},
+    links=["EN via"],
+    entry={"label": "EN you", "via": "EN entry via"},
+    extra="SECRETO",
+)
+
+
+def test_activa_traduce_sondas_nodos_y_enlaces_sin_campos_ajenos():
+    en = _motor_activo(i18n={"en": COMPLETO}).public_active_view()["i18n"]["en"]
+    assert en["checks"] == ["EN probe 1"]
+    assert en["nodes"] == {"pc1": {"runs": "EN runs", "look": ["EN look"]}}
+    assert en["links"] == ["EN via"] and en["entry"] == {"label": "EN you", "via": "EN entry via"}
+    assert "SECRETO" not in json.dumps(en)
+
+
+def test_activa_modo_guardia_no_traduce_sondas_ni_esquema():
+    v = _motor_activo(blind=True, i18n={"en": COMPLETO}).public_active_view()
+    en = v["i18n"]["en"]
+    assert set(en) <= {"description", "entry", "hints"}
+    assert en.get("entry") == {"label": "EN you"}  # la entrada sin «via», igual que el español a ciegas
+    blob = json.dumps(en)
+    for x in ("EN probe", "EN runs", "EN look", "EN via", "EN entry via"):
+        assert x not in blob
+
+
+def test_catalogo_traduce_maquinas_y_enlaces_pero_no_look():
+    out = _catalog_i18n({"i18n": {"en": COMPLETO}})["en"]
+    assert out["nodes"] == {"pc1": {"runs": "EN runs"}} and out["links"] == ["EN via"]
+    blob = json.dumps(out)
+    assert "EN look" not in blob and "EN probe" not in blob and "SECRETO" not in blob
 
 
 # ---------- Diccionarios de la interfaz ----------

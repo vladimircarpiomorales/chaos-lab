@@ -4,6 +4,7 @@ Servidor FastAPI + WebSocket para Chaos Lab.
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -104,6 +105,11 @@ class LaunchRequest(BaseModel):
 
 class MentorRequest(BaseModel):
     question: str = ""
+    lang: str = "es"
+
+
+def _lang(v: str | None) -> str:
+    return "en" if (v or "").lower().startswith("en") else "es"
 
 
 @app.get("/")
@@ -175,14 +181,14 @@ async def api_reveal() -> JSONResponse:
 async def api_mentor(req: MentorRequest) -> JSONResponse:
     if not engine.active:
         return JSONResponse({"ok": False, "error": "No hay un laboratorio activo."}, status_code=400)
-    return JSONResponse(ask_socratic_mentor(engine.active, req.question))
+    return JSONResponse(ask_socratic_mentor(engine.active, req.question, _lang(req.lang)))
 
 
 @app.get("/api/lab/postmortem")
-async def api_postmortem() -> JSONResponse:
+async def api_postmortem(lang: str = "es") -> JSONResponse:
     if not engine.active:
         raise HTTPException(status_code=400, detail="No hay un laboratorio activo.")
-    md = build_postmortem_markdown(engine.active)
+    md = build_postmortem_markdown(engine.active, _lang(lang))
     return JSONResponse(
         {
             "ok": True,
@@ -196,13 +202,13 @@ BASE_EXPORT_DIR = Path(__file__).resolve().parent.parent / "exports"
 
 
 @app.post("/api/lab/export-vault")
-async def api_export_vault() -> JSONResponse:
+async def api_export_vault(lang: str = "es") -> JSONResponse:
     if not engine.active:
         return JSONResponse({"ok": False, "error": "No hay un laboratorio activo."}, status_code=400)
     import datetime as _dt
     import re as _re
 
-    md = build_postmortem_markdown(engine.active)
+    md = build_postmortem_markdown(engine.active, _lang(lang))
     # Carpeta de exportación: CHAOS_EXPORT_DIR (p. ej. una carpeta de tu bóveda de Obsidian) o ./exports
     dest_dir = Path(os.path.expanduser(os.environ.get("CHAOS_EXPORT_DIR", str(BASE_EXPORT_DIR))))
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -270,13 +276,15 @@ async def ws_terminal(websocket: WebSocket, role: str) -> None:
     node = engine.get_node_runtime(role)
     if not node:
         await websocket.accept()
-        await websocket.send_text('{"type":"output","data":"\\r\\n[No hay contenedor activo para este nodo]\\r\\n"}')
+        msg = "No active container for this node" if _lang(websocket.query_params.get("lang")) == "en" else "No hay contenedor activo para este nodo"
+        await websocket.send_text(json.dumps({"type": "output", "data": f"\r\n[{msg}]\r\n"}))
         await websocket.close()
         return
     await stream_container_pty(
         websocket=websocket,
         node_info=node,
         on_command_line=engine.record_command_line,
+        lang=_lang(websocket.query_params.get("lang")),
     )
 
 

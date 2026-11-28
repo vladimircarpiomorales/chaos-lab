@@ -54,7 +54,8 @@ def collect_timeline(active: dict[str, Any]) -> list[dict[str, Any]]:
     inst = active["instance"]
     by_role = {n["role"]: n for n in active["nodes_runtime"]}
     events: list[dict[str, Any]] = []
-    for sig in inst.get("signals") or []:
+    en_signals = (((inst.get("i18n") or {}).get("en") or {}).get("signals")) or []
+    for i, sig in enumerate(inst.get("signals") or []):
         node = by_role.get(sig["node"])
         if not node:
             continue
@@ -76,6 +77,10 @@ def collect_timeline(active: dict[str, Any]) -> list[dict[str, Any]]:
             text = sig["text"].format(*parts)
         except (ValueError, IndexError):
             continue
+        try:  # misma plantilla en inglés (i18n.en.signals[i]); si falta o falla, la UI usa el español
+            text_en = en_signals[i].format(*parts) if i < len(en_signals) and isinstance(en_signals[i], str) else ""
+        except (ValueError, IndexError):
+            text_en = ""
         events.append(
             {
                 "epoch": epoch,
@@ -83,6 +88,7 @@ def collect_timeline(active: dict[str, Any]) -> list[dict[str, Any]]:
                 "node": sig["node"],
                 "sev": sig.get("sev", "info"),
                 "text": text,
+                "text_en": text_en,
             }
         )
     if not events:
@@ -96,36 +102,64 @@ def collect_timeline(active: dict[str, Any]) -> list[dict[str, Any]]:
             "node": "pagerduty",
             "sev": "crit",
             "text": "PagerDuty dispara la alerta de guardia: varias señales correlacionadas apuntan a un incidente de seguridad",
+            "text_en": "PagerDuty fires the on-call alert: several correlated signals point to a security incident",
         }
     )
     return events
 
 
-def ask_socratic_mentor(active: dict[str, Any], user_question: str = "") -> dict[str, Any]:
+def _en(inst: dict[str, Any]) -> dict[str, Any]:
+    en = (inst.get("i18n") or {}).get("en")
+    return en if isinstance(en, dict) else {}
+
+
+def _tr(inst: dict[str, Any], field: str, lang: str) -> Any:
+    """Campo del escenario en el idioma pedido, con respaldo al español."""
+    if lang == "en":
+        v = _en(inst).get(field)
+        if (isinstance(v, str) and v.strip()) or (isinstance(v, list) and v):
+            return v
+    return inst.get(field)
+
+
+def ask_socratic_mentor(active: dict[str, Any], user_question: str = "", lang: str = "es") -> dict[str, Any]:
+    en = lang == "en"
     inst = active["instance"]
     blind = active["blind_mode"] and not active["solved"]
     transcript = active.get("transcript", [])[-15:]
     cmds_txt = (
         "\n".join(f"- [{t['node']}] {t['cmd']}" for t in transcript)
         if transcript
-        else "(aún no se registraron comandos en la consola)"
+        else ("(no commands recorded in the console yet)" if en else "(aún no se registraron comandos en la consola)")
     )
 
     ollama = detect_ollama()
     if ollama["online"] and ollama["model"]:
-        symptom = inst["blind_alert"] if blind else inst["briefing"]
-        prompt = (
-            "Eres un Ingeniero Principal SRE ayudando a un compañero durante una guardia.\n"
-            "REGLAS ESTRICTAS:\n"
-            "1. Responde en español en máximo 3 frases directas.\n"
-            "2. Orienta qué comando de diagnóstico ejecutar o qué hipótesis comprobar según lo que ya hizo.\n"
-            "3. PROHIBIDO dar el comando final que repara el problema o revelar tokens/contraseñas.\n\n"
-            f"INCIDENTE: {symptom}\n"
-            f"NODOS: {', '.join(n['role'] for n in active['nodes_runtime'])}\n"
-            f"COMANDOS PROBADOS:\n{cmds_txt}\n"
-        )
+        symptom = _tr(inst, "blind_alert", lang) if blind else _tr(inst, "briefing", lang)
+        if en:
+            prompt = (
+                "You are a Principal SRE helping a teammate during an on-call shift.\n"
+                "STRICT RULES:\n"
+                "1. Answer in English in at most 3 direct sentences.\n"
+                "2. Suggest which diagnostic command to run or which hypothesis to test, based on what they already did.\n"
+                "3. NEVER give the final command that fixes the problem or reveal tokens/passwords.\n\n"
+                f"INCIDENT: {symptom}\n"
+                f"NODES: {', '.join(n['role'] for n in active['nodes_runtime'])}\n"
+                f"COMMANDS TRIED:\n{cmds_txt}\n"
+            )
+        else:
+            prompt = (
+                "Eres un Ingeniero Principal SRE ayudando a un compañero durante una guardia.\n"
+                "REGLAS ESTRICTAS:\n"
+                "1. Responde en español en máximo 3 frases directas.\n"
+                "2. Orienta qué comando de diagnóstico ejecutar o qué hipótesis comprobar según lo que ya hizo.\n"
+                "3. PROHIBIDO dar el comando final que repara el problema o revelar tokens/contraseñas.\n\n"
+                f"INCIDENTE: {symptom}\n"
+                f"NODOS: {', '.join(n['role'] for n in active['nodes_runtime'])}\n"
+                f"COMANDOS PROBADOS:\n{cmds_txt}\n"
+            )
         if user_question.strip():
-            prompt += f"\nDUDA DEL OPERADOR: {user_question.strip()}\n"
+            prompt += f"\n{'OPERATOR QUESTION' if en else 'DUDA DEL OPERADOR'}: {user_question.strip()}\n"
 
         body = json.dumps(
             {
@@ -159,27 +193,35 @@ def ask_socratic_mentor(active: dict[str, Any], user_question: str = "") -> dict
     tried_str = " ".join(t["cmd"] for t in transcript)
     suggestions = []
     if "ss " not in tried_str and "netstat" not in tried_str:
-        suggestions.append("Inspecciona sockets y puertos a la escucha con `ss -tulpn`.")
+        suggestions.append("Check listening sockets and ports with `ss -tulpn`." if en else "Inspecciona sockets y puertos a la escucha con `ss -tulpn`.")
     if "ps " not in tried_str:
-        suggestions.append("Revisa los procesos en ejecución con `ps aux`.")
+        suggestions.append("Look at the running processes with `ps aux`." if en else "Revisa los procesos en ejecución con `ps aux`.")
     if len(active["nodes_runtime"]) > 1 and "ip " not in tried_str:
-        suggestions.append("Verifica direcciones IP, rutas (`ip a`, `ip route`) y reglas de firewall (`nft list ruleset` o `iptables -S`) en cada nodo.")
+        suggestions.append(
+            "Check IP addresses, routes (`ip a`, `ip route`) and firewall rules (`nft list ruleset` or `iptables -S`) on each node."
+            if en else
+            "Verifica direcciones IP, rutas (`ip a`, `ip route`) y reglas de firewall (`nft list ruleset` o `iptables -S`) en cada nodo."
+        )
     if not suggestions:
         suggestions.append(
+            "You already looked at processes and the network: review recently changed config files (`/etc`, `/opt`, `/srv`), permissions/ACLs (`getfacl`, `ls -la`) or scheduled jobs (`/etc/cron.d`)."
+            if en else
             "Ya inspeccionaste procesos y red: revisa archivos de configuración recientes (`/etc`, `/opt`, `/srv`), permisos/ACLs (`getfacl`, `ls -la`) o tareas programadas (`/etc/cron.d`)."
         )
 
     return {
         "ok": True,
-        "source": "Heurística SRE Local (Ollama apagado)",
+        "source": "Local SRE heuristics (Ollama off)" if en else "Heurística SRE Local (Ollama apagado)",
         "advice": " ".join(suggestions[:2]),
     }
 
 
-def build_postmortem_markdown(active: dict[str, Any]) -> str:
+def build_postmortem_markdown(active: dict[str, Any], lang: str = "es") -> str:
     inst = active["instance"]
+    en = lang == "en"
+    T = (lambda e, s: e) if en else (lambda e, s: s)
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    status_str = "RESUELTO" if active["solved"] else "EN INVESTIGACIÓN"
+    status_str = T("RESOLVED", "RESUELTO") if active["solved"] else T("UNDER INVESTIGATION", "EN INVESTIGACIÓN")
     elapsed = active["solved_elapsed_s"] if active["solved"] else int(datetime.datetime.now().timestamp() - active["started_at"])
     mins, secs = divmod(max(0, elapsed), 60)
 
@@ -187,9 +229,14 @@ def build_postmortem_markdown(active: dict[str, Any]) -> str:
         f"- **`{n['role']}`** (`{n['image']}` · IP `{n['ip']}`)"
         for n in active["nodes_runtime"]
     )
+    labels_en = _en(inst).get("checks") if en else None
+    def _label(i: int, c: dict[str, Any]) -> str:
+        if isinstance(labels_en, list) and i < len(labels_en) and isinstance(labels_en[i], str) and labels_en[i].strip():
+            return labels_en[i]
+        return c["label"]
     checks_md = "\n".join(
-        f"- [{'x' if active['last_check_map'].get(c['id']) else ' '}] **{c['node']}**: {c['label']}"
-        for c in inst.get("checks", [])
+        f"- [{'x' if active['last_check_map'].get(c['id']) else ' '}] **{c['node']}**: {_label(i, c)}"
+        for i, c in enumerate(inst.get("checks", []))
     )
     transcript = active.get("transcript", [])
     if transcript:
@@ -198,48 +245,49 @@ def build_postmortem_markdown(active: dict[str, Any]) -> str:
             for t in transcript[-30:]
         )
     else:
-        timeline_md = "- *(Sin comandos registrados)*"
+        timeline_md = T("- *(No commands recorded)*", "- *(Sin comandos registrados)*")
 
     tl = active.get("timeline") or []
     if tl:
         icons = {"crit": "🔴", "warn": "🟠", "info": "🔵"}
         signals_md = "\n".join(
-            f"- `{e['t']}` {icons.get(e['sev'], '•')} **[{e['node']}]** {e['text']}" for e in tl
+            f"- `{e['t']}` {icons.get(e['sev'], '•')} **[{e['node']}]** {(e.get('text_en') if en else '') or e['text']}" for e in tl
         )
         signals_section = f"""
-## 1b. Línea de Tiempo de Señales Correlacionadas (alerta de guardia)
+## 1b. {T("Timeline of Correlated Signals (on-call alert)", "Línea de Tiempo de Señales Correlacionadas (alerta de guardia)")}
 {signals_md}
 """
     else:
         signals_section = ""
 
     root_cause = (
-        inst["solution_summary"]
+        _tr(inst, "solution_summary", lang)
         if active["solved"]
-        else "*(Completa todos los checks de validación para desbloquear el análisis oficial de causa raíz)*"
+        else T("*(Pass all validation checks to unlock the official root-cause analysis)*",
+               "*(Completa todos los checks de validación para desbloquear el análisis oficial de causa raíz)*")
     )
 
-    return f"""# Post-Mortem SRE: {inst['title']}
+    return f"""# {T("SRE Post-Mortem", "Post-Mortem SRE")}: {_tr(inst, "title", lang)}
 
-- **Fecha:** {now_str}
-- **ID Escenario:** `{inst['id']}` (Semilla de mutación `{inst['seed']}`)
-- **Categoría / Nivel:** {inst['category']} · {inst['difficulty']}
-- **Modo Guardia 3:00 AM:** {"Sí" if active["blind_mode"] else "No"}
-- **Estado:** **{status_str}** · Tiempo `{mins}m {secs:02d}s` · Rango `{active.get('rank') or '-'}` · Pistas usadas `{active['hints_used']}/{len(inst['hints'])}`
+- **{T("Date", "Fecha")}:** {now_str}
+- **{T("Scenario ID", "ID Escenario")}:** `{inst['id']}` ({T("mutation seed", "Semilla de mutación")} `{inst['seed']}`)
+- **{T("Category / Level", "Categoría / Nivel")}:** {inst['category']} · {inst['difficulty']}
+- **{T("3:00 AM On-Call Mode", "Modo Guardia 3:00 AM")}:** {T("Yes", "Sí") if active["blind_mode"] else "No"}
+- **{T("Status", "Estado")}:** **{status_str}** · {T("Time", "Tiempo")} `{mins}m {secs:02d}s` · {T("Rank", "Rango")} `{active.get('rank') or '-'}` · {T("Hints used", "Pistas usadas")} `{active['hints_used']}/{len(inst['hints'])}`
 
-## 1. Síntoma Reportado
-> {inst['briefing']}
+## 1. {T("Reported Symptom", "Síntoma Reportado")}
+> {_tr(inst, "briefing", lang)}
 
 {signals_section}
-## 2. Topología Afectada
+## 2. {T("Affected Topology", "Topología Afectada")}
 {nodes_md}
 
-## 3. Verificaciones de Servicio (SLO Checks)
+## 3. {T("Service Checks (SLO)", "Verificaciones de Servicio (SLO Checks)")}
 {checks_md}
 
-## 4. Cronología de Comandos Ejecutados
+## 4. {T("Command Timeline", "Cronología de Comandos Ejecutados")}
 {timeline_md}
 
-## 5. Causa Raíz y Resolución
+## 5. {T("Root Cause and Resolution", "Causa Raíz y Resolución")}
 {root_cause}
 """

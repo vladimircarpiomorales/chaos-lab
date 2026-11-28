@@ -36,6 +36,50 @@ function hintText(active, idx, es) {
   return es;
 }
 
+// Bloque i18n.en de un escenario o del lab activo (vacío si no hay o la interfaz está en español)
+const enOf = (obj) => (currentLang() === "en" && obj && obj.i18n && obj.i18n.en) || {};
+const pickEn = (v, es) => (typeof v === "string" && v.trim() ? v : es);
+
+// Etiqueta de la sonda n-ésima en el idioma activo
+function checkLabel(active, idx, es) {
+  const cs = enOf(active).checks;
+  return pickEn(Array.isArray(cs) ? cs[idx] : "", es);
+}
+
+// Esquema con los textos en el idioma activo: qué corre en cada nodo, dónde mirar, enlaces y entrada
+function topoL(topo, en) {
+  if (!topo || !en || !Object.keys(en).length) return topo;
+  const nodes = {};
+  for (const [role, n] of Object.entries(topo.nodes || {})) {
+    const e = (en.nodes || {})[role] || {};
+    nodes[role] = {
+      ...n,
+      ...(n.runs !== undefined ? { runs: pickEn(e.runs, n.runs) } : {}),
+      ...(Array.isArray(n.look) ? { look: n.look.map((x, i) => pickEn((e.look || [])[i], x)) } : {}),
+    };
+  }
+  const links = (topo.links || []).map((l, i) => (l.via !== undefined ? { ...l, via: pickEn((en.links || [])[i], l.via) } : l));
+  const ee = en.entry || {};
+  const entry = topo.entry
+    ? { ...topo.entry, ...(topo.entry.label !== undefined ? { label: pickEn(ee.label, topo.entry.label) } : {}),
+        ...(topo.entry.via !== undefined ? { via: pickEn(ee.via, topo.entry.via) } : {}) }
+    : topo.entry;
+  return { ...topo, nodes, links, entry };
+}
+
+// Nombre de una categoría en el idioma activo (el valor del filtro sigue siendo el original)
+const CAT_EN = {
+  "Incidente mayor": "Major incident",
+  "Redes y routing": "Networking & routing",
+  "Seguridad (Blue Team)": "Security (Blue Team)",
+  "Servicios web y TLS": "Web services & TLS",
+  "Sistema y permisos": "System & permissions",
+};
+function catName(c) {
+  if (currentLang() !== "en" || !c) return c;
+  return CAT_EN[c] || c.replace(/ · Redes$/, " · Networking");
+}
+
 function showToast(msg) {
   const el = $("toast");
   el.textContent = msg;
@@ -155,7 +199,7 @@ function fillFilterSelects() {
     if (!sel || sel.options.length > 1) return;
     [...new Set(values)].sort((a, b) => a.localeCompare(b, currentLang())).forEach((v) => {
       const o = document.createElement("option");
-      o.value = v; o.textContent = v; sel.appendChild(o);
+      o.value = v; o.textContent = id === "filter-category" ? catName(v) : v; sel.appendChild(o);
     });
   };
   fill("filter-category", state.scenarios.map((s) => s.category));
@@ -179,7 +223,7 @@ function renderScenarioList() {
     if (state.cert && !(sc.certs || []).includes(state.cert)) return false;
 
     if (q) {
-      const hay = [L(sc, "title"), sc.title, sc.category, sc.difficulty, diffName(sc.difficulty), ...(sc.tags || []), ...(sc.certs || []), ...(sc.nodes || [])]
+      const hay = [L(sc, "title"), sc.title, sc.category, catName(sc.category), sc.difficulty, diffName(sc.difficulty), ...(sc.tags || []), ...(sc.certs || []), ...(sc.nodes || [])]
         .join(" ")
         .toLowerCase();
       if (!hay.includes(q)) return false;
@@ -223,7 +267,7 @@ function renderScenarioList() {
             : `<span class="tags-locked" title="${escapeHtml(t("sc.lockedTip"))}">${escapeHtml(t("sc.locked"))}</span>`}
         </div>
         <div class="sc-actions">
-          <span class="sc-cat" title="${escapeHtml(sc.category)}">${escapeHtml(sc.category)}</span>
+          <span class="sc-cat" title="${escapeHtml(catName(sc.category))}">${escapeHtml(catName(sc.category))}</span>
           <div class="sc-buttons">
             <button class="btn-ghost-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', true)" title="${escapeHtml(t("sc.blindTip"))}">🎲</button>
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); launchScenario('${sc.id}', false)">${escapeHtml(t("btn.deploy"))}</button>
@@ -238,11 +282,14 @@ function renderScenarioList() {
 function scenarioPreview(sc) {
   const code = (x) => escapeHtml(x || "").replace(/`([^`\n]+)`/g, "<code>$1</code>");
   const hasDraw = (sc.machines || []).length > 1 || Object.keys(sc.networks || {}).length > 0;
+  const en = enOf(sc);
+  const runsOf = (m) => pickEn(((en.nodes || {})[m.role] || {}).runs, m.runs);
+  const viaOf = (l, i) => pickEn((en.links || [])[i], l.via);
   const machines = hasDraw ? "" : (sc.machines || [])
-    .map((m) => `<li><span class="pv-role">${escapeHtml(m.role)}</span>${m.runs ? ` <span class="pv-runs">${escapeHtml(m.runs)}</span>` : ""}</li>`)
+    .map((m) => `<li><span class="pv-role">${escapeHtml(m.role)}</span>${m.runs ? ` <span class="pv-runs">${escapeHtml(runsOf(m))}</span>` : ""}</li>`)
     .join("");
   const links = hasDraw ? "" : (sc.links || [])
-    .map((l) => `<li>${escapeHtml(l.from)} → ${escapeHtml(l.to)}${l.via ? ` <span class="pv-runs">· ${escapeHtml(l.via)}</span>` : ""}</li>`)
+    .map((l, i) => `<li>${escapeHtml(l.from)} → ${escapeHtml(l.to)}${l.via ? ` <span class="pv-runs">· ${escapeHtml(viaOf(l, i))}</span>` : ""}</li>`)
     .join("");
   const obj = (sc.objetivos_lpi || []).length
     ? `<div class="pv-obj">${escapeHtml(t("pv.obj"))} ${sc.objetivos_lpi.map((o) => `<span class="tag">${escapeHtml(o)}</span>`).join(" ")}</div>`
@@ -267,7 +314,7 @@ function openPreview(id) {
     <span class="badge diff-${escapeHtml(sc.difficulty)}">${escapeHtml(diffName(sc.difficulty))}</span>
     <span class="badge tipo-${sc.tipo === "tarea" ? "tarea" : "averia"}">${escapeHtml(sc.tipo === "tarea" ? t("type.tarea") : t("type.averia"))}</span>
     <span>⚡ ${sc.points} XP</span><span>·</span><span>~${sc.estimated_min}m</span><span>·</span>
-    <span>${escapeHtml(sc.category)}</span>
+    <span>${escapeHtml(catName(sc.category))}</span>
     ${(sc.certs || []).map((c) => `<span class="cert">${escapeHtml(c)}</span>`).join("")}
     ${sc.solved ? `<span class="badge badge-solved">✓ ${escapeHtml(sc.best_rank || "OK")} · ${fmtSeconds(sc.best_time_s)}</span>` : ""}`;
   const oldBox = $("pv-topo");
@@ -277,7 +324,7 @@ function openPreview(id) {
   const pvBox = $("pv-topo");
   if (pvBox) {
     const nodes = Object.fromEntries((sc.machines || []).map((m) => [m.role, { runs: m.runs }]));
-    drawTopology(pvBox, { entry: sc.entry || null, nodes, links: sc.links || [], networks: sc.networks || {} }, { minHeight: 110, compact: true });
+    drawTopology(pvBox, topoL({ entry: sc.entry || null, nodes, links: sc.links || [], networks: sc.networks || {} }, enOf(sc)), { minHeight: 110, compact: true });
   }
   $("btn-pv-launch").focus();
 }
@@ -365,7 +412,7 @@ function syncActiveView(active) {
   $("incident-banner").classList.toggle("blind-active", Boolean(active.blind_masked));
   $("active-diff-badge").className = `badge diff-${active.difficulty}`;
   $("active-diff-badge").textContent = `${diffName(active.difficulty)} · ${active.points} XP`;
-  $("active-cat-badge").textContent = active.blind_masked ? t("blind.cat") : active.category;
+  $("active-cat-badge").textContent = active.blind_masked ? t("blind.cat") : catName(active.category);
   $("active-seed-badge").textContent = `Seed #${active.seed}`;
   $("active-title").textContent = active.blind_masked ? t("blind.title") : L(active, "title");
   // `algo` → <code>algo</code>; los saltos de línea se respetan (listas numeradas del encargo)
@@ -387,7 +434,7 @@ function syncActiveView(active) {
         .map(
           (e) => `<div class="tl-row tl-${escapeHtml(e.sev)}"><span class="tl-t">${escapeHtml(e.t)}</span>` +
             `<span class="tl-ico">${ico[e.sev] || "•"}</span><span class="tl-node">[${escapeHtml(e.node)}]</span>` +
-            `<span class="tl-text">${escapeHtml(e.text)}</span></div>`
+            `<span class="tl-text">${escapeHtml((currentLang() === "en" && e.text_en) || e.text)}</span></div>`
         )
         .join("");
   }
@@ -424,7 +471,7 @@ function syncActiveView(active) {
         </span>
         <div>
           <span class="check-node">[${escapeHtml(c.node)}]</span>
-          <span>${escapeHtml(active.blind_masked ? t("blind.probe", { n: ci + 1 }) : c.label)}</span>
+          <span>${escapeHtml(active.blind_masked ? t("blind.probe", { n: ci + 1 }) : checkLabel(active, ci, c.label))}</span>
         </div>
       </div>`
     )
@@ -798,7 +845,7 @@ function restyleTopologies() {
 function renderTopology(active) {
   const strip = $("topo-strip");
   const body = $("topo-body");
-  const topo = active && active.topology;
+  const topo = active && topoL(active.topology, enOf(active));
   const unNodoTarea = active && active.tipo === "tarea" && topo && Object.keys(topo.nodes || {}).length < 2;
   if (!topo || !topo.nodes || !Object.keys(topo.nodes).length || unNodoTarea) {
     strip.classList.add("hidden");
@@ -827,7 +874,7 @@ function renderTopology(active) {
 }
 
 function renderHowtoLook(active) {
-  const topo = active && active.topology;
+  const topo = active && topoL(active.topology, enOf(active));
   const box = $("howto-look");
   const toolsOf = Object.fromEntries(((active && active.nodes) || []).map((n) => [n.role, n.tools || []]));
   const tools = (role) => (toolsOf[role] && toolsOf[role].length)
@@ -899,7 +946,7 @@ function connectNodeWs(role) {
   }
 
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
-  const ws = new WebSocket(`${proto}//${location.host}/ws/terminal/${encodeURIComponent(role)}`);
+  const ws = new WebSocket(`${proto}//${location.host}/ws/terminal/${encodeURIComponent(role)}?lang=${currentLang()}`);
   sess.ws = ws;
 
   ws.onopen = () => {
@@ -1007,7 +1054,7 @@ async function runVerify() {
 
 async function openPostMortem() {
   try {
-    const res = await api("/api/lab/postmortem");
+    const res = await api(`/api/lab/postmortem?lang=${currentLang()}`);
     state.pmFilename = res.filename || "postmortem.md";
     $("pm-textarea").value = res.markdown || "";
     $("pm-modal").classList.remove("hidden");
@@ -1128,7 +1175,7 @@ function bindEvents() {
       const q = $("mentor-input").value;
       const res = await api("/api/lab/mentor", {
         method: "POST",
-        body: JSON.stringify({ question: q }),
+        body: JSON.stringify({ question: q, lang: currentLang() }),
       });
       const tag = $("mentor-source-tag");
       delete tag.dataset.i18n;
@@ -1174,7 +1221,7 @@ function bindEvents() {
 
   $("btn-vault-pm")?.addEventListener("click", async () => {
     try {
-      const res = await api("/api/lab/export-vault", { method: "POST" });
+      const res = await api(`/api/lab/export-vault?lang=${currentLang()}`, { method: "POST" });
       showToast(t("toast.pmSaved", { path: res.path }));
     } catch (err) {
       showToast(t("toast.err", { msg: err.message }));
@@ -1195,6 +1242,7 @@ function bindEvents() {
 // Cambio de idioma: textos estáticos (data-i18n) y todo lo que pinta JS, sin recargar
 function rerenderLang() {
   I18N.applyI18n();
+  document.querySelectorAll("#filter-category option").forEach((o) => { if (o.value) o.textContent = catName(o.value); });
   renderHealth();
   renderStats();
   renderScenarioList();
