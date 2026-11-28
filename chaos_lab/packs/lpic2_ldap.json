@@ -61,6 +61,7 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap01",
     "script": "comprueba \"uids.txt existe y no está vacío\" test -s uids.txt\ncomprueba \"uids.txt lista a todos los usuarios que cumplen el filtro\" bash -c 'grep -qx \"uid: carol\" uids.txt && grep -qx \"uid: pedro\" uids.txt && grep -qx \"uid: marta\" uids.txt'\ncomprueba \"uids.txt no incluye a los que no lo cumplen\" bash -c '! grep -Eq \"uid: (ana|luis)$\" uids.txt'\ncomprueba \"uids.txt solo trae el atributo uid\" bash -c '! grep -Eq \"^(cn|mail|sn|uidNumber):\" uids.txt'\ncomprueba \"uids.txt no contiene comentarios ni otros atributos de la entrada\" bash -c '! grep -Eq \"^(#|version:|objectClass:|cn:|sn:|givenName:|mail:|uidNumber:|gidNumber:|homeDirectory:|loginShell:|userPassword:)\" uids.txt'"
    }
@@ -130,21 +131,25 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap02",
     "script": "comprueba \"sara existe en el directorio con los atributos pedidos\" bash -c 'o=$(ldapsearch -x -LLL -b ou=personas,dc=lpic,dc=lab uid=sara uidNumber gidNumber homeDirectory loginShell); echo \"$o\" | grep -qx \"uidNumber: 10010\" && echo \"$o\" | grep -qx \"gidNumber: 10000\" && echo \"$o\" | grep -qx \"homeDirectory: /home/sara\" && echo \"$o\" | grep -qx \"loginShell: /bin/bash\" && ldapwhoami -x -D uid=sara,ou=personas,dc=lpic,dc=lab -w sara'"
    },
    {
     "node": "ldap-cli",
+    "marca": "node:ldap-cli",
     "cwd": null,
     "script": "comprueba \"el cliente resuelve la cuenta de sara\" bash -c 'sss_cache -E >/dev/null 2>&1; ! grep -q \"^sara:\" /etc/passwd && getent passwd sara >/dev/null'"
    },
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root",
     "script": "comprueba \"sara entra por ssh desde ldap-srv\" bash -c 'for i in 1 2 3; do timeout 15 sshpass -p sara ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 sara@ldap-cli true && exit 0; sleep 2; done; exit 1'"
    },
    {
     "node": "ldap-cli",
+    "marca": "node:ldap-cli",
     "cwd": null,
     "script": "comprueba \"se ha creado el directorio personal de sara en el cliente\" test -d /home/sara"
    }
@@ -212,11 +217,13 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap03",
     "script": "comprueba \"pedro figura como miembro del grupo admins en el directorio\" bash -c 'ldapsearch -x -LLL \"(&(cn=admins)(memberUid=pedro))\" dn | grep -q ^dn'\ncomprueba \"los miembros anteriores del grupo admins se conservan\" bash -c 'ldapsearch -x -LLL \"(&(cn=admins)(memberUid=ana))\" dn | grep -q ^dn'"
    },
    {
     "node": "ldap-cli",
+    "marca": "node:ldap-cli",
     "cwd": null,
     "script": "comprueba \"id pedro incluye admins en el cliente\" bash -c 'sss_cache -E >/dev/null 2>&1; ! grep -q \"^admins:\" /etc/group && id pedro | grep -q \"(admins)\"'"
    }
@@ -283,6 +290,7 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap04",
     "script": "comprueba \"luis puede autenticarse con la clave nueva\" ldapwhoami -x -D uid=luis,ou=personas,dc=lpic,dc=lab -w Nueva123\ncomprueba \"luis ya no puede autenticarse con la clave antigua\" bash -c '! ldapwhoami -x -D uid=luis,ou=personas,dc=lpic,dc=lab -w luis'\ncomprueba \"ana sigue pudiendo autenticarse con su clave\" ldapwhoami -x -D uid=ana,ou=personas,dc=lpic,dc=lab -w ana"
    }
@@ -350,6 +358,7 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap05",
     "script": "comprueba \"existe el índice de igualdad para mail\" bash -c 'ldapsearch -Q -Y EXTERNAL -H ldapi:/// -LLL -b \"olcDatabase={1}mdb,cn=config\" -s base olcDbIndex | grep -Eq \"^olcDbIndex: mail( |,.*)eq\"'\ncomprueba \"los índices anteriores de la base se conservan\" bash -c 'o=$(ldapsearch -Q -Y EXTERNAL -H ldapi:/// -LLL -b \"olcDatabase={1}mdb,cn=config\" -s base olcDbIndex); echo \"$o\" | grep -q \"cn,uid eq\" && echo \"$o\" | grep -q \"uidNumber,gidNumber eq\"'\ncomprueba \"las búsquedas por mail devuelven la entrada\" bash -c 'ldapsearch -x -LLL \"(mail=carol@lpic.lab)\" dn | grep -q carol'"
    }
@@ -417,6 +426,7 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap06",
     "script": "comprueba \"existe copia.ldif y no está vacío\" test -s /root/retos/ldap06/copia.ldif\ncomprueba \"la copia contiene todas las entradas de personas\" bash -c '[ \"$(grep -c \"^dn: uid=.*,ou=personas\" /root/retos/ldap06/copia.ldif)\" -ge 5 ]'\ncomprueba \"la copia contiene las entradas de grupos\" bash -c 'grep -q \"^dn: cn=admins,ou=grupos\" /root/retos/ldap06/copia.ldif'\ncomprueba \"copia.ldif es un volcado completo de slapcat\" grep -q \"^structuralObjectClass:\" /root/retos/ldap06/copia.ldif\ncomprueba \"slapd vuelve a estar en marcha\" ldapsearch -x -LLL -b dc=lpic,dc=lab -s base dn"
    }
@@ -485,6 +495,7 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap07",
     "script": "comprueba \"starttls.txt contiene el dn y el mail de carol\" bash -c 'grep -qx \"dn: uid=carol,ou=personas,dc=lpic,dc=lab\" /root/retos/ldap07/starttls.txt && grep -qx \"mail: carol@lpic.lab\" /root/retos/ldap07/starttls.txt'\ncomprueba \"ldaps.txt contiene el dn de ana\" grep -qx \"dn: uid=ana,ou=personas,dc=lpic,dc=lab\" /root/retos/ldap07/ldaps.txt\ncomprueba \"cert.txt contiene el Subject real del certificado del servidor\" bash -c 'real=$(openssl x509 -in /etc/ldap/tls/srv.crt -noout -subject | sed -E \"s/ *= */=/g; s/^subject=//; s/[[:space:]]+//g\"); got=$(sed -E \"s/ *= */=/g; s/^subject=//; s/[[:space:]]+//g\" /root/retos/ldap07/cert.txt); [ \"$got\" = \"$real\" ]'\ncomprueba \"StartTLS funciona en el servidor\" ldapwhoami -x -ZZ -H ldap://ldap-srv\ncomprueba \"LDAPS funciona en el servidor\" ldapwhoami -x -H ldaps://ldap-srv"
    }
@@ -552,6 +563,7 @@
   "comprobar": [
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": "/root/retos/ldap08",
     "script": "comprueba \"la regla de mail es la primera ACL ({0}) de la base mdb\" bash -c 'ldapsearch -Q -Y EXTERNAL -H ldapi:/// -LLL -b \"olcDatabase={1}mdb,cn=config\" -s base olcAccess | grep -Eq \"^olcAccess: \\{0\\}[[:space:]]*to attrs=mail \"'\ncomprueba \"un cliente anónimo no ve el mail de carol\" bash -c '! ldapsearch -x -LLL \"(uid=carol)\" mail | grep -q \"^mail:\"'\ncomprueba \"un cliente anónimo sigue viendo el uid de carol\" bash -c 'ldapsearch -x -LLL \"(uid=carol)\" uid | grep -q \"^uid: carol\"'\ncomprueba \"ana autenticada ve el mail de carol\" bash -c 'ldapsearch -x -D uid=ana,ou=personas,dc=lpic,dc=lab -w ana -LLL \"(uid=carol)\" mail | grep -q \"^mail: carol@lpic.lab\"'\ncomprueba \"ana no puede leer la clave de carol\" bash -c '! ldapsearch -x -D uid=ana,ou=personas,dc=lpic,dc=lab -w ana -LLL \"(uid=carol)\" userPassword | grep -q \"^userPassword\"'"
    }
@@ -624,11 +636,13 @@
    },
    {
     "node": "ldap-cli",
+    "marca": "node:ldap-cli",
     "cwd": null,
     "script": "comprueba \"pam_access está activo en /etc/pam.d/sshd\" grep -Eq '^account[[:space:]]+(required|requisite)[[:space:]]+pam_access.so' /etc/pam.d/sshd\ncomprueba \"access.conf permite a root y al grupo admins antes de denegar al resto\" awk 'BEGIN{ok=0} /^[[:space:]]*[+]:[[:space:]]*root:/{r=1} /^[[:space:]]*[+]:[[:space:]]*\\(admins\\):/{a=1} /^[[:space:]]*-:ALL:/{d=1; if(r&&a) ok=1} END{exit !ok}' /etc/security/access.conf"
    },
    {
     "node": "ldap-srv",
+    "marca": "node:ldap-srv",
     "cwd": null,
     "script": "comprueba \"ana (admins) entra por ssh desde ldap-srv\" bash -c 'timeout 20 sshpass -p ana ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 ana@ldap-cli true'\ncomprueba \"luis (no admins) es rechazado por ssh\" bash -c '! timeout 20 sshpass -p luis ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5 luis@ldap-cli true'"
    }
@@ -696,6 +710,7 @@
   "comprobar": [
    {
     "node": "ldap-cli",
+    "marca": "node:ldap-cli",
     "cwd": null,
     "script": "comprueba \"pam_mkhomedir está configurado con la máscara pedida en common-session\" grep -Eq 'pam_mkhomedir.so.*umask=0?027' /etc/pam.d/common-session\ncomprueba \"existe /home/marta\" test -d /home/marta\ncomprueba \"/home/marta tiene modo 750\" bash -c '[ \"$(stat -c %a /home/marta)\" = 750 ]'\ncomprueba \"/home/marta pertenece a marta\" bash -c '[ \"$(stat -c %U /home/marta)\" = marta ]'\ncomprueba \"/home/marta fue poblado desde /etc/skel con grupo alumnos\" bash -c 'test -f /home/marta/.bashrc && [ \"$(stat -c %U:%G /home/marta)\" = \"marta:alumnos\" ]'"
    }
