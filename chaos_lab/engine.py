@@ -273,9 +273,9 @@ _MAX_HISTORY = 100
 
 
 def _int_ge0(v: Any, limit: int = 10**9) -> int:
-    if isinstance(v, bool) or not isinstance(v, (int, float)):
+    if isinstance(v, bool) or not isinstance(v, int):  # json.loads da int para enteros; 1.5, NaN o Infinity no valen
         raise ValueError("número no válido")
-    n = int(v)
+    n = v
     if n < 0 or n > limit:
         raise ValueError("número fuera de rango")
     return n
@@ -423,7 +423,7 @@ class ChaosEngine:
         clean = sanitize_progress(data)  # ValueError si no es un fichero de progreso válido
         with self._lock:
             if STATE_FILE.exists():
-                stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+                stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S-%f")  # con microsegundos: nunca pisa otra copia
                 backup = STATE_FILE.with_name(f"state.antes-de-importar-{stamp}.json")
                 backup.write_text(STATE_FILE.read_text(encoding="utf-8"), encoding="utf-8")
             self._save_state(clean)

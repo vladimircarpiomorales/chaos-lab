@@ -37,25 +37,41 @@ _LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 def _allowed_hosts() -> set[str]:
     hosts = set(_LOCAL_HOSTS)
     bind = os.environ.get("CHAOS_HOST", "").strip()
-    if bind and bind not in ("0.0.0.0", "::"):
-        hosts.add(bind.strip("[]").lower())
     extra = os.environ.get("CHAOS_ALLOWED_HOSTS", "")  # p. ej. «miportatil.tailnet.ts.net,100.64.0.5»
-    hosts.update(h.strip().strip("[]").lower() for h in extra.split(",") if h.strip())
+    for item in [bind, *extra.split(",")]:
+        item = item.strip()
+        if not item or item in ("0.0.0.0", "::", "[::]"):
+            continue
+        name = _hostname(item) or item.strip("[]").lower()  # «::1» suelto no es host:puerto → tal cual
+        if name:
+            hosts.add(name)  # se guarda sin puerto: «100.64.0.5:7820» vale como «100.64.0.5»
     return hosts
 
 
 def _hostname(netloc: str) -> str:
-    """Nombre sin puerto de un «host:puerto» (también IPv6 entre corchetes)."""
+    """Nombre sin puerto de un «host[:puerto]» (también IPv6 entre corchetes). Cualquier otra cosa
+    (usuario@, ruta, ?consulta, #fragmento, puerto no numérico) devuelve "" y se rechaza."""
     try:
-        return (urlsplit(f"//{netloc}").hostname or "").lower()
+        u = urlsplit(f"//{netloc}")
+        if u.username or u.password or u.path or u.query or u.fragment:
+            return ""
+        _ = u.port  # ValueError si el puerto no es un número válido
+        return (u.hostname or "").lower()
     except ValueError:
         return ""
 
 
-def request_is_allowed(host_header: str | None, origin: str | None) -> bool:
+_SAFE_FETCH_SITES = (None, "same-origin", "none")  # «none» = el usuario escribió la URL o usó un marcador
+
+
+def request_is_allowed(
+    host_header: str | None, origin: str | None, fetch_site: str | None = None, safe_method: bool = False
+) -> bool:
     host_header = (host_header or "").strip().lower()
     if not host_header or _hostname(host_header) not in _allowed_hosts():
         return False
+    if not safe_method and fetch_site not in _SAFE_FETCH_SITES:
+        return False  # POST o WebSocket lanzado desde otra web aunque el navegador no mande Origin
     if origin is None:
         return True  # cliente local que no es un navegador (curl, scripts)
     try:
@@ -67,7 +83,10 @@ def request_is_allowed(host_header: str | None, origin: str | None) -> bool:
 
 @app.middleware("http")
 async def local_guard(request: Request, call_next):
-    if not request_is_allowed(request.headers.get("host"), request.headers.get("origin")):
+    safe = request.method in ("GET", "HEAD", "OPTIONS")
+    if not request_is_allowed(
+        request.headers.get("host"), request.headers.get("origin"), request.headers.get("sec-fetch-site"), safe
+    ):
         return PlainTextResponse("Origen no permitido", status_code=403)
     return await call_next(request)
 
@@ -220,9 +239,17 @@ MAX_PROGRESS_BYTES = 1_000_000
 async def api_progress_import(request: Request) -> JSONResponse:
     import json as _json
 
-    body = await request.body()
-    if len(body) > MAX_PROGRESS_BYTES:
-        return JSONResponse({"ok": False, "error": "El fichero es demasiado grande."}, status_code=413)
+    too_big = JSONResponse({"ok": False, "error": "El fichero es demasiado grande."}, status_code=413)
+    try:
+        if int(request.headers.get("content-length", "0")) > MAX_PROGRESS_BYTES:
+            return too_big
+    except ValueError:
+        return too_big
+    body = b""
+    async for chunk in request.stream():  # sin Content-Length (chunked): se corta al pasar del límite
+        body += chunk
+        if len(body) > MAX_PROGRESS_BYTES:
+            return too_big
     try:
         data = _json.loads(body)
         summary = engine.import_progress(data)
@@ -235,7 +262,9 @@ async def api_progress_import(request: Request) -> JSONResponse:
 @app.websocket("/ws/terminal/{role}")
 async def ws_terminal(websocket: WebSocket, role: str) -> None:
     # El middleware http no pasa por los WebSocket: misma comprobación aquí, antes de aceptar.
-    if not request_is_allowed(websocket.headers.get("host"), websocket.headers.get("origin")):
+    if not request_is_allowed(
+        websocket.headers.get("host"), websocket.headers.get("origin"), websocket.headers.get("sec-fetch-site")
+    ):
         await websocket.close(code=1008)  # policy violation
         return
     node = engine.get_node_runtime(role)

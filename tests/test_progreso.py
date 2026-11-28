@@ -99,3 +99,21 @@ def test_import_desde_otra_web_403(client):
 def test_import_demasiado_grande_413(client):
     r = client.post("/api/progress/import", content=b" " * 1_000_001, headers=ORIGEN)
     assert r.status_code == 413
+
+
+@pytest.mark.parametrize("texto", ['{"total_xp": Infinity}', '{"total_xp": NaN}', '{"total_xp": 1.5}'])
+def test_numeros_no_enteros_400(client, texto):
+    r = client.post("/api/progress/import", content=texto, headers=ORIGEN)
+    assert r.status_code == 400
+
+
+def test_dos_importaciones_seguidas_no_pisan_la_copia(client, tmp_path):
+    (tmp_path / "state.json").write_text(json.dumps(VALIDO))
+    for _ in range(2):
+        assert client.post("/api/progress/import", content=json.dumps(VALIDO), headers=ORIGEN).status_code == 200
+    assert len(list(tmp_path.glob("state.antes-de-importar-*.json"))) == 2
+
+
+def test_content_length_enorme_413_sin_leer(client):
+    r = client.post("/api/progress/import", content=b"{}", headers={**ORIGEN, "Content-Length": "999999999"})
+    assert r.status_code == 413
